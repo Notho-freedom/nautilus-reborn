@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { getSettings, subscribeToSettingsUpdates, type WebServiceId } from '@/lib/settings';
+import { useEffect, useMemo, useState } from 'react';
 
 interface DevToolsSidebarProps {
   isOpen: boolean;
@@ -41,18 +43,19 @@ const SIDEBAR_ITEMS = [
 ];
 
 export interface WebServiceItem {
+  id: WebServiceId;
   label: string;
   url: string;
   icon: React.ElementType;
 }
 
 const WEB_SERVICES: WebServiceItem[] = [
-  { icon: Music, label: 'YouTube Music', url: 'https://music.youtube.com' },
-  { icon: Youtube, label: 'YouTube', url: 'https://youtube.com' },
-  { icon: Bot, label: 'ChatGPT', url: 'https://chat.openai.com' },
-  { icon: Bot, label: 'DeepSeek', url: 'https://chat.deepseek.com' },
-  { icon: MessageCircle, label: 'WhatsApp', url: 'https://web.whatsapp.com' },
-  { icon: Send, label: 'Telegram', url: 'https://web.telegram.org' },
+  { id: 'youtubeMusic', icon: Music, label: 'YouTube Music', url: 'https://music.youtube.com' },
+  { id: 'youtube', icon: Youtube, label: 'YouTube', url: 'https://youtube.com' },
+  { id: 'chatgpt', icon: Bot, label: 'ChatGPT', url: 'https://chat.openai.com' },
+  { id: 'deepseek', icon: Bot, label: 'DeepSeek', url: 'https://chat.deepseek.com' },
+  { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', url: 'https://web.whatsapp.com' },
+  { id: 'telegram', icon: Send, label: 'Telegram', url: 'https://web.telegram.org' },
 ];
 
 export function DevToolsSidebar({
@@ -62,6 +65,21 @@ export function DevToolsSidebar({
   onOpenWebPanel,
   activeWebServiceUrl,
 }: DevToolsSidebarProps) {
+  const [enabledWebServices, setEnabledWebServices] = useState<WebServiceId[]>(
+    () => getSettings().enabledWebServices
+  );
+
+  useEffect(() => {
+    return subscribeToSettingsUpdates(() => {
+      setEnabledWebServices(getSettings().enabledWebServices);
+    });
+  }, []);
+
+  const visibleWebServices = useMemo(
+    () => WEB_SERVICES.filter(service => enabledWebServices.includes(service.id)),
+    [enabledWebServices]
+  );
+
   return (
     <div className="flex h-full shrink-0">
       <div className="flex flex-col items-center w-11 bg-sidebar border-r border-sidebar-border py-2 gap-0.5 overflow-y-auto scrollbar-thin">
@@ -96,7 +114,7 @@ export function DevToolsSidebar({
         <div className="w-6 h-px bg-sidebar-border my-1" />
         <div className="text-[7px] font-display text-muted-foreground uppercase tracking-widest mb-0.5">Web</div>
 
-        {WEB_SERVICES.map(svc => (
+        {visibleWebServices.map(svc => (
           <Tooltip key={svc.label} delayDuration={500}>
             <TooltipTrigger asChild>
               <button

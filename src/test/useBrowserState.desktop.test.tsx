@@ -38,6 +38,14 @@ describe('useBrowserState desktop mode', () => {
       toggleMaximizeWindow: vi.fn().mockResolvedValue(undefined),
       closeWindow: vi.fn().mockResolvedValue(undefined),
       getWindowState: vi.fn().mockResolvedValue({ isMaximized: false }),
+      getDownloads: vi.fn().mockResolvedValue({ downloads: [] }),
+      pauseDownload: vi.fn().mockResolvedValue({ downloads: [] }),
+      resumeDownload: vi.fn().mockResolvedValue({ downloads: [] }),
+      cancelDownload: vi.fn().mockResolvedValue({ downloads: [] }),
+      removeDownload: vi.fn().mockResolvedValue({ downloads: [] }),
+      clearCompletedDownloads: vi.fn().mockResolvedValue({ downloads: [] }),
+      openDownload: vi.fn().mockResolvedValue(undefined),
+      showDownloadInFolder: vi.fn().mockResolvedValue(undefined),
       onStateChanged: vi.fn(listener => {
         stateListener = listener;
         return () => {
@@ -45,6 +53,7 @@ describe('useBrowserState desktop mode', () => {
         };
       }),
       onWindowStateChanged: vi.fn(() => () => {}),
+      onDownloadsChanged: vi.fn(() => () => {}),
     };
     window.notilusDesktop = bridge;
   });

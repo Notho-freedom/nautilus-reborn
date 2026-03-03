@@ -1,3 +1,5 @@
+import { isHistoryEnabled } from './settings';
+
 export interface HistoryItem {
   id: string;
   url: string;
@@ -75,6 +77,7 @@ export function getHistoryItems(): HistoryItem[] {
 export function addHistoryItem(url: string, title: string) {
   const normalizedUrl = normalizeUrl(url);
   if (!normalizedUrl || normalizedUrl.startsWith('notilus://')) return;
+  if (!isHistoryEnabled()) return;
 
   const current = readHistory().filter(item => item.url !== normalizedUrl);
   const nextItem: HistoryItem = {

@@ -12,12 +12,33 @@ import { AIAssistant } from './AIAssistant';
 import { StatusBar } from './StatusBar';
 import { DevToolsPanel } from './DevToolsPanel';
 import type { WebServiceItem } from './DevToolsSidebar';
+import { initializeSettings } from '@/lib/settings';
+import {
+  isBookmarked,
+  subscribeToBookmarksUpdates,
+  toggleBookmark,
+} from '@/lib/bookmarks';
 
 export function BrowserShell() {
   const browser = useBrowserState();
   const stats = useSystemMonitor();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
+  const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
+
+  useEffect(() => {
+    initializeSettings();
+  }, []);
+
+  useEffect(() => {
+    const refreshBookmarkState = () => {
+      const activeUrl = browser.activeTab?.url ?? '';
+      setActiveTabBookmarked(isBookmarked(activeUrl));
+    };
+
+    refreshBookmarkState();
+    return subscribeToBookmarksUpdates(refreshBookmarkState);
+  }, [browser.activeTab?.url]);
 
   const shortcuts = useMemo(() => ({
     newTab: () => browser.addTab(),
@@ -32,18 +53,14 @@ export function BrowserShell() {
       const el = document.querySelector<HTMLInputElement>('[data-url-input]');
       el?.focus();
     },
-    addBookmark: () => browser.toggleSidebar('bookmarks'),
-  }), [
-    browser.activeTabId,
-    browser.addTab,
-    browser.closeTab,
-    browser.nextTab,
-    browser.prevTab,
-    browser.isDesktopMode,
-    browser.openNativeDevTools,
-    browser.toggleDevTools,
-    browser.toggleSidebar,
-  ]);
+    addBookmark: () => {
+      if (browser.activeTab) {
+        const next = toggleBookmark(browser.activeTab.url, browser.activeTab.title);
+        setActiveTabBookmarked(next);
+      }
+      browser.toggleSidebar('bookmarks');
+    },
+  }), [browser]);
 
   useKeyboardShortcuts(shortcuts);
 
@@ -71,14 +88,7 @@ export function BrowserShell() {
       observer.disconnect();
       window.removeEventListener('resize', updateBounds);
     };
-  }, [
-    browser.activeTabId,
-    browser.sidebarOpen,
-    browser.devToolsOpen,
-    browser.devToolsHeight,
-    browser.isDesktopMode,
-    browser.setViewportBounds,
-  ]);
+  }, [browser]);
 
   const handleSidebarToggle = (panel?: string) => {
     if (panel === 'devtools-panel') {
@@ -127,6 +137,14 @@ export function BrowserShell() {
         canGoBack={browser.canGoBack}
         canGoForward={browser.canGoForward}
         isLoading={browser.isLoading}
+        isBookmarked={activeTabBookmarked}
+        onToggleBookmark={() => {
+          if (!browser.activeTab) return;
+          const nextState = toggleBookmark(browser.activeTab.url, browser.activeTab.title);
+          setActiveTabBookmarked(nextState);
+        }}
+        onOpenDownloads={() => browser.toggleSidebar('downloads')}
+        onOpenExtensions={() => browser.toggleSidebar('extensions')}
         onToggleAI={browser.toggleAiPanel}
         adsBlocked={browser.adsBlocked}
       />
@@ -146,6 +164,7 @@ export function BrowserShell() {
             webService={activeWebService}
             onOpenWebServiceInTab={handleOpenWebServiceInTab}
             onClosePanel={handleCloseSidebarPanel}
+            onNavigate={browser.navigateTo}
           />
         )}
         <div className="flex-1 flex flex-col overflow-hidden">

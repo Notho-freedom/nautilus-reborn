@@ -15,6 +15,10 @@ interface NavigationBarProps {
   canGoBack?: boolean;
   canGoForward?: boolean;
   isLoading?: boolean;
+  isBookmarked?: boolean;
+  onToggleBookmark?: () => void;
+  onOpenExtensions?: () => void;
+  onOpenDownloads?: () => void;
   onToggleAI: () => void;
   adsBlocked?: number;
 }
@@ -29,12 +33,15 @@ export function NavigationBar({
   canGoBack = false,
   canGoForward = false,
   isLoading = false,
+  isBookmarked = false,
+  onToggleBookmark,
+  onOpenExtensions,
+  onOpenDownloads,
   onToggleAI,
   adsBlocked = 0,
 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
@@ -111,7 +118,7 @@ export function NavigationBar({
           />
           <button
             type="button"
-            onClick={() => setIsBookmarked(!isBookmarked)}
+            onClick={() => onToggleBookmark?.()}
             className={cn("shrink-0 transition-colors duration-fast", isBookmarked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
           >
             <Star size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
@@ -126,8 +133,8 @@ export function NavigationBar({
         </div>
       )}
 
-      <NavButton label="Extensions"><Puzzle size={15} /></NavButton>
-      <NavButton label="Downloads"><Download size={15} /></NavButton>
+      <NavButton label="Extensions" onClick={onOpenExtensions}><Puzzle size={15} /></NavButton>
+      <NavButton label="Downloads" onClick={onOpenDownloads}><Download size={15} /></NavButton>
       <button
         onClick={onToggleAI}
         title="AI Assistant"

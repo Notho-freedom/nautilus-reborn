@@ -51,6 +51,8 @@ En mode desktop:
 - Pages externes: rendues via Chromium natif (`WebContentsView`)
 - Pages internes (`notilus://*`): rendues dans l'UI React
 - Le bridge preload expose `window.notilusDesktop` (IPC typé)
+- Téléchargements: capturés nativement via Electron session (`will-download`) et visibles dans le panneau Downloads
+- Sidebar web services: configurable dans Settings, ouverture en panel + transfert en tab
 
 ## Workflow Git recommandé
 

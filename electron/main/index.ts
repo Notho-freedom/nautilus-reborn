@@ -3,7 +3,9 @@ import { join } from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
 import { BrowserIpcChannels } from '../../shared/browser-contract';
 import { registerBrowserIpc } from './ipc/browser-ipc';
+import { registerDownloadIpc } from './ipc/download-ipc';
 import { registerWindowIpc } from './ipc/window-ipc';
+import { DownloadManager } from './download-manager';
 import { NetworkLayer } from './network-layer';
 import { TabManager } from './tab-manager';
 import { createMainWindow } from './window-manager';
@@ -13,6 +15,7 @@ const INITIAL_URL = 'notilus://speed-dial';
 
 let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
+let downloadManager: DownloadManager | null = null;
 
 function resolvePreloadPath(): string {
   const mjsPath = join(__dirname, '../preload/index.mjs');
@@ -42,12 +45,29 @@ function createDesktopWindow() {
     },
   });
 
+  downloadManager = new DownloadManager(
+    session.defaultSession,
+    snapshot => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send(BrowserIpcChannels.downloadsStateChanged, snapshot);
+    },
+    DEBUG_IPC
+  );
+  downloadManager.setup();
+
   registerBrowserIpc({ tabManager, debug: DEBUG_IPC });
+  registerDownloadIpc({ downloadManager, debug: DEBUG_IPC });
   registerWindowIpc(mainWindow, DEBUG_IPC);
   tabManager.createTab(INITIAL_URL);
 
   mainWindow.webContents.on('did-finish-load', () => {
     broadcastState();
+    if (downloadManager && !mainWindow?.isDestroyed()) {
+      mainWindow.webContents.send(
+        BrowserIpcChannels.downloadsStateChanged,
+        downloadManager.getSnapshot()
+      );
+    }
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(BrowserIpcChannels.windowStateChanged, {
         isMaximized: mainWindow.isMaximized(),

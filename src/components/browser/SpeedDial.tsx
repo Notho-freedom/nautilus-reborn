@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Globe, Clock, Zap, Quote, Terminal, Plus, Wrench, ShieldCheck } from 'lucide-react';
+import { getBookmarks, subscribeToBookmarksUpdates } from '@/lib/bookmarks';
+import { getHistoryItems, subscribeToHistoryUpdates } from '@/lib/history';
+import { getSettings, subscribeToSettingsUpdates } from '@/lib/settings';
 
 interface SpeedDialProps {
   onNavigate: (url: string) => void;
 }
 
-const FAVORITES = [
+const DEFAULT_FAVORITES = [
   { name: 'GitHub', url: 'https://github.com' },
   { name: 'Stack Overflow', url: 'https://stackoverflow.com' },
   { name: 'MDN Docs', url: 'https://developer.mozilla.org' },
@@ -16,7 +19,7 @@ const FAVORITES = [
   { name: 'Reddit', url: 'https://reddit.com' },
 ];
 
-const RECENT = [
+const DEFAULT_RECENT = [
   { title: 'React Docs - Quick Start', url: 'https://react.dev/learn', time: '5 min ago' },
   { title: 'GitHub - notilus/browser', url: 'https://github.com/notilus', time: '12 min ago' },
   { title: 'Tailwind CSS - Docs', url: 'https://tailwindcss.com/docs', time: '1h ago' },
@@ -30,10 +33,24 @@ const QUOTES = [
   { text: "Simplicity is the soul of efficiency.", author: "Austin Freeman" },
 ];
 
+function formatRecentTime(visitedAt: string): string {
+  const date = new Date(visitedAt);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (diffSeconds < 60) return 'just now';
+  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)} min ago`;
+  if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)} h ago`;
+  return `${Math.floor(diffSeconds / 86400)} d ago`;
+}
+
 export function SpeedDial({ onNavigate }: SpeedDialProps) {
   const [time, setTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [quoteIdx, setQuoteIdx] = useState(0);
+  const [searchEngine, setSearchEngine] = useState(() => getSettings().searchEngine);
+  const [favorites, setFavorites] = useState(DEFAULT_FAVORITES);
+  const [recent, setRecent] = useState(DEFAULT_RECENT);
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
@@ -45,10 +62,60 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
     return () => clearInterval(iv);
   }, []);
 
+  useEffect(() => {
+    const refreshFavorites = () => {
+      const bookmarks = getBookmarks()
+        .slice(0, 8)
+        .map(bookmark => ({ name: bookmark.title, url: bookmark.url }));
+      setFavorites(bookmarks.length > 0 ? bookmarks : DEFAULT_FAVORITES);
+    };
+
+    refreshFavorites();
+    return subscribeToBookmarksUpdates(refreshFavorites);
+  }, []);
+
+  useEffect(() => {
+    const refreshRecent = () => {
+      const recentHistory = getHistoryItems()
+        .slice(0, 3)
+        .map(item => ({
+          title: item.title,
+          url: item.url,
+          time: formatRecentTime(item.visitedAt),
+        }));
+      setRecent(recentHistory.length > 0 ? recentHistory : DEFAULT_RECENT);
+    };
+
+    refreshRecent();
+    return subscribeToHistoryUpdates(refreshRecent);
+  }, []);
+
+  useEffect(() => {
+    const refreshSettings = () => {
+      setSearchEngine(getSettings().searchEngine);
+    };
+
+    refreshSettings();
+    return subscribeToSettingsUpdates(refreshSettings);
+  }, []);
+
+  const searchPlaceholder = useMemo(() => {
+    if (searchEngine === 'google') return 'Search with Google or enter URL...';
+    if (searchEngine === 'brave') return 'Search with Brave Search or enter URL...';
+    return 'Search with DuckDuckGo or enter URL...';
+  }, [searchEngine]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      onNavigate(`https://duckduckgo.com/?q=${encodeURIComponent(searchQuery)}`);
+      const encoded = encodeURIComponent(searchQuery);
+      const target =
+        searchEngine === 'google'
+          ? `https://www.google.com/search?q=${encoded}`
+          : searchEngine === 'brave'
+            ? `https://search.brave.com/search?q=${encoded}`
+            : `https://duckduckgo.com/?q=${encoded}`;
+      onNavigate(target);
     }
   };
 
@@ -90,7 +157,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search with DuckDuckGo or enter URL..."
+            placeholder={searchPlaceholder}
             className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none"
           />
         </div>
@@ -98,7 +165,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
 
       {/* Favorites grid */}
       <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 max-w-2xl mb-10 relative z-10 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-        {FAVORITES.map((fav, i) => (
+        {favorites.map((fav, i) => (
           <button
             key={i}
             onClick={() => onNavigate(fav.url)}
@@ -129,7 +196,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
           <div className="flex items-center gap-1.5 text-[11px] font-display text-muted-foreground uppercase tracking-wider mb-3">
             <Clock size={12} /> Recent
           </div>
-          {RECENT.map((r, i) => (
+          {recent.map((r, i) => (
             <button key={i} onClick={() => onNavigate(r.url)} className="w-full flex items-start gap-2 py-1.5 hover:bg-muted/30 rounded px-1 transition-colors duration-fast text-left">
               <img src={`https://www.google.com/s2/favicons?domain=${new URL(r.url).hostname}&sz=16`} alt="" className="w-4 h-4 mt-0.5 rounded-sm" />
               <div className="min-w-0 flex-1">

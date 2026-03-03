@@ -24,9 +24,15 @@ interface SidebarPanelProps {
   webService: WebServiceItem | null;
   onOpenWebServiceInTab: (url: string, label: string) => void;
   onClosePanel: () => void;
+  onNavigate: (url: string) => void;
 }
 
-const PANEL_MAP: Record<string, React.ComponentType<any>> = {
+type GenericPanelProps = {
+  stats?: SystemStats;
+  onNavigate?: (url: string) => void;
+};
+
+const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
   monitor: SystemMonitor,
   terminal: TerminalPanel,
   lighthouse: LighthousePanel,
@@ -51,6 +57,7 @@ export function SidebarPanel({
   webService,
   onOpenWebServiceInTab,
   onClosePanel,
+  onNavigate,
 }: SidebarPanelProps) {
   if (!panel) return null;
 
@@ -67,11 +74,20 @@ export function SidebarPanel({
   }
 
   const Component = PANEL_MAP[panel];
+  const isBookmarksPanel = panel === 'bookmarks';
+  const isHistoryPanel = panel === 'history';
+  const isGitHubPanel = panel === 'github';
 
   return (
     <div className="w-64 h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left">
       {Component ? (
-        panel === 'monitor' ? <Component stats={stats} /> : <Component />
+        panel === 'monitor' ? (
+          <Component stats={stats} />
+        ) : isBookmarksPanel || isHistoryPanel || isGitHubPanel ? (
+          <Component onNavigate={onNavigate} />
+        ) : (
+          <Component />
+        )
       ) : (
         <div className="p-3">
           <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest mb-3">{panel}</h3>

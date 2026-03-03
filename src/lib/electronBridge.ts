@@ -1,5 +1,7 @@
 import type {
   BrowserDesktopApi,
+  DownloadActionRequest,
+  DownloadsSnapshot,
   BrowserSnapshot,
   NavigateRequest,
   TabActionRequest,
@@ -133,4 +135,70 @@ export function onDesktopWindowStateChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onWindowStateChanged(listener);
+}
+
+export async function desktopGetDownloads(): Promise<DownloadsSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.getDownloads();
+}
+
+export async function desktopPauseDownload(
+  payload: DownloadActionRequest
+): Promise<DownloadsSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.pauseDownload(payload);
+}
+
+export async function desktopResumeDownload(
+  payload: DownloadActionRequest
+): Promise<DownloadsSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.resumeDownload(payload);
+}
+
+export async function desktopCancelDownload(
+  payload: DownloadActionRequest
+): Promise<DownloadsSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.cancelDownload(payload);
+}
+
+export async function desktopRemoveDownload(
+  payload: DownloadActionRequest
+): Promise<DownloadsSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.removeDownload(payload);
+}
+
+export async function desktopClearCompletedDownloads(): Promise<DownloadsSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.clearCompletedDownloads();
+}
+
+export async function desktopOpenDownload(payload: DownloadActionRequest): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.openDownload(payload);
+}
+
+export async function desktopShowDownloadInFolder(
+  payload: DownloadActionRequest
+): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.showDownloadInFolder(payload);
+}
+
+export function onDesktopDownloadsChanged(
+  listener: (snapshot: DownloadsSnapshot) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onDownloadsChanged(listener);
 }

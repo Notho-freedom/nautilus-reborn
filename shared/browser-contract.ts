@@ -26,6 +26,31 @@ export interface WindowState {
   isMaximized: boolean;
 }
 
+export type DownloadStatus =
+  | 'downloading'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface DownloadDescriptor {
+  id: string;
+  name: string;
+  url: string;
+  status: DownloadStatus;
+  totalBytes: number | null;
+  receivedBytes: number;
+  speedBytesPerSecond: number | null;
+  filePath: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  error: string | null;
+}
+
+export interface DownloadsSnapshot {
+  downloads: DownloadDescriptor[];
+}
+
 export interface TabCreateRequest {
   url?: string;
 }
@@ -47,6 +72,10 @@ export interface TabActionRequest {
   tabId?: string;
 }
 
+export interface DownloadActionRequest {
+  downloadId: string;
+}
+
 export interface BrowserDesktopApi {
   getState: () => Promise<BrowserSnapshot>;
   createTab: (payload: TabCreateRequest) => Promise<BrowserSnapshot>;
@@ -64,6 +93,15 @@ export interface BrowserDesktopApi {
   closeWindow: () => Promise<void>;
   getWindowState: () => Promise<WindowState>;
   onWindowStateChanged: (listener: (state: WindowState) => void) => () => void;
+  getDownloads: () => Promise<DownloadsSnapshot>;
+  pauseDownload: (payload: DownloadActionRequest) => Promise<DownloadsSnapshot>;
+  resumeDownload: (payload: DownloadActionRequest) => Promise<DownloadsSnapshot>;
+  cancelDownload: (payload: DownloadActionRequest) => Promise<DownloadsSnapshot>;
+  removeDownload: (payload: DownloadActionRequest) => Promise<DownloadsSnapshot>;
+  clearCompletedDownloads: () => Promise<DownloadsSnapshot>;
+  openDownload: (payload: DownloadActionRequest) => Promise<void>;
+  showDownloadInFolder: (payload: DownloadActionRequest) => Promise<void>;
+  onDownloadsChanged: (listener: (snapshot: DownloadsSnapshot) => void) => () => void;
 }
 
 export const BrowserIpcChannels = {
@@ -83,4 +121,13 @@ export const BrowserIpcChannels = {
   windowClose: 'window:close',
   windowGetState: 'window:get-state',
   windowStateChanged: 'window:state-changed',
+  downloadsGetState: 'downloads:get-state',
+  downloadsPause: 'downloads:pause',
+  downloadsResume: 'downloads:resume',
+  downloadsCancel: 'downloads:cancel',
+  downloadsRemove: 'downloads:remove',
+  downloadsClearCompleted: 'downloads:clear-completed',
+  downloadsOpen: 'downloads:open',
+  downloadsShowInFolder: 'downloads:show-in-folder',
+  downloadsStateChanged: 'downloads:state-changed',
 } as const;

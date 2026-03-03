@@ -36,6 +36,28 @@ const api: BrowserDesktopApi = {
       ipcRenderer.removeListener(BrowserIpcChannels.windowStateChanged, handler);
     };
   },
+  getDownloads: () => ipcRenderer.invoke(BrowserIpcChannels.downloadsGetState),
+  pauseDownload: payload => ipcRenderer.invoke(BrowserIpcChannels.downloadsPause, payload),
+  resumeDownload: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.downloadsResume, payload),
+  cancelDownload: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.downloadsCancel, payload),
+  removeDownload: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.downloadsRemove, payload),
+  clearCompletedDownloads: () =>
+    ipcRenderer.invoke(BrowserIpcChannels.downloadsClearCompleted),
+  openDownload: payload => ipcRenderer.invoke(BrowserIpcChannels.downloadsOpen, payload),
+  showDownloadInFolder: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.downloadsShowInFolder, payload),
+  onDownloadsChanged: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, snapshot: Parameters<typeof listener>[0]) => {
+      listener(snapshot);
+    };
+    ipcRenderer.on(BrowserIpcChannels.downloadsStateChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.downloadsStateChanged, handler);
+    };
+  },
 };
 
 if (process.contextIsolated) {

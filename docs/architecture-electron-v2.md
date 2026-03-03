@@ -15,12 +15,21 @@
 4. Main pousse l'état courant vers React via `browser:state-changed`.
 5. React met à jour l'UI depuis ce snapshot.
 
+Pour les téléchargements:
+
+1. Electron capte `session.will-download` via `DownloadManager`.
+2. Le manager maintient un snapshot des téléchargements actifs/terminés.
+3. Main pousse les changements vers React via `downloads:state-changed`.
+4. React pilote pause/reprise/annulation/ouverture via IPC `downloads:*`.
+
 ## Contrat IPC
 
 Les types et canaux sont centralisés dans `shared/browser-contract.ts`.
 
 - Requêtes: get/create/close/activate/navigate/back/forward/reload/devtools/viewport-bounds
+- Requêtes téléchargements: get/pause/resume/cancel/remove/clear/open/show-in-folder
 - Event push: `browser:state-changed`
+- Event push téléchargements: `downloads:state-changed`
 
 ## Layout du rendu externe
 
@@ -39,4 +48,3 @@ Les types et canaux sont centralisés dans `shared/browser-contract.ts`.
 - Sessions: actuellement partagées (`defaultSession`).
 - `NetworkLayer` est un scaffold d'interception.
 - Packaging installateur Windows reste hors de ce lot.
-

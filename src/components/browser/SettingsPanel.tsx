@@ -1,25 +1,63 @@
-import { Switch } from '@/components/ui/switch';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import {
+  getSettings,
+  subscribeToSettingsUpdates,
+  updateSettings,
+  WEB_SERVICE_IDS,
+  type BrowserSettings,
+  type WebServiceId,
+} from '@/lib/settings';
+
+const THEMES = [
+  { id: 'red', name: 'Rouge Notilus', color: '#FF2D55' },
+  { id: 'blue', name: 'Bleu Cyber', color: '#007AFF' },
+  { id: 'green', name: 'Vert Matrix', color: '#34C759' },
+  { id: 'purple', name: 'Violet Neon', color: '#5856D6' },
+  { id: 'orange', name: 'Orange Fire', color: '#FF9500' },
+  { id: 'pink', name: 'Rose Cyber', color: '#FF2D92' },
+] as const;
+
+const WEB_SERVICE_LABELS: Record<WebServiceId, string> = {
+  youtubeMusic: 'YouTube Music',
+  youtube: 'YouTube',
+  chatgpt: 'ChatGPT',
+  deepseek: 'DeepSeek',
+  whatsapp: 'WhatsApp',
+  telegram: 'Telegram',
+};
 
 export function SettingsPanel() {
-  const [adBlock, setAdBlock] = useState(true);
-  const [trackerProtection, setTrackerProtection] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
-  const [saveHistory, setSaveHistory] = useState(true);
-  const [cookies, setCookies] = useState(true);
-  const [restoreTabs, setRestoreTabs] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [settings, setSettings] = useState<BrowserSettings>(() => getSettings());
 
-  const [activeTheme, setActiveTheme] = useState('red');
-  const themes = [
-    { id: 'red', name: 'Rouge Notilus', color: '#FF2D55' },
-    { id: 'blue', name: 'Bleu Cyber', color: '#007AFF' },
-    { id: 'green', name: 'Vert Matrix', color: '#34C759' },
-    { id: 'purple', name: 'Violet Neon', color: '#5856D6' },
-    { id: 'orange', name: 'Orange Fire', color: '#FF9500' },
-    { id: 'pink', name: 'Rose Cyber', color: '#FF2D92' },
-  ];
+  useEffect(() => {
+    setSettings(getSettings());
+    return subscribeToSettingsUpdates(() => {
+      setSettings(getSettings());
+    });
+  }, []);
+
+  const sections = useMemo(
+    () => [
+      'Appearance',
+      'Home Page',
+      'Tabs',
+      'Terminal',
+      'DevTools',
+      'Privacy & Security',
+      'Web Services',
+      'AI Assistant',
+      'General',
+      'Notifications',
+      'About',
+    ],
+    []
+  );
+
+  const query = searchQuery.trim().toLowerCase();
+  const shouldShowSection = (title: string) => !query || title.toLowerCase().includes(query);
 
   return (
     <div className="p-3 space-y-4 overflow-y-auto scrollbar-thin flex-1">
@@ -27,149 +65,283 @@ export function SettingsPanel() {
         Settings
       </h3>
 
-      {/* Search */}
       <div className="flex items-center gap-2 h-8 rounded-lg bg-notilus-surface-1 border border-border px-2">
         <Search size={12} className="text-muted-foreground" />
         <input
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
+          onChange={event => setSearchQuery(event.target.value)}
           placeholder="Search settings..."
           className="flex-1 bg-transparent text-xs font-body text-foreground placeholder:text-muted-foreground outline-none"
         />
       </div>
 
-      <Section title="Appearance">
-        <SettingRow label="Dark Mode" description="Enable dark theme">
-          <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-        </SettingRow>
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-body text-muted-foreground">Accent Theme</label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {themes.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTheme(t.id)}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md border text-[10px] font-body transition-all duration-fast ${
-                  activeTheme === t.id
-                    ? 'border-primary/50 bg-primary/10 text-foreground'
-                    : 'border-border bg-notilus-surface-1 text-muted-foreground hover:border-border hover:bg-notilus-surface-2'
-                }`}
+      {shouldShowSection('Appearance') && (
+        <Section title="Appearance">
+          <SettingRow label="Dark Mode" description="Enable dark theme">
+            <Switch
+              checked={settings.darkMode}
+              onCheckedChange={checked => updateSettings({ darkMode: checked })}
+            />
+          </SettingRow>
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-body text-muted-foreground">Accent Theme</label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {THEMES.map(theme => (
+                <button
+                  key={theme.id}
+                  onClick={() =>
+                    updateSettings({
+                      accentTheme: theme.id,
+                    })
+                  }
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md border text-[10px] font-body transition-all duration-fast ${
+                    settings.accentTheme === theme.id
+                      ? 'border-primary/50 bg-primary/10 text-foreground'
+                      : 'border-border bg-notilus-surface-1 text-muted-foreground hover:border-border hover:bg-notilus-surface-2'
+                  }`}
+                >
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: theme.color }}
+                  />
+                  <span className="truncate">{theme.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {shouldShowSection('Home Page') && (
+        <Section title="Home Page">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-body text-muted-foreground">Style</label>
+            <select
+              value={settings.homePageStyle}
+              onChange={event =>
+                updateSettings({
+                  homePageStyle: event.target.value as BrowserSettings['homePageStyle'],
+                })
+              }
+              className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50"
+            >
+              <option value="modern">Modern</option>
+              <option value="notilus_dev">Notilus Dev</option>
+              <option value="frontend">Frontend</option>
+              <option value="backend">Backend</option>
+              <option value="devops">DevOps</option>
+              <option value="data_science">Data Science</option>
+              <option value="minimal">Minimal</option>
+              <option value="customizable">Customizable</option>
+            </select>
+          </div>
+        </Section>
+      )}
+
+      {shouldShowSection('Tabs') && (
+        <Section title="Tabs">
+          <SettingRow label="Restore tabs" description="Restore tabs on startup">
+            <Switch
+              checked={settings.restoreTabs}
+              onCheckedChange={checked => updateSettings({ restoreTabs: checked })}
+            />
+          </SettingRow>
+        </Section>
+      )}
+
+      {shouldShowSection('Terminal') && (
+        <Section title="Terminal">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-body text-muted-foreground">Terminal Type</label>
+            <select
+              value={settings.terminalType}
+              onChange={event =>
+                updateSettings({
+                  terminalType: event.target.value as BrowserSettings['terminalType'],
+                })
+              }
+              className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50"
+            >
+              <option value="native">Native Terminal</option>
+              <option value="xterm">XTerm.js</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-body text-muted-foreground">Font Size</label>
+            <select
+              value={String(settings.terminalFontSize)}
+              onChange={event =>
+                updateSettings({
+                  terminalFontSize: Number(event.target.value) as BrowserSettings['terminalFontSize'],
+                })
+              }
+              className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50"
+            >
+              <option value="12">12px</option>
+              <option value="13">13px</option>
+              <option value="14">14px</option>
+              <option value="16">16px</option>
+            </select>
+          </div>
+        </Section>
+      )}
+
+      {shouldShowSection('DevTools') && (
+        <Section title="DevTools">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-body text-muted-foreground">Position</label>
+            <select
+              value={settings.devToolsPosition}
+              onChange={event =>
+                updateSettings({
+                  devToolsPosition: event.target.value as BrowserSettings['devToolsPosition'],
+                })
+              }
+              className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50"
+            >
+              <option value="bottom">Bottom</option>
+              <option value="right">Right</option>
+              <option value="detached">Detached</option>
+            </select>
+          </div>
+        </Section>
+      )}
+
+      {shouldShowSection('Privacy & Security') && (
+        <Section title="Privacy & Security">
+          <SettingRow label="Ad Blocker" description="Block ads and popups">
+            <Switch
+              checked={settings.adBlock}
+              onCheckedChange={checked => updateSettings({ adBlock: checked })}
+            />
+          </SettingRow>
+          <SettingRow label="Tracker Protection" description="Block third-party trackers">
+            <Switch
+              checked={settings.trackerProtection}
+              onCheckedChange={checked => updateSettings({ trackerProtection: checked })}
+            />
+          </SettingRow>
+          <SettingRow label="Save History" description="Keep browsing history">
+            <Switch
+              checked={settings.saveHistory}
+              onCheckedChange={checked => updateSettings({ saveHistory: checked })}
+            />
+          </SettingRow>
+          <SettingRow label="Accept Cookies" description="Allow website cookies">
+            <Switch
+              checked={settings.acceptCookies}
+              onCheckedChange={checked => updateSettings({ acceptCookies: checked })}
+            />
+          </SettingRow>
+        </Section>
+      )}
+
+      {shouldShowSection('Web Services') && (
+        <Section title="Web Services">
+          <div className="space-y-2">
+            {WEB_SERVICE_IDS.map(serviceId => (
+              <SettingRow
+                key={serviceId}
+                label={WEB_SERVICE_LABELS[serviceId]}
+                description="Show in sidebar web section"
               >
-                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
-                <span className="truncate">{t.name}</span>
-              </button>
+                <Switch
+                  checked={settings.enabledWebServices.includes(serviceId)}
+                  onCheckedChange={checked =>
+                    updateSettings(current => {
+                      const next = new Set(current.enabledWebServices);
+                      if (checked) {
+                        next.add(serviceId);
+                      } else {
+                        next.delete(serviceId);
+                      }
+                      return {
+                        enabledWebServices:
+                          next.size > 0
+                            ? (Array.from(next) as BrowserSettings['enabledWebServices'])
+                            : [...WEB_SERVICE_IDS],
+                      };
+                    })
+                  }
+                />
+              </SettingRow>
             ))}
           </div>
-        </div>
-      </Section>
+        </Section>
+      )}
 
-      <Section title="Home Page">
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-body text-muted-foreground">Style</label>
-          <select className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-            <option>Modern</option>
-            <option>Notilus Dev</option>
-            <option>Frontend</option>
-            <option>Backend</option>
-            <option>DevOps</option>
-            <option>Data Science</option>
-            <option>Minimal</option>
-            <option>Customizable</option>
-          </select>
-        </div>
-      </Section>
-
-      <Section title="Tabs">
-        <SettingRow label="Restore tabs" description="Restore tabs on startup">
-          <Switch checked={restoreTabs} onCheckedChange={setRestoreTabs} />
-        </SettingRow>
-      </Section>
-
-      <Section title="Terminal">
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-body text-muted-foreground">Terminal Type</label>
-          <select className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-            <option>Native Terminal</option>
-            <option>XTerm.js</option>
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-body text-muted-foreground">Font Size</label>
-          <select className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-            <option>12px</option>
-            <option>13px</option>
-            <option>14px</option>
-            <option>16px</option>
-          </select>
-        </div>
-      </Section>
-
-      <Section title="DevTools">
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-body text-muted-foreground">Position</label>
-          <select className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-            <option>Bottom</option>
-            <option>Right</option>
-          </select>
-        </div>
-      </Section>
-
-      <Section title="Privacy & Security">
-        <SettingRow label="Ad Blocker" description="Block ads and popups">
-          <Switch checked={adBlock} onCheckedChange={setAdBlock} />
-        </SettingRow>
-        <SettingRow label="Tracker Protection" description="Block third-party trackers">
-          <Switch checked={trackerProtection} onCheckedChange={setTrackerProtection} />
-        </SettingRow>
-        <SettingRow label="Save History" description="Keep browsing history">
-          <Switch checked={saveHistory} onCheckedChange={setSaveHistory} />
-        </SettingRow>
-        <SettingRow label="Accept Cookies" description="Allow website cookies">
-          <Switch checked={cookies} onCheckedChange={setCookies} />
-        </SettingRow>
-      </Section>
-
-      <Section title="AI Assistant">
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-body text-muted-foreground">Model</label>
-          <select className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-            <option>Llama 3.3 70B</option>
-            <option>Mixtral 8x7B</option>
-            <option>Gemma 2 9B</option>
-          </select>
-        </div>
-      </Section>
-
-      <Section title="General">
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-body text-muted-foreground">Search Engine</label>
-          <select className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-            <option>DuckDuckGo</option>
-            <option>Google</option>
-            <option>Brave Search</option>
-          </select>
-        </div>
-      </Section>
-
-      <Section title="Notifications">
-        <SettingRow label="Enable Notifications" description="Show browser notifications">
-          <Switch checked={true} onCheckedChange={() => {}} />
-        </SettingRow>
-      </Section>
-
-      <Section title="About">
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-notilus-surface-1 border border-border">
-          <div className="w-10 h-10 rounded-lg notilus-gradient flex items-center justify-center animate-glow-breathe">
-            <span className="text-sm font-display font-bold text-primary-foreground">N</span>
+      {shouldShowSection('AI Assistant') && (
+        <Section title="AI Assistant">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-body text-muted-foreground">Model</label>
+            <select
+              value={settings.aiModel}
+              onChange={event =>
+                updateSettings({
+                  aiModel: event.target.value as BrowserSettings['aiModel'],
+                })
+              }
+              className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50"
+            >
+              <option value="llama-3.3-70b">Llama 3.3 70B</option>
+              <option value="mixtral-8x7b">Mixtral 8x7B</option>
+              <option value="gemma-2-9b">Gemma 2 9B</option>
+            </select>
           </div>
-          <div className="text-xs font-body text-muted-foreground space-y-0.5">
-            <p className="text-foreground font-display text-[11px] tracking-wider">NOTILUS BROWSER</p>
-            <p>Version 2.0.0-beta</p>
-            <p>Built with React + Vite</p>
-            <p className="text-primary">© 2026 Genesis Company</p>
+        </Section>
+      )}
+
+      {shouldShowSection('General') && (
+        <Section title="General">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-body text-muted-foreground">Search Engine</label>
+            <select
+              value={settings.searchEngine}
+              onChange={event =>
+                updateSettings({
+                  searchEngine: event.target.value as BrowserSettings['searchEngine'],
+                })
+              }
+              className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50"
+            >
+              <option value="duckduckgo">DuckDuckGo</option>
+              <option value="google">Google</option>
+              <option value="brave">Brave Search</option>
+            </select>
           </div>
+        </Section>
+      )}
+
+      {shouldShowSection('Notifications') && (
+        <Section title="Notifications">
+          <SettingRow label="Enable Notifications" description="Show browser notifications">
+            <Switch
+              checked={settings.notificationsEnabled}
+              onCheckedChange={checked => updateSettings({ notificationsEnabled: checked })}
+            />
+          </SettingRow>
+        </Section>
+      )}
+
+      {shouldShowSection('About') && (
+        <Section title="About">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-notilus-surface-1 border border-border">
+            <img src="/notilus-logo.png" alt="Notilus" className="w-10 h-10 rounded-lg object-contain" />
+            <div className="text-xs font-body text-muted-foreground space-y-0.5">
+              <p className="text-foreground font-display text-[11px] tracking-wider">NOTILUS BROWSER</p>
+              <p>Version 2.0.0-beta</p>
+              <p>Built with React + Electron</p>
+              <p className="text-primary">© 2026 Genesis Company</p>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {!sections.some(shouldShowSection) && (
+        <div className="p-4 rounded-lg border border-border bg-notilus-surface-1 text-xs font-body text-muted-foreground">
+          No matching settings section.
         </div>
-      </Section>
+      )}
     </div>
   );
 }
@@ -177,13 +349,23 @@ export function SettingsPanel() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border-t border-border pt-3 space-y-2.5">
-      <h4 className="text-[10px] font-display text-muted-foreground uppercase tracking-widest">{title}</h4>
+      <h4 className="text-[10px] font-display text-muted-foreground uppercase tracking-widest">
+        {title}
+      </h4>
       {children}
     </div>
   );
 }
 
-function SettingRow({ label, description, children }: { label: string; description: string; children: React.ReactNode }) {
+function SettingRow({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between">
       <div>

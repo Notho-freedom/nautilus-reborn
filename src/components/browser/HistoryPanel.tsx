@@ -43,7 +43,11 @@ function getFaviconUrl(url: string): string | null {
   }
 }
 
-export function HistoryPanel() {
+interface HistoryPanelProps {
+  onNavigate?: (url: string) => void;
+}
+
+export function HistoryPanel({ onNavigate }: HistoryPanelProps) {
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<HistoryItem[]>([]);
 
@@ -112,7 +116,11 @@ export function HistoryPanel() {
             {entries.map(h => {
               const faviconUrl = getFaviconUrl(h.url);
               return (
-                <div key={h.id} className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors duration-fast">
+                <div
+                  key={h.id}
+                  className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors duration-fast cursor-pointer"
+                  onClick={() => onNavigate?.(h.url)}
+                >
                   {faviconUrl ? (
                     <img
                       src={faviconUrl}
@@ -131,7 +139,10 @@ export function HistoryPanel() {
                   </div>
                   <span className="text-[10px] font-body text-muted-foreground shrink-0">{getTimeLabel(h.visitedAt)}</span>
                   <button
-                    onClick={() => removeHistoryItem(h.id)}
+                    onClick={event => {
+                      event.stopPropagation();
+                      removeHistoryItem(h.id);
+                    }}
                     className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-fast"
                     title="Remove entry"
                   >
