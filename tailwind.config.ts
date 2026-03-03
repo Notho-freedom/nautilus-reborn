@@ -8,14 +8,14 @@ export default {
     container: {
       center: true,
       padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
+      screens: { "2xl": "1400px" },
     },
     extend: {
       fontFamily: {
+        display: ["Orbitron", "Segoe UI", "Inter", "sans-serif"],
+        body: ["Rajdhani", "Segoe UI", "Inter", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
-        sans: ["Inter", "sans-serif"],
+        sans: ["Rajdhani", "Segoe UI", "Inter", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -62,16 +62,27 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         notilus: {
-          glow: "hsl(var(--notilus-glow))",
-          "glow-secondary": "hsl(var(--notilus-glow-secondary))",
-          surface: "hsl(var(--notilus-surface))",
-          "surface-hover": "hsl(var(--notilus-surface-hover))",
+          neon: "hsl(var(--notilus-neon))",
+          "neon-dark": "hsl(var(--notilus-neon-dark))",
+          "surface-1": "hsl(var(--notilus-surface-1))",
+          "surface-2": "hsl(var(--notilus-surface-2))",
+          "surface-3": "hsl(var(--notilus-surface-3))",
         },
+        success: "hsl(var(--color-success))",
+        warning: "hsl(var(--color-warning))",
+        error: "hsl(var(--color-error))",
+        info: "hsl(var(--color-info))",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      transitionDuration: {
+        fast: "150ms",
+        normal: "250ms",
+        panel: "350ms",
+        slow: "400ms",
       },
       keyframes: {
         "accordion-down": {
@@ -87,8 +98,8 @@ export default {
           "50%": { opacity: "1" },
         },
         "slide-in-right": {
-          from: { transform: "translateX(100%)" },
-          to: { transform: "translateX(0)" },
+          from: { transform: "translateX(100%)", opacity: "0" },
+          to: { transform: "translateX(0)", opacity: "1" },
         },
         "slide-out-right": {
           from: { transform: "translateX(0)" },
@@ -99,7 +110,7 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        "slide-in-right": "slide-in-right 0.3s ease-out",
+        "slide-in-right": "slide-in-right 0.35s cubic-bezier(0.19, 1, 0.22, 1)",
         "slide-out-right": "slide-out-right 0.3s ease-out",
       },
     },

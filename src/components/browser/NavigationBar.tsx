@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   ArrowLeft, ArrowRight, RotateCw, Home, Shield, Lock,
-  Download, Puzzle, User, Sparkles, Star, ShieldCheck
+  Download, Puzzle, User, Sparkles, Star, ShieldCheck, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,7 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked 
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isLoading] = useState(false);
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
@@ -35,7 +36,7 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked 
     <button
       onClick={onClick}
       title={label}
-      className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-fast"
     >
       {children}
     </button>
@@ -45,20 +46,22 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked 
     <div className="flex items-center h-10 bg-background border-b border-border px-2 gap-1 shrink-0">
       <NavButton label="Back"><ArrowLeft size={15} /></NavButton>
       <NavButton label="Forward"><ArrowRight size={15} /></NavButton>
-      <NavButton label="Reload"><RotateCw size={14} /></NavButton>
+      <NavButton label="Reload">
+        {isLoading ? <Loader2 size={14} className="animate-spin text-primary" /> : <RotateCw size={14} />}
+      </NavButton>
       <NavButton label="Home" onClick={onHome}><Home size={15} /></NavButton>
 
       <form onSubmit={handleSubmit} className="flex-1 mx-2">
         <div className={cn(
-          "flex items-center h-7 rounded-lg bg-secondary/60 border transition-all px-2 gap-1.5",
-          focused ? "border-primary/50 ring-1 ring-primary/20" : "border-transparent"
+          "flex items-center h-8 rounded-lg bg-notilus-surface-1 border transition-all duration-fast px-3 gap-2",
+          focused ? "border-primary/50 ring-2 ring-primary/20 glow-primary-sm" : "border-border"
         )}>
           {isInternal ? (
-            <Shield size={12} className="text-muted-foreground shrink-0" />
+            <Shield size={13} className="text-muted-foreground shrink-0" />
           ) : isHttps ? (
-            <Lock size={12} className="text-green-500 shrink-0" />
+            <Lock size={13} className="text-success shrink-0" />
           ) : (
-            <ShieldCheck size={12} className="text-muted-foreground shrink-0" />
+            <ShieldCheck size={13} className="text-muted-foreground shrink-0" />
           )}
           <input
             data-url-input
@@ -67,21 +70,21 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked 
             onFocus={() => { setFocused(true); setInputValue(url); }}
             onBlur={() => setFocused(false)}
             placeholder={url}
-            className="flex-1 bg-transparent text-xs font-mono text-foreground placeholder:text-muted-foreground outline-none"
+            className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none"
           />
           <button
             type="button"
             onClick={() => setIsBookmarked(!isBookmarked)}
-            className={cn("shrink-0 transition-colors", isBookmarked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+            className={cn("shrink-0 transition-colors duration-fast", isBookmarked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
           >
-            <Star size={13} fill={isBookmarked ? 'currentColor' : 'none'} />
+            <Star size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
           </button>
         </div>
       </form>
 
       {adsBlocked > 0 && (
-        <div className="flex items-center gap-1 px-1.5 h-6 rounded bg-green-500/10 text-green-500 text-[10px] font-mono" title="Ads blocked">
-          <Shield size={11} />
+        <div className="flex items-center gap-1 px-2 h-7 rounded-md bg-success/10 text-success text-[11px] font-display tracking-wider" title="Ads blocked">
+          <Shield size={12} />
           <span>{adsBlocked}</span>
         </div>
       )}
@@ -91,7 +94,7 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked 
       <button
         onClick={onToggleAI}
         title="AI Assistant"
-        className="h-7 px-2 flex items-center gap-1 rounded text-xs font-mono bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+        className="h-8 px-3 flex items-center gap-1.5 rounded-md text-xs font-display tracking-wider bg-primary/10 text-primary hover:bg-primary/20 transition-colors duration-fast"
       >
         <Sparkles size={13} />
         <span className="hidden sm:inline">AI</span>

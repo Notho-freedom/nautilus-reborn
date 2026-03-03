@@ -2,8 +2,9 @@ import {
   Activity, Terminal, Code2, BookOpen, GitBranch,
   Gauge, Settings, ChevronLeft, ChevronRight,
   Star, Clock, Download, LayoutGrid, Puzzle,
-  FileText, Wrench, Home,
-  Youtube, MessageCircle, Bot, Send, Music
+  FileText, Wrench, Home, RefreshCw,
+  Youtube, MessageCircle, Bot, Send, Music,
+  MonitorSmartphone, Github
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -17,22 +18,25 @@ interface DevToolsSidebarProps {
 
 const SIDEBAR_ITEMS = [
   { id: 'home', icon: Home, label: 'Home' },
-  { id: 'bookmarks', icon: Star, label: 'Bookmarks' },
+  { id: 'bookmarks', icon: Star, label: 'Favorites' },
   { id: 'history', icon: Clock, label: 'History' },
   { id: 'downloads', icon: Download, label: 'Downloads' },
   { type: 'separator' as const },
+  { id: 'widgets', icon: LayoutGrid, label: 'Widgets' },
   { id: 'monitor', icon: Activity, label: 'System Monitor' },
   { id: 'terminal', icon: Terminal, label: 'Terminal' },
-  { id: 'vscode', icon: Code2, label: 'VS Code' },
+  { id: 'vscode', icon: Code2, label: 'Studio' },
   { id: 'git', icon: GitBranch, label: 'Git' },
-  { id: 'lighthouse', icon: Gauge, label: 'Lighthouse' },
-  { id: 'devtools-panel', icon: Wrench, label: 'DevTools (F12)' },
+  { id: 'github', icon: Github, label: 'GitHub' },
   { type: 'separator' as const },
-  { id: 'widgets', icon: LayoutGrid, label: 'Widgets' },
+  { id: 'devtools-panel', icon: Wrench, label: 'DevTools (F12)' },
+  { id: 'lighthouse', icon: Gauge, label: 'Lighthouse' },
+  { id: 'mosaic', icon: MonitorSmartphone, label: 'Mosaic' },
+  { type: 'separator' as const },
   { id: 'extensions', icon: Puzzle, label: 'Extensions' },
-  { id: 'mosaic', icon: LayoutGrid, label: 'Mosaic' },
   { id: 'api-docs', icon: BookOpen, label: 'API Docs' },
   { id: 'docs', icon: FileText, label: 'Documentation' },
+  { id: 'updates', icon: RefreshCw, label: 'Updates' },
   { id: 'settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -49,6 +53,11 @@ export function DevToolsSidebar({ isOpen, activePanel, onToggle, onOpenUrl }: De
   return (
     <div className="flex h-full shrink-0">
       <div className="flex flex-col items-center w-11 bg-sidebar border-r border-sidebar-border py-2 gap-0.5 overflow-y-auto scrollbar-thin">
+        {/* Notilus logo at top */}
+        <div className="w-7 h-7 rounded-lg notilus-gradient flex items-center justify-center mb-2 shrink-0 animate-glow-breathe cursor-pointer" onClick={() => onToggle('home')}>
+          <span className="text-[9px] font-display font-bold text-primary-foreground">N</span>
+        </div>
+
         {SIDEBAR_ITEMS.map((item, i) => {
           if ('type' in item && item.type === 'separator') {
             return <div key={`sep-${i}`} className="w-6 h-px bg-sidebar-border my-1" />;
@@ -56,42 +65,41 @@ export function DevToolsSidebar({ isOpen, activePanel, onToggle, onOpenUrl }: De
           const it = item as { id: string; icon: React.ElementType; label: string };
           const isActive = activePanel === it.id && isOpen;
           return (
-            <Tooltip key={it.id} delayDuration={300}>
+            <Tooltip key={it.id} delayDuration={500}>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => onToggle(it.id)}
                   className={cn(
-                    "w-8 h-8 flex items-center justify-center rounded-md transition-all shrink-0",
+                    "w-8 h-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0",
                     isActive
-                      ? "bg-primary/15 text-primary glow-primary"
+                      ? "bg-primary/15 text-primary glow-primary-sm"
                       : "text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent"
                   )}
                 >
-                  <it.icon size={16} />
+                  <it.icon size={15} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="glass text-xs">
+              <TooltipContent side="right" className="glass text-xs font-body">
                 {it.label}
               </TooltipContent>
             </Tooltip>
           );
         })}
 
-        {/* Web Services separator */}
         <div className="w-6 h-px bg-sidebar-border my-1" />
-        <div className="text-[7px] font-mono text-muted-foreground uppercase tracking-wider mb-0.5">Web</div>
+        <div className="text-[7px] font-display text-muted-foreground uppercase tracking-widest mb-0.5">Web</div>
 
         {WEB_SERVICES.map(svc => (
-          <Tooltip key={svc.label} delayDuration={300}>
+          <Tooltip key={svc.label} delayDuration={500}>
             <TooltipTrigger asChild>
               <button
                 onClick={() => onOpenUrl?.(svc.url)}
-                className="w-8 h-8 flex items-center justify-center rounded-md text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent transition-all shrink-0"
+                className="w-8 h-8 flex items-center justify-center rounded-md text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-fast shrink-0"
               >
-                <svc.icon size={15} />
+                <svc.icon size={14} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="glass text-xs">
+            <TooltipContent side="right" className="glass text-xs font-body">
               {svc.label}
             </TooltipContent>
           </Tooltip>
@@ -101,7 +109,7 @@ export function DevToolsSidebar({ isOpen, activePanel, onToggle, onOpenUrl }: De
 
         <button
           onClick={() => onToggle()}
-          className="w-8 h-8 flex items-center justify-center rounded-md text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors shrink-0"
+          className="w-8 h-8 flex items-center justify-center rounded-md text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors duration-fast shrink-0"
         >
           {isOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
         </button>

@@ -11,6 +11,9 @@ import { WidgetsPanel } from './WidgetsPanel';
 import { ExtensionsPanel } from './ExtensionsPanel';
 import { DocumentationPanel } from './DocumentationPanel';
 import { MosaicPanel } from './MosaicPanel';
+import { UpdatesPanel } from './UpdatesPanel';
+import { StudioPanel } from './StudioPanel';
+import { GitHubReposPanel } from './GitHubReposPanel';
 import { SystemStats } from '@/hooks/useSystemMonitor';
 
 interface SidebarPanelProps {
@@ -18,37 +21,38 @@ interface SidebarPanelProps {
   stats: SystemStats;
 }
 
+const PANEL_MAP: Record<string, React.ComponentType<any>> = {
+  monitor: SystemMonitor,
+  terminal: TerminalPanel,
+  lighthouse: LighthousePanel,
+  settings: SettingsPanel,
+  git: GitPanel,
+  'api-docs': ApiDocsPanel,
+  bookmarks: BookmarksPanel,
+  history: HistoryPanel,
+  downloads: DownloadsPanel,
+  widgets: WidgetsPanel,
+  extensions: ExtensionsPanel,
+  docs: DocumentationPanel,
+  mosaic: MosaicPanel,
+  updates: UpdatesPanel,
+  vscode: StudioPanel,
+  github: GitHubReposPanel,
+};
+
 export function SidebarPanel({ panel, stats }: SidebarPanelProps) {
   if (!panel) return null;
 
+  const Component = PANEL_MAP[panel];
+
   return (
-    <div className="w-60 h-full border-r border-border bg-card overflow-hidden flex flex-col">
-      {panel === 'monitor' && <SystemMonitor stats={stats} />}
-      {panel === 'terminal' && <TerminalPanel />}
-      {panel === 'lighthouse' && <LighthousePanel />}
-      {panel === 'settings' && <SettingsPanel />}
-      {panel === 'git' && <GitPanel />}
-      {panel === 'api-docs' && <ApiDocsPanel />}
-      {panel === 'bookmarks' && <BookmarksPanel />}
-      {panel === 'history' && <HistoryPanel />}
-      {panel === 'downloads' && <DownloadsPanel />}
-      {panel === 'widgets' && <WidgetsPanel />}
-      {panel === 'extensions' && <ExtensionsPanel />}
-      {panel === 'docs' && <DocumentationPanel />}
-      {panel === 'mosaic' && <MosaicPanel />}
-      {panel === 'vscode' && (
+    <div className="w-64 h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left">
+      {Component ? (
+        panel === 'monitor' ? <Component stats={stats} /> : <Component />
+      ) : (
         <div className="p-3">
-          <h3 className="text-xs font-mono font-semibold text-primary uppercase tracking-wider mb-3">VS Code</h3>
-          <p className="text-xs text-muted-foreground">Open your project in VS Code for advanced editing.</p>
-          <button className="mt-3 w-full h-8 rounded bg-primary/15 text-primary text-xs font-mono hover:bg-primary/25 transition-colors">
-            Launch VS Code
-          </button>
-        </div>
-      )}
-      {panel === 'home' && (
-        <div className="p-3">
-          <h3 className="text-xs font-mono font-semibold text-primary uppercase tracking-wider mb-3">Home</h3>
-          <p className="text-xs text-muted-foreground">Navigate to Speed Dial homepage.</p>
+          <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest mb-3">{panel}</h3>
+          <p className="text-xs font-body text-muted-foreground">Panel content coming soon.</p>
         </div>
       )}
     </div>

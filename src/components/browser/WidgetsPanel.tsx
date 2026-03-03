@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Cloud, Quote, Zap, Terminal, Plus, LayoutGrid } from 'lucide-react';
+import { Clock, Cloud, Quote, Zap, Terminal, Plus, LayoutGrid, Cpu, MemoryStick, Wifi, Layers } from 'lucide-react';
 
 const DEV_QUOTES = [
   { text: "Any fool can write code that a computer can understand. Good programmers write code that humans can understand.", author: "Martin Fowler" },
@@ -28,44 +28,61 @@ export function WidgetsPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-border">
-        <h3 className="text-xs font-mono font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+        <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest flex items-center gap-1.5">
           <LayoutGrid size={12} /> Widgets
         </h3>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-3">
-        {/* Clock Widget */}
-        <div className="glass rounded-lg p-3 text-center">
+        {/* Clock */}
+        <div className="glass rounded-xl p-3 text-center">
           <Clock size={14} className="text-primary mx-auto mb-1" />
-          <div className="text-lg font-mono text-foreground">
+          <div className="text-xl font-display text-foreground tracking-wider">
             {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-[11px] font-body text-muted-foreground">
             {time.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
         </div>
 
-        {/* Weather Placeholder */}
-        <div className="glass rounded-lg p-3">
+        {/* Weather */}
+        <div className="glass rounded-xl p-3">
           <div className="flex items-center gap-2">
-            <Cloud size={20} className="text-blue-400" />
+            <Cloud size={22} className="text-info" />
             <div>
-              <div className="text-sm font-mono text-foreground">22°C</div>
-              <div className="text-[10px] text-muted-foreground">Partly Cloudy • Paris</div>
+              <div className="text-base font-display text-foreground">22°C</div>
+              <div className="text-[11px] font-body text-muted-foreground">Partly Cloudy • Paris</div>
             </div>
           </div>
         </div>
 
-        {/* Dev Quote */}
-        <div className="glass rounded-lg p-3">
-          <Quote size={12} className="text-primary mb-1.5" />
-          <p className="text-[11px] text-foreground italic leading-relaxed">"{quote.text}"</p>
-          <p className="text-[9px] text-muted-foreground mt-1">— {quote.author}</p>
+        {/* System metrics mini */}
+        <div className="glass rounded-xl p-3 space-y-2">
+          <div className="text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-1">System</div>
+          {[
+            { icon: Cpu, label: 'CPU', value: '23%' },
+            { icon: MemoryStick, label: 'RAM', value: '67%' },
+            { icon: Wifi, label: 'Net', value: '↓ 2.3 MB/s' },
+            { icon: Layers, label: 'Tabs', value: '4' },
+          ].map(m => (
+            <div key={m.label} className="flex items-center gap-2 text-[11px] font-body">
+              <m.icon size={11} className="text-muted-foreground" />
+              <span className="text-muted-foreground flex-1">{m.label}</span>
+              <span className="text-foreground font-display text-[10px]">{m.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Quote */}
+        <div className="glass rounded-xl p-3">
+          <Quote size={13} className="text-primary mb-1.5" />
+          <p className="text-xs font-body text-foreground italic leading-relaxed">"{quote.text}"</p>
+          <p className="text-[10px] font-body text-muted-foreground mt-1.5">— {quote.author}</p>
         </div>
 
         {/* Quick Actions */}
-        <div className="glass rounded-lg p-3">
-          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+        <div className="glass rounded-xl p-3">
+          <div className="text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1">
             <Zap size={10} /> Quick Actions
           </div>
           <div className="grid grid-cols-2 gap-1.5">
@@ -73,8 +90,8 @@ export function WidgetsPanel() {
               { icon: Terminal, label: 'Terminal' },
               { icon: Plus, label: 'New Tab' },
             ].map(a => (
-              <button key={a.label} className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-secondary/60 text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                <a.icon size={10} /> {a.label}
+              <button key={a.label} className="flex items-center gap-1.5 px-2 py-2 rounded-lg bg-notilus-surface-1 border border-border text-[11px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors duration-fast">
+                <a.icon size={11} /> {a.label}
               </button>
             ))}
           </div>

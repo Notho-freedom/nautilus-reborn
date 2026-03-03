@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 interface ScoreGaugeProps {
   label: string;
@@ -8,13 +9,13 @@ interface ScoreGaugeProps {
 function ScoreGauge({ label, score }: ScoreGaugeProps) {
   const circumference = 2 * Math.PI * 40;
   const offset = circumference - (score / 100) * circumference;
-  const color = score >= 90 ? 'text-green-500' : score >= 50 ? 'text-accent' : 'text-destructive';
+  const color = score >= 90 ? 'text-success' : score >= 50 ? 'text-warning' : 'text-error';
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative w-20 h-20">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-          <circle cx="50" cy="50" r="40" fill="none" stroke="hsl(var(--secondary))" strokeWidth="6" />
+          <circle cx="50" cy="50" r="40" fill="none" stroke="hsl(var(--notilus-surface-2))" strokeWidth="6" />
           <circle
             cx="50" cy="50" r="40" fill="none"
             className={color}
@@ -24,10 +25,10 @@ function ScoreGauge({ label, score }: ScoreGaugeProps) {
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={cn("text-lg font-mono font-bold", color)}>{score}</span>
+          <span className={cn("text-lg font-display font-bold", color)}>{score}</span>
         </div>
       </div>
-      <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{label}</span>
+      <span className="text-[10px] font-display text-muted-foreground uppercase tracking-widest">{label}</span>
     </div>
   );
 }
@@ -40,27 +41,55 @@ const QUICK_WINS = [
   { text: 'Use passive event listeners', impact: 'Low' },
 ];
 
+const TABS = ['Overview', 'Issues', 'Recommendations', 'History', 'AI Advisor'];
+
 export function LighthousePanel() {
+  const [activeTab, setActiveTab] = useState('Overview');
+
   return (
-    <div className="p-3 space-y-4 overflow-y-auto scrollbar-thin">
-      <h3 className="text-xs font-mono font-semibold text-primary uppercase tracking-wider">
-        Lighthouse Audit
+    <div className="p-3 space-y-3 overflow-y-auto scrollbar-thin flex-1">
+      <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest">
+        Lighthouse
       </h3>
-      <div className="grid grid-cols-2 gap-4">
-        <ScoreGauge label="Performance" score={92} />
-        <ScoreGauge label="Accessibility" score={87} />
-        <ScoreGauge label="Best Practices" score={95} />
-        <ScoreGauge label="SEO" score={78} />
+
+      <div className="flex gap-0.5 flex-wrap">
+        {TABS.map(t => (
+          <button
+            key={t}
+            onClick={() => setActiveTab(t)}
+            className={cn(
+              "px-2 py-1 rounded-md text-[10px] font-display uppercase tracking-wider transition-all duration-fast",
+              activeTab === t ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            {t}
+          </button>
+        ))}
       </div>
-      <div className="border-t border-border pt-3">
-        <h4 className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">Quick Wins</h4>
+
+      {activeTab === 'Overview' && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <ScoreGauge label="Performance" score={92} />
+            <ScoreGauge label="Accessibility" score={87} />
+            <ScoreGauge label="Best Practices" score={95} />
+            <ScoreGauge label="SEO" score={78} />
+          </div>
+
+          <button className="w-full h-8 rounded-lg bg-primary/10 text-primary text-xs font-display tracking-wider hover:bg-primary/20 transition-colors duration-fast">
+            Run Audit
+          </button>
+        </>
+      )}
+
+      {activeTab === 'Recommendations' && (
         <div className="space-y-1.5">
           {QUICK_WINS.map((item, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs">
+            <div key={i} className="flex items-start gap-2 text-xs font-body">
               <span className={cn(
-                "shrink-0 px-1 py-0.5 rounded font-mono text-[9px] uppercase",
-                item.impact === 'High' ? 'bg-destructive/15 text-destructive' :
-                item.impact === 'Medium' ? 'bg-accent/15 text-accent' :
+                "shrink-0 px-1.5 py-0.5 rounded-md font-display text-[9px] uppercase tracking-wider",
+                item.impact === 'High' ? 'bg-error/15 text-error' :
+                item.impact === 'Medium' ? 'bg-warning/15 text-warning' :
                 'bg-muted text-muted-foreground'
               )}>
                 {item.impact}
@@ -69,7 +98,23 @@ export function LighthousePanel() {
             </div>
           ))}
         </div>
-      </div>
+      )}
+
+      {activeTab === 'AI Advisor' && (
+        <div className="space-y-3">
+          <p className="text-xs font-body text-muted-foreground">AI-powered performance recommendations based on your audit results.</p>
+          <div className="glass rounded-xl p-3 space-y-2">
+            <p className="text-xs font-body text-foreground">💡 Your LCP could be improved by lazy-loading below-the-fold images and preloading critical resources.</p>
+          </div>
+          <div className="glass rounded-xl p-3 space-y-2">
+            <p className="text-xs font-body text-foreground">🎯 Consider implementing dynamic imports for route-based code splitting to reduce initial bundle size.</p>
+          </div>
+        </div>
+      )}
+
+      {(activeTab === 'Issues' || activeTab === 'History') && (
+        <p className="text-xs font-body text-muted-foreground text-center py-4">No data yet. Run an audit first.</p>
+      )}
     </div>
   );
 }
