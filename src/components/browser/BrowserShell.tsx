@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -15,13 +15,14 @@ import { DevToolsPanel } from './DevToolsPanel';
 export function BrowserShell() {
   const browser = useBrowserState();
   const stats = useSystemMonitor();
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const shortcuts = useMemo(() => ({
     newTab: () => browser.addTab(),
     closeTab: () => browser.closeTab(browser.activeTabId),
     nextTab: browser.nextTab,
     prevTab: browser.prevTab,
-    toggleDevTools: browser.toggleDevTools,
+    toggleDevTools: browser.isDesktopMode ? browser.openNativeDevTools : browser.toggleDevTools,
     openHistory: () => browser.toggleSidebar('history'),
     openDownloads: () => browser.toggleSidebar('downloads'),
     openSettings: () => browser.toggleSidebar('settings'),
@@ -30,9 +31,52 @@ export function BrowserShell() {
       el?.focus();
     },
     addBookmark: () => browser.toggleSidebar('bookmarks'),
-  }), [browser]);
+  }), [
+    browser.activeTabId,
+    browser.addTab,
+    browser.closeTab,
+    browser.nextTab,
+    browser.prevTab,
+    browser.isDesktopMode,
+    browser.openNativeDevTools,
+    browser.toggleDevTools,
+    browser.toggleSidebar,
+  ]);
 
   useKeyboardShortcuts(shortcuts);
+
+  useEffect(() => {
+    if (!browser.isDesktopMode) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateBounds = () => {
+      const rect = viewport.getBoundingClientRect();
+      browser.setViewportBounds({
+        x: Math.round(rect.left),
+        y: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      });
+    };
+
+    updateBounds();
+    const observer = new ResizeObserver(updateBounds);
+    observer.observe(viewport);
+    window.addEventListener('resize', updateBounds);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateBounds);
+    };
+  }, [
+    browser.activeTabId,
+    browser.sidebarOpen,
+    browser.devToolsOpen,
+    browser.devToolsHeight,
+    browser.isDesktopMode,
+    browser.setViewportBounds,
+  ]);
 
   const handleSidebarToggle = (panel?: string) => {
     if (panel === 'devtools-panel') {
@@ -68,6 +112,12 @@ export function BrowserShell() {
         url={browser.activeTab?.url || ''}
         onNavigate={browser.navigateTo}
         onHome={() => browser.navigateTo('notilus://speed-dial')}
+        onBack={browser.goBack}
+        onForward={browser.goForward}
+        onReload={browser.reload}
+        canGoBack={browser.canGoBack}
+        canGoForward={browser.canGoForward}
+        isLoading={browser.isLoading}
         onToggleAI={browser.toggleAiPanel}
         adsBlocked={browser.adsBlocked}
       />
@@ -87,6 +137,8 @@ export function BrowserShell() {
             <ContentArea
               url={browser.activeTab?.url || 'notilus://speed-dial'}
               onNavigate={browser.navigateTo}
+              isDesktopMode={browser.isDesktopMode}
+              viewportRef={viewportRef}
             />
           </div>
           <DevToolsPanel

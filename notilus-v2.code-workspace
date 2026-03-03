@@ -1,0 +1,16 @@
+{
+  "folders": [
+    {
+      "name": "v2-web",
+      "path": "."
+    },
+    {
+      "name": "v1-flutter-reference",
+      "path": "../Notilus-Browser"
+    }
+  ],
+  "settings": {
+    "terminal.integrated.cwd": "${workspaceFolder:v2-web}",
+    "git.openRepositoryInParentFolders": "never"
+  }
+}

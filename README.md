@@ -1,73 +1,89 @@
-# Welcome to your Lovable project
+# Nautilus Reborn - Version 2 (Web)
 
-## Project info
+Version web de Notilus, en cours de développement actif.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Organisation du workspace
 
-## How can I edit this code?
+Le workspace `C:\Users\bobim\NOTILUS` contient 3 dépôts séparés:
 
-There are several ways of editing your application.
+- `Notilus-Browser` -> V1 Flutter (stable, référence fonctionnelle)
+- `nautilus-reborn` -> V2 Web (ce dépôt, zone de développement principale)
+- `notilus-loading` -> page de présentation de l'application
 
-**Use Lovable**
+## Démarrage local (V2)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Prérequis:
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js 20+
+- npm 10+
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Commandes:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+cd C:\Users\bobim\NOTILUS\nautilus-reborn
+npm install
+npm run dev:web
 ```
 
-**Edit a file directly in GitHub**
+Validation rapide:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run build:web
+npm run test
+```
 
-**Use GitHub Codespaces**
+## Mode Desktop Electron (V2)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+L'application desktop utilise Electron + `WebContentsView`.
 
-## What technologies are used for this project?
+Commandes:
 
-This project is built with:
+```sh
+# Lancer React + Electron en dev
+npm run dev:desktop
+
+# Build desktop (main + preload + renderer)
+npm run build:desktop
+```
+
+En mode desktop:
+
+- Pages externes: rendues via Chromium natif (`WebContentsView`)
+- Pages internes (`notilus://*`): rendues dans l'UI React
+- Le bridge preload expose `window.notilusDesktop` (IPC typé)
+
+## Workflow Git recommandé
+
+Toujours faire les commits depuis `nautilus-reborn`:
+
+```sh
+cd C:\Users\bobim\NOTILUS\nautilus-reborn
+git checkout -b feat/<nom-fonctionnalite>
+git add .
+git commit -m "feat: <description>"
+git push -u origin feat/<nom-fonctionnalite>
+```
+
+Le dossier parent `NOTILUS` n'est pas un dépôt Git, ce qui est normal.
+
+## Intégration V1 -> V2
+
+Pour migrer une fonctionnalité Flutter (V1) vers le web (V2), utiliser ce mapping:
+
+- V1 `lib/screens` -> V2 `src/pages` / `src/components/browser`
+- V1 `lib/widgets` -> V2 `src/components/ui` / `src/components/browser`
+- V1 `lib/services` -> V2 `src/hooks` + `src/lib` + futurs services API
+- V1 `backend/` FastAPI -> API distante ou service local dédié côté V2
+
+La V1 sert de référence métier; les implémentations UI/techniques doivent être adaptées au stack V2 (React + Vite + TypeScript + Tailwind + shadcn).
+
+## Stack technique V2
 
 - Vite
+- React 18
 - TypeScript
-- React
-- shadcn-ui
 - Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- shadcn/ui
+- Vitest
+- Electron
+- WebContentsView

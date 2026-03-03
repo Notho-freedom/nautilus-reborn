@@ -9,15 +9,32 @@ interface NavigationBarProps {
   url: string;
   onNavigate: (url: string) => void;
   onHome: () => void;
+  onBack: () => void;
+  onForward: () => void;
+  onReload: () => void;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
+  isLoading?: boolean;
   onToggleAI: () => void;
   adsBlocked?: number;
 }
 
-export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked = 0 }: NavigationBarProps) {
+export function NavigationBar({
+  url,
+  onNavigate,
+  onHome,
+  onBack,
+  onForward,
+  onReload,
+  canGoBack = false,
+  canGoForward = false,
+  isLoading = false,
+  onToggleAI,
+  adsBlocked = 0,
+}: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isLoading] = useState(false);
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
@@ -32,11 +49,27 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked 
     }
   };
 
-  const NavButton = ({ children, onClick, label }: { children: React.ReactNode; onClick?: () => void; label: string }) => (
+  const NavButton = ({
+    children,
+    onClick,
+    label,
+    disabled,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    label: string;
+    disabled?: boolean;
+  }) => (
     <button
       onClick={onClick}
       title={label}
-      className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-fast"
+      disabled={disabled}
+      className={cn(
+        'h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-fast',
+        disabled
+          ? 'text-muted-foreground/40 cursor-not-allowed'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+      )}
     >
       {children}
     </button>
@@ -44,9 +77,13 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked 
 
   return (
     <div className="flex items-center h-10 bg-background border-b border-border px-2 gap-1 shrink-0">
-      <NavButton label="Back"><ArrowLeft size={15} /></NavButton>
-      <NavButton label="Forward"><ArrowRight size={15} /></NavButton>
-      <NavButton label="Reload">
+      <NavButton label="Back" onClick={onBack} disabled={!canGoBack}>
+        <ArrowLeft size={15} />
+      </NavButton>
+      <NavButton label="Forward" onClick={onForward} disabled={!canGoForward}>
+        <ArrowRight size={15} />
+      </NavButton>
+      <NavButton label="Reload" onClick={onReload}>
         {isLoading ? <Loader2 size={14} className="animate-spin text-primary" /> : <RotateCw size={14} />}
       </NavButton>
       <NavButton label="Home" onClick={onHome}><Home size={15} /></NavButton>
