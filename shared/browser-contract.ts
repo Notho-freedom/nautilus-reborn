@@ -76,6 +76,37 @@ export interface DownloadActionRequest {
   downloadId: string;
 }
 
+export interface GitFileChange {
+  path: string;
+  stagedStatus: string;
+  unstagedStatus: string;
+}
+
+export interface GitCommitEntry {
+  hash: string;
+  subject: string;
+}
+
+export interface GitSnapshot {
+  repositoryPath: string | null;
+  branch: string;
+  ahead: number;
+  behind: number;
+  staged: GitFileChange[];
+  unstaged: GitFileChange[];
+  recentCommits: GitCommitEntry[];
+  updatedAt: string;
+  error: string | null;
+}
+
+export interface GitCommitRequest {
+  message: string;
+}
+
+export interface GitFileRequest {
+  path: string;
+}
+
 export interface BrowserDesktopApi {
   getState: () => Promise<BrowserSnapshot>;
   createTab: (payload: TabCreateRequest) => Promise<BrowserSnapshot>;
@@ -102,6 +133,13 @@ export interface BrowserDesktopApi {
   openDownload: (payload: DownloadActionRequest) => Promise<void>;
   showDownloadInFolder: (payload: DownloadActionRequest) => Promise<void>;
   onDownloadsChanged: (listener: (snapshot: DownloadsSnapshot) => void) => () => void;
+  getGitState: () => Promise<GitSnapshot>;
+  refreshGitState: () => Promise<GitSnapshot>;
+  commitGit: (payload: GitCommitRequest) => Promise<GitSnapshot>;
+  stageGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
+  unstageGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
+  discardGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
+  onGitStateChanged: (listener: (snapshot: GitSnapshot) => void) => () => void;
 }
 
 export const BrowserIpcChannels = {
@@ -130,4 +168,11 @@ export const BrowserIpcChannels = {
   downloadsOpen: 'downloads:open',
   downloadsShowInFolder: 'downloads:show-in-folder',
   downloadsStateChanged: 'downloads:state-changed',
+  gitGetState: 'git:get-state',
+  gitRefresh: 'git:refresh',
+  gitCommit: 'git:commit',
+  gitStageFile: 'git:stage-file',
+  gitUnstageFile: 'git:unstage-file',
+  gitDiscardFile: 'git:discard-file',
+  gitStateChanged: 'git:state-changed',
 } as const;

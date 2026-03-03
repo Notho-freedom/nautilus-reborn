@@ -58,6 +58,21 @@ const api: BrowserDesktopApi = {
       ipcRenderer.removeListener(BrowserIpcChannels.downloadsStateChanged, handler);
     };
   },
+  getGitState: () => ipcRenderer.invoke(BrowserIpcChannels.gitGetState),
+  refreshGitState: () => ipcRenderer.invoke(BrowserIpcChannels.gitRefresh),
+  commitGit: payload => ipcRenderer.invoke(BrowserIpcChannels.gitCommit, payload),
+  stageGitFile: payload => ipcRenderer.invoke(BrowserIpcChannels.gitStageFile, payload),
+  unstageGitFile: payload => ipcRenderer.invoke(BrowserIpcChannels.gitUnstageFile, payload),
+  discardGitFile: payload => ipcRenderer.invoke(BrowserIpcChannels.gitDiscardFile, payload),
+  onGitStateChanged: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, snapshot: Parameters<typeof listener>[0]) => {
+      listener(snapshot);
+    };
+    ipcRenderer.on(BrowserIpcChannels.gitStateChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.gitStateChanged, handler);
+    };
+  },
 };
 
 if (process.contextIsolated) {

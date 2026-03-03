@@ -52,6 +52,7 @@ En mode desktop:
 - Pages internes (`notilus://*`): rendues dans l'UI React
 - Le bridge preload expose `window.notilusDesktop` (IPC typé)
 - Téléchargements: capturés nativement via Electron session (`will-download`) et visibles dans le panneau Downloads
+- Git panel: connecté au vrai repo local (status/commits/commit)
 - Sidebar web services: configurable dans Settings, ouverture en panel + transfert en tab
 
 ## Workflow Git recommandé

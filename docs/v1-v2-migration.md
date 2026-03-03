@@ -31,14 +31,23 @@ Ce document sert de base opérationnelle pour intégrer les fonctionnalités V1 
 - Downloads:
   - V1: `lib/services/download_service.dart` (état/gestion)
   - V2: gestion desktop réelle via Electron (`electron/main/download-manager.ts`) + IPC + panneau branché (`src/components/browser/DownloadsPanel.tsx`)
+- Git:
+  - V1: intégrations git dans les widgets/services
+  - V2: état réel du repo via IPC Electron (`electron/main/git-manager.ts`) + panneau branché (`src/components/browser/GitPanel.tsx`)
+- Extensions:
+  - V1: gestion d’extensions côté app
+  - V2: catalogue persistant + toggles réels (`src/lib/extensions.ts`, `src/components/browser/ExtensionsPanel.tsx`)
+- Updates:
+  - V1: `lib/services/update_service.dart`
+  - V2: vérification GitHub Releases + fallback local (`src/lib/updates.ts`, `src/components/browser/UpdatesPanel.tsx`)
 
 ## Priorité d’intégration (itérations)
 
 1. DevTools internes branchés à des données runtime réelles (console/network/elements custom)
-2. Services Git/Extensions/Updates/Studio encore majoritairement mock
+2. Studio avancé (responsive/screenshot/live-edit/recorder/mockup) à connecter aux capacités Electron/WebContentsView
 3. Parité avancée IA/TTS/Cloudinary depuis V1
 4. Auth GitHub sécurisée (token backend/proxy au lieu localStorage brut)
-5. Couverture tests unitaires sur tous les nouveaux stores/services
+5. Couverture tests unitaires élargie sur toute la stack desktop
 
 ## Règle de travail
 

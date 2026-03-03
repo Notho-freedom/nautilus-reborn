@@ -2,6 +2,9 @@ import type {
   BrowserDesktopApi,
   DownloadActionRequest,
   DownloadsSnapshot,
+  GitCommitRequest,
+  GitFileRequest,
+  GitSnapshot,
   BrowserSnapshot,
   NavigateRequest,
   TabActionRequest,
@@ -201,4 +204,56 @@ export function onDesktopDownloadsChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onDownloadsChanged(listener);
+}
+
+export async function desktopGetGitState(): Promise<GitSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.getGitState();
+}
+
+export async function desktopRefreshGitState(): Promise<GitSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.refreshGitState();
+}
+
+export async function desktopCommitGit(
+  payload: GitCommitRequest
+): Promise<GitSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.commitGit(payload);
+}
+
+export async function desktopStageGitFile(
+  payload: GitFileRequest
+): Promise<GitSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.stageGitFile(payload);
+}
+
+export async function desktopUnstageGitFile(
+  payload: GitFileRequest
+): Promise<GitSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.unstageGitFile(payload);
+}
+
+export async function desktopDiscardGitFile(
+  payload: GitFileRequest
+): Promise<GitSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.discardGitFile(payload);
+}
+
+export function onDesktopGitStateChanged(
+  listener: (snapshot: GitSnapshot) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onGitStateChanged(listener);
 }

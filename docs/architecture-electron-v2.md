@@ -28,8 +28,10 @@ Les types et canaux sont centralisés dans `shared/browser-contract.ts`.
 
 - Requêtes: get/create/close/activate/navigate/back/forward/reload/devtools/viewport-bounds
 - Requêtes téléchargements: get/pause/resume/cancel/remove/clear/open/show-in-folder
+- Requêtes Git: get/refresh/commit/stage/unstage/discard
 - Event push: `browser:state-changed`
 - Event push téléchargements: `downloads:state-changed`
+- Event push Git: `git:state-changed`
 
 ## Layout du rendu externe
 
