@@ -6,6 +6,8 @@ export interface BrowserTab {
   url: string;
   favicon?: string;
   isLoading?: boolean;
+  isPinned?: boolean;
+  isPrivate?: boolean;
 }
 
 export interface BrowserState {
@@ -14,6 +16,9 @@ export interface BrowserState {
   sidebarOpen: boolean;
   sidebarPanel: string | null;
   aiPanelOpen: boolean;
+  devToolsOpen: boolean;
+  devToolsHeight: number;
+  adsBlocked: number;
 }
 
 const DEFAULT_TAB: BrowserTab = {
@@ -28,6 +33,9 @@ export function useBrowserState() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarPanel, setSidebarPanel] = useState<string | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [devToolsOpen, setDevToolsOpen] = useState(false);
+  const [devToolsHeight, setDevToolsHeight] = useState(250);
+  const [adsBlocked] = useState(147);
 
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
 
@@ -83,9 +91,27 @@ export function useBrowserState() {
     setAiPanelOpen(prev => !prev);
   }, []);
 
+  const toggleDevTools = useCallback(() => {
+    setDevToolsOpen(prev => !prev);
+  }, []);
+
+  const nextTab = useCallback(() => {
+    const idx = tabs.findIndex(t => t.id === activeTabId);
+    const next = tabs[(idx + 1) % tabs.length];
+    if (next) setActiveTabId(next.id);
+  }, [tabs, activeTabId]);
+
+  const prevTab = useCallback(() => {
+    const idx = tabs.findIndex(t => t.id === activeTabId);
+    const prev = tabs[(idx - 1 + tabs.length) % tabs.length];
+    if (prev) setActiveTabId(prev.id);
+  }, [tabs, activeTabId]);
+
   return {
     tabs, activeTabId, activeTab, sidebarOpen, sidebarPanel, aiPanelOpen,
+    devToolsOpen, devToolsHeight, adsBlocked,
     setActiveTabId, addTab, closeTab, updateTabUrl, navigateTo,
-    toggleSidebar, toggleAiPanel, setSidebarOpen, setSidebarPanel,
+    toggleSidebar, toggleAiPanel, toggleDevTools, setDevToolsHeight,
+    setSidebarOpen, setSidebarPanel, nextTab, prevTab,
   };
 }

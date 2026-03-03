@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
-  ArrowLeft, ArrowRight, RotateCw, Home, Shield,
-  Download, Puzzle, User, Sparkles
+  ArrowLeft, ArrowRight, RotateCw, Home, Shield, Lock,
+  Download, Puzzle, User, Sparkles, Star, ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,11 +10,16 @@ interface NavigationBarProps {
   onNavigate: (url: string) => void;
   onHome: () => void;
   onToggleAI: () => void;
+  adsBlocked?: number;
 }
 
-export function NavigationBar({ url, onNavigate, onHome, onToggleAI }: NavigationBarProps) {
+export function NavigationBar({ url, onNavigate, onHome, onToggleAI, adsBlocked = 0 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+
+  const isHttps = url.startsWith('https://');
+  const isInternal = url.startsWith('notilus://');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,8 +53,15 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI }: Navigatio
           "flex items-center h-7 rounded-lg bg-secondary/60 border transition-all px-2 gap-1.5",
           focused ? "border-primary/50 ring-1 ring-primary/20" : "border-transparent"
         )}>
-          <Shield size={12} className="text-muted-foreground shrink-0" />
+          {isInternal ? (
+            <Shield size={12} className="text-muted-foreground shrink-0" />
+          ) : isHttps ? (
+            <Lock size={12} className="text-green-500 shrink-0" />
+          ) : (
+            <ShieldCheck size={12} className="text-muted-foreground shrink-0" />
+          )}
           <input
+            data-url-input
             value={focused ? inputValue : ''}
             onChange={e => setInputValue(e.target.value)}
             onFocus={() => { setFocused(true); setInputValue(url); }}
@@ -57,8 +69,22 @@ export function NavigationBar({ url, onNavigate, onHome, onToggleAI }: Navigatio
             placeholder={url}
             className="flex-1 bg-transparent text-xs font-mono text-foreground placeholder:text-muted-foreground outline-none"
           />
+          <button
+            type="button"
+            onClick={() => setIsBookmarked(!isBookmarked)}
+            className={cn("shrink-0 transition-colors", isBookmarked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+          >
+            <Star size={13} fill={isBookmarked ? 'currentColor' : 'none'} />
+          </button>
         </div>
       </form>
+
+      {adsBlocked > 0 && (
+        <div className="flex items-center gap-1 px-1.5 h-6 rounded bg-green-500/10 text-green-500 text-[10px] font-mono" title="Ads blocked">
+          <Shield size={11} />
+          <span>{adsBlocked}</span>
+        </div>
+      )}
 
       <NavButton label="Extensions"><Puzzle size={15} /></NavButton>
       <NavButton label="Downloads"><Download size={15} /></NavButton>
