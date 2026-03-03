@@ -34,12 +34,17 @@ describe('useBrowserState desktop mode', () => {
       reload: vi.fn().mockResolvedValue(initialSnapshot),
       openDevTools: vi.fn().mockResolvedValue(undefined),
       setViewportBounds: vi.fn().mockResolvedValue(undefined),
+      minimizeWindow: vi.fn().mockResolvedValue(undefined),
+      toggleMaximizeWindow: vi.fn().mockResolvedValue(undefined),
+      closeWindow: vi.fn().mockResolvedValue(undefined),
+      getWindowState: vi.fn().mockResolvedValue({ isMaximized: false }),
       onStateChanged: vi.fn(listener => {
         stateListener = listener;
         return () => {
           stateListener = null;
         };
       }),
+      onWindowStateChanged: vi.fn(() => () => {}),
     };
     window.notilusDesktop = bridge;
   });
@@ -108,4 +113,3 @@ describe('useBrowserState desktop mode', () => {
     expect(result.current.tabs[0]?.title).toContain('docs.electronjs.org');
   });
 });
-

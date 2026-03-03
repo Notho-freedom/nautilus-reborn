@@ -22,6 +22,10 @@ export interface ViewportBounds {
   height: number;
 }
 
+export interface WindowState {
+  isMaximized: boolean;
+}
+
 export interface TabCreateRequest {
   url?: string;
 }
@@ -55,6 +59,11 @@ export interface BrowserDesktopApi {
   openDevTools: (payload: TabActionRequest) => Promise<void>;
   setViewportBounds: (payload: ViewportBounds) => Promise<void>;
   onStateChanged: (listener: (snapshot: BrowserSnapshot) => void) => () => void;
+  minimizeWindow: () => Promise<void>;
+  toggleMaximizeWindow: () => Promise<void>;
+  closeWindow: () => Promise<void>;
+  getWindowState: () => Promise<WindowState>;
+  onWindowStateChanged: (listener: (state: WindowState) => void) => () => void;
 }
 
 export const BrowserIpcChannels = {
@@ -69,5 +78,9 @@ export const BrowserIpcChannels = {
   openDevTools: 'browser:open-devtools',
   setViewportBounds: 'browser:set-viewport-bounds',
   stateChanged: 'browser:state-changed',
+  windowMinimize: 'window:minimize',
+  windowToggleMaximize: 'window:toggle-maximize',
+  windowClose: 'window:close',
+  windowGetState: 'window:get-state',
+  windowStateChanged: 'window:state-changed',
 } as const;
-

@@ -7,6 +7,7 @@ import type {
   TabCloseRequest,
   TabCreateRequest,
   ViewportBounds,
+  WindowState,
 } from '../../shared/browser-contract';
 
 export function getDesktopBridge(): BrowserDesktopApi | null {
@@ -102,3 +103,34 @@ export function onDesktopStateChanged(
   return bridge.onStateChanged(listener);
 }
 
+export async function desktopMinimizeWindow(): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.minimizeWindow();
+}
+
+export async function desktopToggleMaximizeWindow(): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.toggleMaximizeWindow();
+}
+
+export async function desktopCloseWindow(): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.closeWindow();
+}
+
+export async function desktopGetWindowState(): Promise<WindowState | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.getWindowState();
+}
+
+export function onDesktopWindowStateChanged(
+  listener: (state: WindowState) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onWindowStateChanged(listener);
+}

@@ -2,7 +2,7 @@ import {
   Activity, Terminal, Code2, BookOpen, GitBranch,
   Gauge, Settings, ChevronLeft, ChevronRight,
   Star, Clock, Download, LayoutGrid, Puzzle,
-  FileText, Wrench, Home, RefreshCw,
+  FileText, Wrench, RefreshCw,
   Youtube, MessageCircle, Bot, Send, Music,
   MonitorSmartphone, Github
 } from 'lucide-react';
@@ -13,11 +13,11 @@ interface DevToolsSidebarProps {
   isOpen: boolean;
   activePanel: string | null;
   onToggle: (panel?: string) => void;
-  onOpenUrl?: (url: string) => void;
+  onOpenWebPanel?: (service: WebServiceItem) => void;
+  activeWebServiceUrl?: string | null;
 }
 
 const SIDEBAR_ITEMS = [
-  { id: 'home', icon: Home, label: 'Home' },
   { id: 'bookmarks', icon: Star, label: 'Favorites' },
   { id: 'history', icon: Clock, label: 'History' },
   { id: 'downloads', icon: Download, label: 'Downloads' },
@@ -40,7 +40,13 @@ const SIDEBAR_ITEMS = [
   { id: 'settings', icon: Settings, label: 'Settings' },
 ];
 
-const WEB_SERVICES = [
+export interface WebServiceItem {
+  label: string;
+  url: string;
+  icon: React.ElementType;
+}
+
+const WEB_SERVICES: WebServiceItem[] = [
   { icon: Music, label: 'YouTube Music', url: 'https://music.youtube.com' },
   { icon: Youtube, label: 'YouTube', url: 'https://youtube.com' },
   { icon: Bot, label: 'ChatGPT', url: 'https://chat.openai.com' },
@@ -49,15 +55,16 @@ const WEB_SERVICES = [
   { icon: Send, label: 'Telegram', url: 'https://web.telegram.org' },
 ];
 
-export function DevToolsSidebar({ isOpen, activePanel, onToggle, onOpenUrl }: DevToolsSidebarProps) {
+export function DevToolsSidebar({
+  isOpen,
+  activePanel,
+  onToggle,
+  onOpenWebPanel,
+  activeWebServiceUrl,
+}: DevToolsSidebarProps) {
   return (
     <div className="flex h-full shrink-0">
       <div className="flex flex-col items-center w-11 bg-sidebar border-r border-sidebar-border py-2 gap-0.5 overflow-y-auto scrollbar-thin">
-        {/* Notilus logo at top */}
-        <div className="w-7 h-7 rounded-lg notilus-gradient flex items-center justify-center mb-2 shrink-0 animate-glow-breathe cursor-pointer" onClick={() => onToggle('home')}>
-          <span className="text-[9px] font-display font-bold text-primary-foreground">N</span>
-        </div>
-
         {SIDEBAR_ITEMS.map((item, i) => {
           if ('type' in item && item.type === 'separator') {
             return <div key={`sep-${i}`} className="w-6 h-px bg-sidebar-border my-1" />;
@@ -93,8 +100,13 @@ export function DevToolsSidebar({ isOpen, activePanel, onToggle, onOpenUrl }: De
           <Tooltip key={svc.label} delayDuration={500}>
             <TooltipTrigger asChild>
               <button
-                onClick={() => onOpenUrl?.(svc.url)}
-                className="w-8 h-8 flex items-center justify-center rounded-md text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-fast shrink-0"
+                onClick={() => onOpenWebPanel?.(svc)}
+                className={cn(
+                  'w-8 h-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0',
+                  activePanel === 'web-service' && activeWebServiceUrl === svc.url
+                    ? 'bg-primary/15 text-primary glow-primary-sm'
+                    : 'text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent'
+                )}
               >
                 <svc.icon size={14} />
               </button>

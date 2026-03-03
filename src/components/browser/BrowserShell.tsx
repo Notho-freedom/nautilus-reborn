@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -11,11 +11,13 @@ import { ContentArea } from './ContentArea';
 import { AIAssistant } from './AIAssistant';
 import { StatusBar } from './StatusBar';
 import { DevToolsPanel } from './DevToolsPanel';
+import type { WebServiceItem } from './DevToolsSidebar';
 
 export function BrowserShell() {
   const browser = useBrowserState();
   const stats = useSystemMonitor();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
 
   const shortcuts = useMemo(() => ({
     newTab: () => browser.addTab(),
@@ -83,15 +85,22 @@ export function BrowserShell() {
       browser.toggleDevTools();
       return;
     }
-    if (panel === 'home') {
-      browser.navigateTo('notilus://speed-dial');
-      return;
-    }
     browser.toggleSidebar(panel);
   };
 
-  const handleOpenUrl = (url: string) => {
-    browser.addTab(url, new URL(url).hostname);
+  const handleOpenWebPanel = (service: WebServiceItem) => {
+    setActiveWebService(service);
+    browser.setSidebarPanel('web-service');
+    browser.setSidebarOpen(true);
+  };
+
+  const handleOpenWebServiceInTab = (url: string, label: string) => {
+    browser.addTab(url, label);
+  };
+
+  const handleCloseSidebarPanel = () => {
+    browser.setSidebarOpen(false);
+    browser.setSidebarPanel(null);
   };
 
   return (
@@ -127,10 +136,17 @@ export function BrowserShell() {
           isOpen={browser.sidebarOpen}
           activePanel={browser.sidebarPanel}
           onToggle={handleSidebarToggle}
-          onOpenUrl={handleOpenUrl}
+          onOpenWebPanel={handleOpenWebPanel}
+          activeWebServiceUrl={activeWebService?.url ?? null}
         />
         {browser.sidebarOpen && (
-          <SidebarPanel panel={browser.sidebarPanel} stats={stats} />
+          <SidebarPanel
+            panel={browser.sidebarPanel}
+            stats={stats}
+            webService={activeWebService}
+            onOpenWebServiceInTab={handleOpenWebServiceInTab}
+            onClosePanel={handleCloseSidebarPanel}
+          />
         )}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 flex overflow-hidden">

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
 import { BrowserIpcChannels } from '../../shared/browser-contract';
 import { registerBrowserIpc } from './ipc/browser-ipc';
+import { registerWindowIpc } from './ipc/window-ipc';
 import { NetworkLayer } from './network-layer';
 import { TabManager } from './tab-manager';
 import { createMainWindow } from './window-manager';
@@ -42,10 +43,16 @@ function createDesktopWindow() {
   });
 
   registerBrowserIpc({ tabManager, debug: DEBUG_IPC });
+  registerWindowIpc(mainWindow, DEBUG_IPC);
   tabManager.createTab(INITIAL_URL);
 
   mainWindow.webContents.on('did-finish-load', () => {
     broadcastState();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(BrowserIpcChannels.windowStateChanged, {
+        isMaximized: mainWindow.isMaximized(),
+      });
+    }
   });
 }
 

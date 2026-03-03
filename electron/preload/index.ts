@@ -23,6 +23,19 @@ const api: BrowserDesktopApi = {
       ipcRenderer.removeListener(BrowserIpcChannels.stateChanged, handler);
     };
   },
+  minimizeWindow: () => ipcRenderer.invoke(BrowserIpcChannels.windowMinimize),
+  toggleMaximizeWindow: () => ipcRenderer.invoke(BrowserIpcChannels.windowToggleMaximize),
+  closeWindow: () => ipcRenderer.invoke(BrowserIpcChannels.windowClose),
+  getWindowState: () => ipcRenderer.invoke(BrowserIpcChannels.windowGetState),
+  onWindowStateChanged: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, state: Parameters<typeof listener>[0]) => {
+      listener(state);
+    };
+    ipcRenderer.on(BrowserIpcChannels.windowStateChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.windowStateChanged, handler);
+    };
+  },
 };
 
 if (process.contextIsolated) {
@@ -30,4 +43,3 @@ if (process.contextIsolated) {
 } else {
   (window as Window & { notilusDesktop: BrowserDesktopApi }).notilusDesktop = api;
 }
-

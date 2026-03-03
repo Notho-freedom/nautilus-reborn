@@ -1,8 +1,14 @@
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { BrowserWindow, shell } from 'electron';
 
 interface CreateMainWindowOptions {
   preloadPath: string;
+}
+
+function resolveWindowIconPath(): string | undefined {
+  const iconPath = join(process.cwd(), 'public', 'notilus-logo.png');
+  return existsSync(iconPath) ? iconPath : undefined;
 }
 
 export function createMainWindow({ preloadPath }: CreateMainWindowOptions): BrowserWindow {
@@ -13,6 +19,9 @@ export function createMainWindow({ preloadPath }: CreateMainWindowOptions): Brow
     minHeight: 700,
     show: false,
     autoHideMenuBar: true,
+    frame: false,
+    titleBarStyle: 'hidden',
+    icon: resolveWindowIconPath(),
     backgroundColor: '#09090B',
     webPreferences: {
       preload: preloadPath,

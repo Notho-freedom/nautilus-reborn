@@ -15,10 +15,15 @@ import { UpdatesPanel } from './UpdatesPanel';
 import { StudioPanel } from './StudioPanel';
 import { GitHubReposPanel } from './GitHubReposPanel';
 import { SystemStats } from '@/hooks/useSystemMonitor';
+import { WebServicePanel } from './WebServicePanel';
+import type { WebServiceItem } from './DevToolsSidebar';
 
 interface SidebarPanelProps {
   panel: string | null;
   stats: SystemStats;
+  webService: WebServiceItem | null;
+  onOpenWebServiceInTab: (url: string, label: string) => void;
+  onClosePanel: () => void;
 }
 
 const PANEL_MAP: Record<string, React.ComponentType<any>> = {
@@ -40,8 +45,26 @@ const PANEL_MAP: Record<string, React.ComponentType<any>> = {
   github: GitHubReposPanel,
 };
 
-export function SidebarPanel({ panel, stats }: SidebarPanelProps) {
+export function SidebarPanel({
+  panel,
+  stats,
+  webService,
+  onOpenWebServiceInTab,
+  onClosePanel,
+}: SidebarPanelProps) {
   if (!panel) return null;
+
+  if (panel === 'web-service') {
+    return (
+      <div className="w-[420px] h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left">
+        <WebServicePanel
+          service={webService}
+          onOpenInTab={onOpenWebServiceInTab}
+          onClose={onClosePanel}
+        />
+      </div>
+    );
+  }
 
   const Component = PANEL_MAP[panel];
 
