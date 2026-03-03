@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Minus, Maximize2 } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DevConsole } from './devtools/DevConsole';
 import { DevNetwork } from './devtools/DevNetwork';
@@ -16,9 +16,9 @@ interface DevToolsPanelProps {
 }
 
 const TABS = [
+  { id: 'elements', label: 'Elements' },
   { id: 'console', label: 'Console' },
   { id: 'network', label: 'Network' },
-  { id: 'elements', label: 'Elements' },
   { id: 'performance', label: 'Performance' },
   { id: 'application', label: 'Application' },
   { id: 'sources', label: 'Sources' },
@@ -47,20 +47,18 @@ export function DevToolsPanel({ isOpen, onClose, height, onHeightChange }: DevTo
 
   return (
     <div className="shrink-0 border-t border-border bg-card flex flex-col" style={{ height }}>
-      {/* Resize handle */}
       <div
         onMouseDown={handleMouseDown}
-        className={cn("h-1 cursor-row-resize hover:bg-primary/30 transition-colors", isDragging && "bg-primary/50")}
+        className={cn("h-1 cursor-row-resize hover:bg-primary/30 transition-colors duration-fast", isDragging && "bg-primary/50")}
       />
 
-      {/* Tab bar */}
-      <div className="flex items-center h-7 bg-card border-b border-border px-1 gap-0.5 shrink-0">
+      <div className="flex items-center h-8 bg-card border-b border-border px-1 gap-0.5 shrink-0">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "px-2 h-6 rounded text-[10px] font-mono transition-colors",
+              "px-2.5 h-7 rounded-md text-[10px] font-display uppercase tracking-wider transition-all duration-fast",
               activeTab === tab.id
                 ? "bg-primary/15 text-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -70,12 +68,14 @@ export function DevToolsPanel({ isOpen, onClose, height, onHeightChange }: DevTo
           </button>
         ))}
         <div className="flex-1" />
-        <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+        <button className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-fast">
+          <Trash2 size={11} />
+        </button>
+        <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-fast">
           <X size={12} />
         </button>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'console' && <DevConsole />}
         {activeTab === 'network' && <DevNetwork />}

@@ -9,29 +9,31 @@ const ENDPOINTS = [
   { method: 'GET', path: '/api/history', desc: 'Browsing history' },
   { method: 'GET', path: '/api/bookmarks', desc: 'List bookmarks' },
   { method: 'POST', path: '/api/lighthouse', desc: 'Run audit' },
+  { method: 'GET', path: '/api/extensions', desc: 'List extensions' },
+  { method: 'PUT', path: '/api/settings', desc: 'Update settings' },
 ];
 
 const METHOD_COLORS: Record<string, string> = {
-  GET: 'bg-green-500/15 text-green-500',
-  POST: 'bg-blue-500/15 text-blue-400',
-  DELETE: 'bg-destructive/15 text-destructive',
-  PUT: 'bg-accent/15 text-accent',
+  GET: 'bg-success/15 text-success',
+  POST: 'bg-info/15 text-info',
+  DELETE: 'bg-error/15 text-error',
+  PUT: 'bg-warning/15 text-warning',
 };
 
 export function ApiDocsPanel() {
   return (
-    <div className="p-3 space-y-4 overflow-y-auto scrollbar-thin">
-      <h3 className="text-xs font-mono font-semibold text-primary uppercase tracking-wider">
+    <div className="p-3 space-y-3 overflow-y-auto scrollbar-thin flex-1">
+      <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest">
         API Documentation
       </h3>
-      <p className="text-[10px] text-muted-foreground">Notilus REST API v2.0</p>
-      <div className="space-y-1.5">
+      <p className="text-[11px] font-body text-muted-foreground">Notilus REST API v2.0</p>
+      <div className="space-y-1">
         {ENDPOINTS.map((ep, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs p-1.5 rounded hover:bg-muted/50 transition-colors cursor-pointer">
-            <span className={cn("px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold shrink-0", METHOD_COLORS[ep.method])}>
+          <div key={i} className="flex items-center gap-2 text-xs p-2 rounded-lg hover:bg-muted/50 transition-colors duration-fast cursor-pointer border border-transparent hover:border-border">
+            <span className={cn("px-1.5 py-0.5 rounded-md font-display text-[9px] font-semibold shrink-0 uppercase tracking-wider", METHOD_COLORS[ep.method])}>
               {ep.method}
             </span>
-            <span className="font-mono text-foreground truncate">{ep.path}</span>
+            <span className="font-mono text-foreground truncate flex-1">{ep.path}</span>
           </div>
         ))}
       </div>

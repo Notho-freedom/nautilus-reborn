@@ -52,7 +52,7 @@ export function DownloadsPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-border">
-        <h3 className="text-xs font-mono font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+        <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest flex items-center gap-1.5">
           <Download size={12} /> Downloads
         </h3>
       </div>
@@ -61,28 +61,28 @@ export function DownloadsPanel() {
         {downloads.map(d => {
           const Icon = ICONS[d.icon];
           return (
-            <div key={d.id} className="px-3 py-2.5 border-b border-border/50 hover:bg-muted/30 transition-colors">
+            <div key={d.id} className="px-3 py-2.5 border-b border-border/50 hover:bg-muted/30 transition-colors duration-fast">
               <div className="flex items-start gap-2">
                 <Icon size={14} className="text-muted-foreground mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] text-foreground truncate">{d.name}</div>
+                  <div className="text-xs font-body text-foreground truncate">{d.name}</div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] text-muted-foreground">{d.size}</span>
+                    <span className="text-[10px] font-body text-muted-foreground">{d.size}</span>
                     {d.speed && d.status === 'downloading' && (
-                      <span className="text-[9px] text-primary">{d.speed}</span>
+                      <span className="text-[10px] font-body text-primary">{d.speed}</span>
                     )}
                     {d.status === 'completed' && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-green-500"><CheckCircle2 size={8} /> Done</span>
+                      <span className="flex items-center gap-0.5 text-[10px] font-body text-success"><CheckCircle2 size={9} /> Done</span>
                     )}
                     {d.status === 'failed' && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-destructive"><AlertCircle size={8} /> Failed</span>
+                      <span className="flex items-center gap-0.5 text-[10px] font-body text-error"><AlertCircle size={9} /> Failed</span>
                     )}
                     {d.status === 'paused' && (
-                      <span className="text-[9px] text-yellow-500">Paused</span>
+                      <span className="text-[10px] font-body text-warning">Paused</span>
                     )}
                   </div>
                   {(d.status === 'downloading' || d.status === 'paused') && (
-                    <div className="mt-1.5 h-1 rounded-full bg-secondary overflow-hidden">
+                    <div className="mt-1.5 h-1 rounded-full bg-notilus-surface-2 overflow-hidden">
                       <div
                         className="h-full rounded-full notilus-gradient transition-all duration-300"
                         style={{ width: `${d.progress}%` }}
@@ -93,17 +93,17 @@ export function DownloadsPanel() {
                 <div className="flex items-center gap-0.5 shrink-0">
                   {(d.status === 'downloading' || d.status === 'paused') && (
                     <>
-                      <button onClick={() => togglePause(d.id)} className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors">
-                        {d.status === 'downloading' ? <Pause size={10} /> : <Play size={10} />}
+                      <button onClick={() => togglePause(d.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast">
+                        {d.status === 'downloading' ? <Pause size={11} /> : <Play size={11} />}
                       </button>
-                      <button onClick={() => cancel(d.id)} className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive transition-colors">
-                        <X size={10} />
+                      <button onClick={() => cancel(d.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive transition-colors duration-fast">
+                        <X size={11} />
                       </button>
                     </>
                   )}
                   {d.status === 'completed' && (
-                    <button className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors">
-                      <FolderOpen size={10} />
+                    <button className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast">
+                      <FolderOpen size={11} />
                     </button>
                   )}
                 </div>
@@ -114,7 +114,7 @@ export function DownloadsPanel() {
       </div>
 
       <div className="p-2 border-t border-border">
-        <div className="text-[9px] text-muted-foreground text-center">
+        <div className="text-[10px] font-body text-muted-foreground text-center">
           {downloads.filter(d => d.status === 'downloading').length} active • Ctrl+J
         </div>
       </div>
