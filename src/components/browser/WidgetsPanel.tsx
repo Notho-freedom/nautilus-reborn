@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, Cloud, Quote, Zap, Terminal, Plus, LayoutGrid, Cpu, MemoryStick, Wifi, Layers } from 'lucide-react';
+import { SidebarPanelShell } from './SidebarPanelShell';
 
 const DEV_QUOTES = [
   { text: "Any fool can write code that a computer can understand. Good programmers write code that humans can understand.", author: "Martin Fowler" },
@@ -9,7 +10,11 @@ const DEV_QUOTES = [
   { text: "Make it work, make it right, make it fast.", author: "Kent Beck" },
 ];
 
-export function WidgetsPanel() {
+interface WidgetsPanelProps {
+  onClose?: () => void;
+}
+
+export function WidgetsPanel({ onClose }: WidgetsPanelProps = {}) {
   const [time, setTime] = useState(new Date());
   const [quoteIdx, setQuoteIdx] = useState(0);
 
@@ -26,15 +31,8 @@ export function WidgetsPanel() {
   const quote = DEV_QUOTES[quoteIdx];
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-border">
-        <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest flex items-center gap-1.5">
-          <LayoutGrid size={12} /> Widgets
-        </h3>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-3">
-        {/* Clock */}
+    <SidebarPanelShell title="Widgets" icon={LayoutGrid} onClose={onClose ?? (() => {})}>
+      <div className="p-3 space-y-3">
         <div className="glass rounded-xl p-3 text-center">
           <Clock size={14} className="text-primary mx-auto mb-1" />
           <div className="text-xl font-display text-foreground tracking-wider">
@@ -45,7 +43,6 @@ export function WidgetsPanel() {
           </div>
         </div>
 
-        {/* Weather */}
         <div className="glass rounded-xl p-3">
           <div className="flex items-center gap-2">
             <Cloud size={22} className="text-info" />
@@ -56,7 +53,6 @@ export function WidgetsPanel() {
           </div>
         </div>
 
-        {/* System metrics mini */}
         <div className="glass rounded-xl p-3 space-y-2">
           <div className="text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-1">System</div>
           {[
@@ -73,14 +69,12 @@ export function WidgetsPanel() {
           ))}
         </div>
 
-        {/* Quote */}
         <div className="glass rounded-xl p-3">
           <Quote size={13} className="text-primary mb-1.5" />
           <p className="text-xs font-body text-foreground italic leading-relaxed">"{quote.text}"</p>
           <p className="text-[10px] font-body text-muted-foreground mt-1.5">— {quote.author}</p>
         </div>
 
-        {/* Quick Actions */}
         <div className="glass rounded-xl p-3">
           <div className="text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1">
             <Zap size={10} /> Quick Actions
@@ -97,6 +91,6 @@ export function WidgetsPanel() {
           </div>
         </div>
       </div>
-    </div>
+    </SidebarPanelShell>
   );
 }

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { SystemMonitor } from './SystemMonitor';
 import { TerminalPanel } from './TerminalPanel';
 import { LighthousePanel } from './LighthousePanel';
@@ -31,6 +32,7 @@ interface SidebarPanelProps {
 type GenericPanelProps = {
   stats?: SystemStats;
   onNavigate?: (url: string) => void;
+  onClose?: () => void;
 };
 
 const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
@@ -53,6 +55,24 @@ const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
   flou: FlouPanel,
 };
 
+const PANEL_WIDTH_KEY = 'notilus_panel_width';
+const DEFAULT_WIDTH = 280;
+const MIN_WIDTH = 200;
+const MAX_WIDTH = 600;
+
+function readPanelWidth(): number {
+  if (typeof window === 'undefined') return DEFAULT_WIDTH;
+  try {
+    const raw = window.localStorage.getItem(PANEL_WIDTH_KEY);
+    if (!raw) return DEFAULT_WIDTH;
+    const val = Number(raw);
+    if (Number.isNaN(val)) return DEFAULT_WIDTH;
+    return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, val));
+  } catch {
+    return DEFAULT_WIDTH;
+  }
+}
+
 export function SidebarPanel({
   panel,
   stats,
@@ -61,15 +81,58 @@ export function SidebarPanel({
   onClosePanel,
   onNavigate,
 }: SidebarPanelProps) {
+  const [width, setWidth] = useState(() => readPanelWidth());
+  const isResizing = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  useEffect(() => {
+    window.localStorage.setItem(PANEL_WIDTH_KEY, String(width));
+  }, [width]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    startX.current = e.clientX;
+    startWidth.current = width;
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!isResizing.current) return;
+      const delta = ev.clientX - startX.current;
+      const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth.current + delta));
+      setWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [width]);
+
   if (!panel) return null;
 
   if (panel === 'web-service') {
     return (
-      <div className="w-[420px] h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left">
+      <div
+        className="h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left shadow-xl relative"
+        style={{ width: `${Math.max(width, 360)}px` }}
+      >
         <WebServicePanel
           service={webService}
           onOpenInTab={onOpenWebServiceInTab}
           onClose={onClosePanel}
+        />
+        <div
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors"
+          onMouseDown={handleMouseDown}
         />
       </div>
     );
@@ -82,14 +145,17 @@ export function SidebarPanel({
   const isFlouPanel = panel === 'flou';
 
   return (
-    <div className="w-64 h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left">
+    <div
+      className="h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left shadow-xl relative"
+      style={{ width: `${width}px` }}
+    >
       {Component ? (
         panel === 'monitor' ? (
-          <Component stats={stats} />
+          <Component stats={stats} onClose={onClosePanel} />
         ) : isBookmarksPanel || isHistoryPanel || isGitHubPanel || isFlouPanel ? (
-          <Component onNavigate={onNavigate} />
+          <Component onNavigate={onNavigate} onClose={onClosePanel} />
         ) : (
-          <Component />
+          <Component onClose={onClosePanel} />
         )
       ) : (
         <div className="p-3">
@@ -97,6 +163,10 @@ export function SidebarPanel({
           <p className="text-xs font-body text-muted-foreground">Panel content coming soon.</p>
         </div>
       )}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors"
+        onMouseDown={handleMouseDown}
+      />
     </div>
   );
 }
