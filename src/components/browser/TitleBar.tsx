@@ -32,12 +32,13 @@ export function TitleBar() {
     };
   }, [desktopMode]);
 
-  const noDragStyle = { WebkitAppRegion: 'no-drag' as const };
+  const noDragStyle = { WebkitAppRegion: 'no-drag' } as React.CSSProperties;
+  const dragStyle = { WebkitAppRegion: 'drag' } as React.CSSProperties;
 
   return (
     <div
       className="flex items-center justify-between h-8 bg-background border-b border-border px-3 select-none shrink-0"
-      style={{ WebkitAppRegion: 'drag' }}
+      style={dragStyle}
       onDoubleClick={() => {
         if (!desktopMode) return;
         void desktopToggleMaximizeWindow();
