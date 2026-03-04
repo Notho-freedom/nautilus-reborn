@@ -1,20 +1,16 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { BrowserSnapshot, TabDescriptor, ViewportBounds } from '../../shared/browser-contract';
-import type { RuntimeMode, ViewportLayoutPayload } from '../../shared/viewport-contract';
 import { addHistoryItem } from '@/lib/history';
 import {
   desktopActivateTab,
   desktopCloseTab,
   desktopCreateTab,
-  desktopGetRuntimeMode,
   desktopGetState,
   desktopGoBack,
   desktopGoForward,
   desktopNavigate,
-  onDesktopRuntimeModeChanged,
   desktopOpenDevTools,
   desktopReload,
-  desktopSetViewportLayout,
   desktopSetViewportBounds,
   isDesktopRuntime,
   onDesktopStateChanged,
@@ -223,7 +219,6 @@ export function useBrowserState() {
   const [recentlyClosedTabs, setRecentlyClosedTabs] = useState<RecentlyClosedTab[]>(
     () => readRecentlyClosedTabs()
   );
-  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('single-window-fallback');
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarPanel, setSidebarPanel] = useState<string | null>(null);
@@ -249,29 +244,6 @@ export function useBrowserState() {
     const unsubscribe = onDesktopStateChanged(snapshot => {
       if (!mounted) return;
       setDesktopSnapshot(snapshot);
-    });
-
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
-  }, [desktopMode]);
-
-  useEffect(() => {
-    if (!desktopMode) {
-      setRuntimeMode('single-window-fallback');
-      return;
-    }
-
-    let mounted = true;
-    void desktopGetRuntimeMode().then(mode => {
-      if (!mounted || !mode) return;
-      setRuntimeMode(mode);
-    });
-
-    const unsubscribe = onDesktopRuntimeModeChanged(mode => {
-      if (!mounted) return;
-      setRuntimeMode(mode);
     });
 
     return () => {
@@ -478,11 +450,6 @@ export function useBrowserState() {
     void desktopSetViewportBounds(bounds);
   }, [desktopMode]);
 
-  const setViewportLayout = useCallback((payload: ViewportLayoutPayload) => {
-    if (!desktopMode) return;
-    void desktopSetViewportLayout(payload);
-  }, [desktopMode]);
-
   const nextTab = useCallback(() => {
     if (!tabs.length) return;
     const idx = tabs.findIndex(t => t.id === activeTabId);
@@ -527,7 +494,7 @@ export function useBrowserState() {
 
   return {
     isDesktopMode: desktopMode,
-    runtimeMode,
+    isExternalActiveTab: Boolean(activeTab?.kind === 'external'),
     tabs,
     activeTabId: activeTabId || activeTab?.id || '',
     activeTab,
@@ -552,7 +519,6 @@ export function useBrowserState() {
     reload,
     openNativeDevTools,
     setViewportBounds,
-    setViewportLayout,
     toggleSidebar,
     toggleAiPanel,
     toggleDevTools,

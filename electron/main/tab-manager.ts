@@ -6,6 +6,7 @@ import type {
   TabDescriptor,
   ViewportBounds,
 } from '../../shared/browser-contract';
+import { BrowserIpcChannels } from '../../shared/browser-contract';
 
 interface ManagedTab {
   descriptor: TabDescriptor;
@@ -13,8 +14,8 @@ interface ManagedTab {
 }
 
 interface TabManagerOptions {
-  hostWindow: BrowserWindow;
-  preloadPath: string;
+  window: BrowserWindow;
+  tabOverlayPreloadPath: string;
   onStateChanged: (snapshot: BrowserSnapshot) => void;
   debug: boolean;
 }
@@ -226,10 +227,37 @@ export class TabManager {
     return target.view.webContents;
   }
 
+  getActiveTabId(): string | null {
+    return this.activeTabId;
+  }
+
+  getActiveTabDescriptor(): TabDescriptor | null {
+    const target = this.resolveTargetTab(this.activeTabId ?? undefined);
+    return target?.descriptor ?? null;
+  }
+
   hasActiveExternalTab(): boolean {
     const target = this.resolveTargetTab(this.activeTabId ?? undefined);
     if (!target?.view) return false;
     return target.descriptor.kind === 'external';
+  }
+
+  getTabIdByWebContentsId(webContentsId: number): string | null {
+    for (const [tabId, tab] of this.tabs.entries()) {
+      if (tab.view?.webContents.id === webContentsId) {
+        return tabId;
+      }
+    }
+    return null;
+  }
+
+  sendOverlayToTab(tabId: string, payload: unknown): boolean {
+    const tab = this.tabs.get(tabId);
+    if (!tab?.view) return false;
+    if (tab.descriptor.kind !== 'external') return false;
+    if (tab.view.webContents.isDestroyed()) return false;
+    tab.view.webContents.send(BrowserIpcChannels.overlayRender, payload);
+    return true;
   }
 
   private resolveTargetTab(tabId?: string): ManagedTab | null {
@@ -247,7 +275,7 @@ export class TabManager {
   private createExternalView(tabId: string, initialUrl: string): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
-        preload: this.options.preloadPath,
+        preload: this.options.tabOverlayPreloadPath,
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
@@ -256,7 +284,7 @@ export class TabManager {
     });
 
     view.setVisible(false);
-    this.options.hostWindow.contentView.addChildView(view);
+    this.options.window.contentView.addChildView(view);
     view.setBounds(this.getEffectiveBounds());
     this.attachWebContentsListeners(tabId, view);
     void view.webContents.loadURL(initialUrl).catch(error => {
@@ -317,11 +345,12 @@ export class TabManager {
     if (!activeId) return;
 
     const bounds = this.getEffectiveBounds();
+    const hasBounds = bounds.width > 0 && bounds.height > 0;
     for (const id of this.order) {
       const tab = this.tabs.get(id);
       if (!tab?.view) continue;
 
-      const shouldShow = id === activeId && tab.descriptor.kind === 'external';
+      const shouldShow = id === activeId && tab.descriptor.kind === 'external' && hasBounds;
       tab.view.setVisible(shouldShow);
       if (shouldShow) {
         tab.view.setBounds(bounds);
@@ -331,7 +360,7 @@ export class TabManager {
 
   private destroyView(view: WebContentsView): void {
     try {
-      this.options.hostWindow.contentView.removeChildView(view);
+      this.options.window.contentView.removeChildView(view);
     } catch {
       // Ignore if already detached.
     }
@@ -345,9 +374,7 @@ export class TabManager {
     if (this.viewportBounds.width > 0 && this.viewportBounds.height > 0) {
       return this.viewportBounds;
     }
-
-    const bounds = this.options.hostWindow.getContentBounds();
-    return { x: 0, y: 0, width: bounds.width, height: bounds.height };
+    return { x: 0, y: 0, width: 0, height: 0 };
   }
 
   private notifyStateChanged(): void {

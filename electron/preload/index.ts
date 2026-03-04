@@ -14,8 +14,9 @@ const api: BrowserDesktopApi = {
   openDevTools: payload => ipcRenderer.invoke(BrowserIpcChannels.openDevTools, payload),
   setViewportBounds: payload =>
     ipcRenderer.invoke(BrowserIpcChannels.setViewportBounds, payload),
-  setViewportLayout: payload =>
-    ipcRenderer.invoke(BrowserIpcChannels.setViewportLayout, payload),
+  setOverlayState: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.overlaySetState, payload),
+  clearOverlay: () => ipcRenderer.invoke(BrowserIpcChannels.overlayClear),
   onStateChanged: listener => {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: Parameters<typeof listener>[0]) => {
       listener(snapshot);
@@ -25,11 +26,19 @@ const api: BrowserDesktopApi = {
       ipcRenderer.removeListener(BrowserIpcChannels.stateChanged, handler);
     };
   },
+  onOverlayEvent: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: Parameters<typeof listener>[0]) => {
+      listener(payload);
+    };
+    ipcRenderer.on(BrowserIpcChannels.overlayEvent, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.overlayEvent, handler);
+    };
+  },
   minimizeWindow: () => ipcRenderer.invoke(BrowserIpcChannels.windowMinimize),
   toggleMaximizeWindow: () => ipcRenderer.invoke(BrowserIpcChannels.windowToggleMaximize),
   closeWindow: () => ipcRenderer.invoke(BrowserIpcChannels.windowClose),
   getWindowState: () => ipcRenderer.invoke(BrowserIpcChannels.windowGetState),
-  getRuntimeMode: () => ipcRenderer.invoke(BrowserIpcChannels.windowGetRuntimeMode),
   onWindowStateChanged: listener => {
     const handler = (_event: Electron.IpcRendererEvent, state: Parameters<typeof listener>[0]) => {
       listener(state);
@@ -37,15 +46,6 @@ const api: BrowserDesktopApi = {
     ipcRenderer.on(BrowserIpcChannels.windowStateChanged, handler);
     return () => {
       ipcRenderer.removeListener(BrowserIpcChannels.windowStateChanged, handler);
-    };
-  },
-  onRuntimeModeChanged: listener => {
-    const handler = (_event: Electron.IpcRendererEvent, mode: Parameters<typeof listener>[0]) => {
-      listener(mode);
-    };
-    ipcRenderer.on(BrowserIpcChannels.windowRuntimeModeChanged, handler);
-    return () => {
-      ipcRenderer.removeListener(BrowserIpcChannels.windowRuntimeModeChanged, handler);
     };
   },
   getDownloads: () => ipcRenderer.invoke(BrowserIpcChannels.downloadsGetState),

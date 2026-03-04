@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useViewportOcclusion } from '@/hooks/useViewportOcclusion';
 import { TopChromeBar } from './TopChromeBar';
 import { NavigationBar } from './NavigationBar';
 import { DevToolsSidebar } from './DevToolsSidebar';
@@ -30,6 +29,7 @@ export function BrowserShell() {
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
+  const [sidebarPanelWidth, setSidebarPanelWidth] = useState(280);
 
   useEffect(() => {
     initializeSettings();
@@ -78,11 +78,39 @@ export function BrowserShell() {
 
   useKeyboardShortcuts(shortcuts);
 
-  useViewportOcclusion({
-    enabled: browser.isDesktopMode,
-    viewportRef,
-    onLayoutChange: browser.setViewportLayout,
-  });
+  useEffect(() => {
+    if (!browser.isDesktopMode) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateBounds = () => {
+      const rect = viewport.getBoundingClientRect();
+      const leftInset = browser.sidebarOpen ? sidebarPanelWidth : 0;
+      browser.setViewportBounds({
+        x: Math.round(rect.left + leftInset),
+        y: Math.round(rect.top),
+        width: Math.max(0, Math.round(rect.width - leftInset)),
+        height: Math.max(0, Math.round(rect.height)),
+      });
+    };
+
+    updateBounds();
+    const observer = new ResizeObserver(updateBounds);
+    observer.observe(viewport);
+    window.addEventListener('resize', updateBounds);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateBounds);
+    };
+  }, [
+    browser.isDesktopMode,
+    browser.isExternalActiveTab,
+    browser.activeTabId,
+    browser.sidebarOpen,
+    browser.setViewportBounds,
+    sidebarPanelWidth,
+  ]);
 
   const handleSidebarToggle = (panel?: string) => {
     if (panel === 'devtools-panel') {
@@ -171,6 +199,7 @@ export function BrowserShell() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
       <TopChromeBar
+        isExternalOverlayMode={browser.isDesktopMode && browser.isExternalActiveTab}
         tabs={browser.tabs}
         activeTabId={browser.activeTabId}
         onSelectTab={browser.setActiveTabId}
@@ -186,6 +215,8 @@ export function BrowserShell() {
         onClearClosedTabs={browser.clearClosedTabs}
       />
       <NavigationBar
+        isExternalOverlayMode={browser.isDesktopMode && browser.isExternalActiveTab}
+        activeTabId={browser.activeTabId}
         url={browser.activeTab?.url || ''}
         onNavigate={browser.navigateTo}
         onHome={() => browser.navigateTo('notilus://speed-dial')}
@@ -233,6 +264,7 @@ export function BrowserShell() {
               panel={browser.sidebarPanel}
               stats={stats}
               webService={activeWebService}
+              onWidthChange={setSidebarPanelWidth}
               onOpenWebServiceInTab={handleOpenWebServiceInTab}
               onClosePanel={handleCloseSidebarPanel}
               onNavigate={browser.navigateTo}

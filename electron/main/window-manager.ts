@@ -2,12 +2,8 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { BrowserWindow, shell } from 'electron';
 
-interface CreateChromeWindowOptions {
+interface CreateMainWindowOptions {
   preloadPath: string;
-}
-
-interface CreateContentWindowOptions {
-  parentWindow: BrowserWindow;
 }
 
 function resolveWindowIconPath(): string | undefined {
@@ -15,16 +11,8 @@ function resolveWindowIconPath(): string | undefined {
   return existsSync(iconPath) ? iconPath : undefined;
 }
 
-function loadRenderer(window: BrowserWindow): void {
-  if (process.env.ELECTRON_RENDERER_URL) {
-    void window.loadURL(process.env.ELECTRON_RENDERER_URL);
-  } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'));
-  }
-}
-
-export function createChromeWindow({ preloadPath }: CreateChromeWindowOptions): BrowserWindow {
-  const chromeWindow = new BrowserWindow({
+export function createMainWindow({ preloadPath }: CreateMainWindowOptions): BrowserWindow {
+  const mainWindow = new BrowserWindow({
     width: 1600,
     height: 980,
     minWidth: 1100,
@@ -44,50 +32,20 @@ export function createChromeWindow({ preloadPath }: CreateChromeWindowOptions): 
     },
   });
 
-  chromeWindow.on('ready-to-show', () => {
-    chromeWindow.show();
+  mainWindow.on('ready-to-show', () => {
+    mainWindow.show();
   });
 
-  chromeWindow.webContents.setWindowOpenHandler(({ url }) => {
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  loadRenderer(chromeWindow);
-  return chromeWindow;
-}
+  if (process.env.ELECTRON_RENDERER_URL) {
+    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+  } else {
+    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+  }
 
-export function createContentWindow({
-  parentWindow,
-}: CreateContentWindowOptions): BrowserWindow {
-  const contentWindow = new BrowserWindow({
-    width: 1200,
-    height: 700,
-    show: false,
-    frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
-    skipTaskbar: true,
-    autoHideMenuBar: true,
-    hasShadow: false,
-    minimizable: false,
-    maximizable: false,
-    fullscreenable: false,
-    focusable: true,
-    parent: parentWindow,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      webSecurity: true,
-    },
-  });
-
-  contentWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
-  void contentWindow.loadURL('about:blank');
-  return contentWindow;
+  return mainWindow;
 }

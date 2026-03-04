@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Loader2, Minus, Pin, Plus, Search, Square, X, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BrowserTab, RecentlyClosedTab } from '@/hooks/useBrowserState';
+import { useExternalOverlayBridge } from '@/hooks/useExternalOverlayBridge';
 import { computeTabWidth, getTabDisplayMode, getTabIconSize } from '@/lib/tabLayout';
 import { extractDisplayDomain, extractDomainGroup } from '@/lib/urlDisplay';
 import {
@@ -13,6 +14,7 @@ import {
   onDesktopWindowStateChanged,
 } from '@/lib/electronBridge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import type { ExternalOverlayDialogRow } from '../../../shared/overlay-contract';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TopChromeBarProps {
+  isExternalOverlayMode?: boolean;
   tabs: BrowserTab[];
   activeTabId: string;
   onSelectTab: (id: string) => void;
@@ -72,7 +75,14 @@ function TabIcon({ tab, size }: { tab: BrowserTab; size: number }) {
   );
 }
 
+function getViewportRectForOverlay(): DOMRect {
+  const viewport = document.querySelector<HTMLElement>('[data-testid="electron-viewport"]');
+  if (!viewport) return new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+  return viewport.getBoundingClientRect();
+}
+
 export function TopChromeBar({
+  isExternalOverlayMode = false,
   tabs,
   activeTabId,
   onSelectTab,
@@ -92,6 +102,9 @@ export function TopChromeBar({
   const [searchQuery, setSearchQuery] = useState('');
   const tabsAreaRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const activeExternalOverlayMode = desktopMode && isExternalOverlayMode;
+  const searchOverlayId = 'top-search-dialog';
+  const contextOverlayId = 'top-tab-context';
 
   useEffect(() => {
     if (!desktopMode) return;
@@ -134,13 +147,14 @@ export function TopChromeBar({
 
   useEffect(() => {
     if (!searchOpen) return;
+    if (activeExternalOverlayMode) return;
     const timeoutId = window.setTimeout(() => {
       searchInputRef.current?.focus();
     }, 30);
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [searchOpen]);
+  }, [searchOpen, activeExternalOverlayMode]);
 
   const noDragStyle = { WebkitAppRegion: 'no-drag' } as React.CSSProperties;
   const pinnedTabs = useMemo(() => tabs.filter(tab => tab.isPinned), [tabs]);
@@ -185,13 +199,141 @@ export function TopChromeBar({
       }),
     [recentlyClosedTabs, query]
   );
+  const contextTab = contextMenu ? tabs.find(tab => tab.id === contextMenu.tabId) : null;
+
+  const searchRows = useMemo<ExternalOverlayDialogRow[]>(
+    () => [
+      ...filteredOpenTabs.map(tab => ({
+        id: tab.id,
+        section: 'open' as const,
+        title: tab.title,
+        domain: extractDisplayDomain(tab.url),
+      })),
+      ...filteredRecentlyClosed.map(tab => ({
+        id: tab.id,
+        section: 'recent' as const,
+        title: tab.title,
+        domain: extractDisplayDomain(tab.url),
+      })),
+    ],
+    [filteredOpenTabs, filteredRecentlyClosed]
+  );
+
+  const overlayBridge = useExternalOverlayBridge({
+    enabled: activeExternalOverlayMode,
+    tabId: activeTabId || null,
+    onEvent: event => {
+      if (event.overlayId === searchOverlayId) {
+        if (event.action === 'query-change') {
+          setSearchQuery(event.value ?? '');
+          return;
+        }
+        if (event.action === 'select-open' && event.value) {
+          onSelectTab(event.value);
+          setSearchOpen(false);
+          setSearchQuery('');
+          return;
+        }
+        if (event.action === 'select-recent' && event.value) {
+          onReopenClosedTab(event.value);
+          setSearchOpen(false);
+          setSearchQuery('');
+          return;
+        }
+        if (event.action === 'clear-recent') {
+          onClearClosedTabs();
+          return;
+        }
+        if (event.action === 'close') {
+          setSearchOpen(false);
+          return;
+        }
+      }
+
+      if (event.overlayId === contextOverlayId && contextMenu) {
+        if (event.action === 'duplicate') {
+          onDuplicateTab?.(contextMenu.tabId);
+        } else if (event.action === 'toggle-pin') {
+          onTogglePinTab(contextMenu.tabId);
+        } else if (event.action === 'close-others') {
+          tabs.filter(tab => tab.id !== contextMenu.tabId).forEach(tab => onCloseTab(tab.id));
+        } else if (event.action === 'close-tab') {
+          onCloseTab(contextMenu.tabId);
+        }
+        setContextMenu(null);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (!activeExternalOverlayMode || !searchOpen) return;
+    const viewport = getViewportRectForOverlay();
+    const width = Math.min(560, Math.max(320, Math.floor(viewport.width - 24)));
+    const frame = {
+      x: Math.max(12, Math.floor((viewport.width - width) / 2)),
+      y: Math.max(12, Math.floor(viewport.height * 0.08)),
+      width,
+      height: Math.max(280, Math.floor(viewport.height * 0.8)),
+    };
+    overlayBridge.setState({
+      blocking: true,
+      overlays: [
+        {
+          id: searchOverlayId,
+          kind: 'dialog',
+          source: 'top-chrome',
+          title: 'Search Tabs',
+          query: searchQuery,
+          placeholder: 'Search by title or domain...',
+          rows: searchRows,
+          frame,
+        },
+      ],
+    });
+  }, [activeExternalOverlayMode, searchOpen, searchQuery, searchRows, overlayBridge]);
+
+  useEffect(() => {
+    if (!activeExternalOverlayMode || !contextMenu) return;
+    const viewport = getViewportRectForOverlay();
+    const anchor = {
+      x: Math.max(8, Math.floor(contextMenu.x - viewport.left)),
+      y: Math.max(8, Math.floor(contextMenu.y - viewport.top)),
+      width: 1,
+      height: 1,
+    };
+    overlayBridge.setState({
+      blocking: true,
+      overlays: [
+        {
+          id: contextOverlayId,
+          kind: 'menu',
+          source: 'context',
+          anchor,
+          width: 190,
+          items: [
+            { id: 'duplicate', label: 'Duplicate Tab' },
+            { id: 'toggle-pin', label: contextTab?.isPinned ? 'Unpin Tab' : 'Pin Tab' },
+            { id: 'close-others', label: 'Close Other Tabs' },
+            { id: 'close-tab', label: 'Close Tab', tone: 'danger' },
+          ],
+        },
+      ],
+    });
+  }, [activeExternalOverlayMode, contextMenu, contextTab?.isPinned, overlayBridge]);
+
+  useEffect(() => {
+    if (!activeExternalOverlayMode) {
+      overlayBridge.clear();
+      return;
+    }
+    if (searchOpen || contextMenu) return;
+    overlayBridge.clear();
+  }, [activeExternalOverlayMode, searchOpen, contextMenu, overlayBridge]);
 
   const handleContext = (event: React.MouseEvent, tabId: string) => {
     event.preventDefault();
     setContextMenu({ tabId, x: event.clientX, y: event.clientY });
   };
-
-  const contextTab = contextMenu ? tabs.find(tab => tab.id === contextMenu.tabId) : null;
 
   const WindowButton = ({
     label,
@@ -420,104 +562,106 @@ export function TopChromeBar({
         </div>
       </div>
 
-      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent data-testid="tab-search-dialog" className="sm:max-w-xl glass border-border">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-display tracking-wider uppercase">
-              Search Tabs
-            </DialogTitle>
-            <DialogDescription>
-              Find open tabs and reopen recently closed tabs.
-            </DialogDescription>
-          </DialogHeader>
+      {!activeExternalOverlayMode && (
+        <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+          <DialogContent data-testid="tab-search-dialog" className="sm:max-w-xl glass border-border">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-display tracking-wider uppercase">
+                Search Tabs
+              </DialogTitle>
+              <DialogDescription>
+                Find open tabs and reopen recently closed tabs.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-3">
-            <input
-              ref={searchInputRef}
-              value={searchQuery}
-              onChange={event => setSearchQuery(event.target.value)}
-              placeholder="Search by title or domain..."
-              className="w-full h-9 rounded-md bg-notilus-surface-1 border border-border px-3 text-sm font-body text-foreground outline-none focus:border-primary/50"
-            />
+            <div className="space-y-3">
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={event => setSearchQuery(event.target.value)}
+                placeholder="Search by title or domain..."
+                className="w-full h-9 rounded-md bg-notilus-surface-1 border border-border px-3 text-sm font-body text-foreground outline-none focus:border-primary/50"
+              />
 
-            <div>
-              <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">
-                Open tabs
-              </div>
-              <div className="max-h-48 overflow-y-auto scrollbar-thin rounded-md border border-border/60">
-                {filteredOpenTabs.length > 0 ? (
-                  filteredOpenTabs.map(tab => (
-                    <button
-                      key={tab.id}
-                      data-testid={`search-open-tab-${tab.id}`}
-                      className="w-full px-2 py-1.5 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast border-b border-border/40 last:border-b-0"
-                      onClick={() => {
-                        onSelectTab(tab.id);
-                        setSearchOpen(false);
-                        setSearchQuery('');
-                      }}
-                    >
-                      <TabIcon tab={tab} size={12} />
-                      <div className="min-w-0">
-                        <div className="text-xs font-body text-foreground truncate">{tab.title}</div>
-                        <div className="text-[10px] font-body text-muted-foreground truncate">
-                          {extractDisplayDomain(tab.url)}
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-2 py-2 text-xs font-body text-muted-foreground">No open tabs found.</div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest">
-                  Recently closed
+              <div>
+                <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">
+                  Open tabs
                 </div>
-                <button
-                  onClick={onClearClosedTabs}
-                  className="text-[10px] font-body text-primary hover:text-primary/80 transition-colors duration-fast"
-                >
-                  Clear recent
-                </button>
-              </div>
-              <div className="max-h-48 overflow-y-auto scrollbar-thin rounded-md border border-border/60">
-                {filteredRecentlyClosed.length > 0 ? (
-                  filteredRecentlyClosed.map(tab => (
-                    <button
-                      key={tab.id}
-                      data-testid={`search-recent-tab-${tab.id}`}
-                      className="w-full px-2 py-1.5 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast border-b border-border/40 last:border-b-0"
-                      onClick={() => {
-                        onReopenClosedTab(tab.id);
-                        setSearchOpen(false);
-                        setSearchQuery('');
-                      }}
-                    >
-                      <div className="w-3 h-3 rounded-sm bg-primary/30 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-xs font-body text-foreground truncate">{tab.title}</div>
-                        <div className="text-[10px] font-body text-muted-foreground truncate">
-                          {extractDisplayDomain(tab.url)}
+                <div className="max-h-48 overflow-y-auto scrollbar-thin rounded-md border border-border/60">
+                  {filteredOpenTabs.length > 0 ? (
+                    filteredOpenTabs.map(tab => (
+                      <button
+                        key={tab.id}
+                        data-testid={`search-open-tab-${tab.id}`}
+                        className="w-full px-2 py-1.5 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast border-b border-border/40 last:border-b-0"
+                        onClick={() => {
+                          onSelectTab(tab.id);
+                          setSearchOpen(false);
+                          setSearchQuery('');
+                        }}
+                      >
+                        <TabIcon tab={tab} size={12} />
+                        <div className="min-w-0">
+                          <div className="text-xs font-body text-foreground truncate">{tab.title}</div>
+                          <div className="text-[10px] font-body text-muted-foreground truncate">
+                            {extractDisplayDomain(tab.url)}
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-2 py-2 text-xs font-body text-muted-foreground">
-                    No recently closed tabs.
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-2 py-2 text-xs font-body text-muted-foreground">No open tabs found.</div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest">
+                    Recently closed
                   </div>
-                )}
+                  <button
+                    onClick={onClearClosedTabs}
+                    className="text-[10px] font-body text-primary hover:text-primary/80 transition-colors duration-fast"
+                  >
+                    Clear recent
+                  </button>
+                </div>
+                <div className="max-h-48 overflow-y-auto scrollbar-thin rounded-md border border-border/60">
+                  {filteredRecentlyClosed.length > 0 ? (
+                    filteredRecentlyClosed.map(tab => (
+                      <button
+                        key={tab.id}
+                        data-testid={`search-recent-tab-${tab.id}`}
+                        className="w-full px-2 py-1.5 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast border-b border-border/40 last:border-b-0"
+                        onClick={() => {
+                          onReopenClosedTab(tab.id);
+                          setSearchOpen(false);
+                          setSearchQuery('');
+                        }}
+                      >
+                        <div className="w-3 h-3 rounded-sm bg-primary/30 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-xs font-body text-foreground truncate">{tab.title}</div>
+                          <div className="text-[10px] font-body text-muted-foreground truncate">
+                            {extractDisplayDomain(tab.url)}
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-2 py-2 text-xs font-body text-muted-foreground">
+                      No recently closed tabs.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
-      {contextMenu && (
+      {!activeExternalOverlayMode && contextMenu && (
         <>
           <div
             data-occluding-overlay="true"

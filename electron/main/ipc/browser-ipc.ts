@@ -8,12 +8,13 @@ import type {
   ViewportBounds,
 } from '../../../shared/browser-contract';
 import { BrowserIpcChannels } from '../../../shared/browser-contract';
-import type { ViewportLayoutPayload } from '../../../shared/viewport-contract';
+import type { ExternalOverlayState } from '../../../shared/overlay-contract';
 import { TabManager } from '../tab-manager';
 
 interface RegisterBrowserIpcOptions {
   tabManager: TabManager;
-  onSetViewportLayout: (payload: ViewportLayoutPayload) => void;
+  onOverlaySetState: (payload: ExternalOverlayState) => void;
+  onOverlayClear: () => void;
   debug: boolean;
 }
 
@@ -28,12 +29,14 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.reload);
   ipcMain.removeHandler(BrowserIpcChannels.openDevTools);
   ipcMain.removeHandler(BrowserIpcChannels.setViewportBounds);
-  ipcMain.removeHandler(BrowserIpcChannels.setViewportLayout);
+  ipcMain.removeHandler(BrowserIpcChannels.overlaySetState);
+  ipcMain.removeHandler(BrowserIpcChannels.overlayClear);
 }
 
 export function registerBrowserIpc({
   tabManager,
-  onSetViewportLayout,
+  onOverlaySetState,
+  onOverlayClear,
   debug,
 }: RegisterBrowserIpcOptions) {
   const log = (channel: string, payload?: unknown) => {
@@ -93,21 +96,26 @@ export function registerBrowserIpc({
     BrowserIpcChannels.setViewportBounds,
     (_event, payload: ViewportBounds) => {
       log(BrowserIpcChannels.setViewportBounds, payload);
-      onSetViewportLayout({
-        viewport: payload,
-        insets: { top: 0, right: 0, bottom: 0, left: 0 },
-        mode: 'normal',
-        source: 'chrome',
-      });
+      tabManager.setViewportBounds(payload);
     }
   );
 
   ipcMain.handle(
-    BrowserIpcChannels.setViewportLayout,
-    (_event, payload: ViewportLayoutPayload) => {
-      log(BrowserIpcChannels.setViewportLayout, payload);
-      onSetViewportLayout(payload);
+    BrowserIpcChannels.overlaySetState,
+    (_event, payload: ExternalOverlayState) => {
+      log(BrowserIpcChannels.overlaySetState, payload);
+      onOverlaySetState(payload);
     }
   );
+
+  ipcMain.handle(BrowserIpcChannels.overlayClear, () => {
+    log(BrowserIpcChannels.overlayClear);
+    onOverlayClear();
+  });
+
+  ipcMain.on(BrowserIpcChannels.overlayEvent, (_event, payload) => {
+    if (!debug) return;
+    log(BrowserIpcChannels.overlayEvent, payload);
+  });
 }
 
