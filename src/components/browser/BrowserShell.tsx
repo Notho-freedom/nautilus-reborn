@@ -33,6 +33,7 @@ export function BrowserShell() {
   const [topOverlayBlocking, setTopOverlayBlocking] = useState(false);
   const [navigationOverlayBlocking, setNavigationOverlayBlocking] = useState(false);
   const isBlockingOverlayOpen = topOverlayBlocking || navigationOverlayBlocking;
+  const useNativeTitleMode = browser.isDesktopMode && browser.isExternalActiveTab;
 
   useEffect(() => {
     initializeSettings();
@@ -221,6 +222,7 @@ export function BrowserShell() {
         onReopenClosedTab={browser.reopenClosedTab}
         onClearClosedTabs={browser.clearClosedTabs}
         onOverlayBlockingChange={setTopOverlayBlocking}
+        useNativeTitleMode={useNativeTitleMode}
       />
       <NavigationBar
         url={browser.activeTab?.url || ''}
@@ -250,8 +252,10 @@ export function BrowserShell() {
         onToggleAdBlock={handleToggleAdBlock}
         onOpenDownloads={() => browser.toggleSidebar('downloads')}
         onOpenExtensions={() => browser.toggleSidebar('extensions')}
+        onOpenSettings={() => browser.toggleSidebar('settings')}
         onToggleAI={browser.toggleAiPanel}
         onOverlayBlockingChange={setNavigationOverlayBlocking}
+        useNativeTitleMode={useNativeTitleMode}
       />
 
       <div className="flex flex-1 overflow-hidden relative">

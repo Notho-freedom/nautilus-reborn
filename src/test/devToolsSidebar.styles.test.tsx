@@ -4,7 +4,7 @@ import { DevToolsSidebar } from '@/components/browser/DevToolsSidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 describe('DevToolsSidebar styles', () => {
-  it('uses expected active/inactive icon color classes', () => {
+  it('uses expected active/inactive icon color classes and hides scrollbar', () => {
     const { container } = render(
       <TooltipProvider>
         <DevToolsSidebar
@@ -16,6 +16,10 @@ describe('DevToolsSidebar styles', () => {
         />
       </TooltipProvider>
     );
+
+    const sidebarColumn = container.querySelector('.w-11');
+    expect(sidebarColumn).not.toBeNull();
+    expect(sidebarColumn?.className).toContain('no-scrollbar');
 
     const buttons = container.querySelectorAll('button');
     const activeButton = buttons[0];

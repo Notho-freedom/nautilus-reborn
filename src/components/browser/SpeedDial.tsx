@@ -47,6 +47,7 @@ function formatRecentTime(visitedAt: string): string {
 export function SpeedDial({ onNavigate }: SpeedDialProps) {
   const [time, setTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [searchEngine, setSearchEngine] = useState(() => getSettings().searchEngine);
   const [favorites, setFavorites] = useState(DEFAULT_FAVORITES);
@@ -127,16 +128,17 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-start p-8 overflow-y-auto scrollbar-thin relative">
+    <div className="flex-1 flex flex-col items-center justify-start p-8 overflow-y-auto no-scrollbar relative">
       {/* Subtle gradient overlay */}
       <div className="absolute inset-0 gradient-overlay pointer-events-none" />
 
       {/* Logo */}
       <div className="mb-6 mt-8 flex flex-col items-center animate-fade-in-up relative z-10">
-        <div className="w-24 h-24 rounded-2xl notilus-gradient-full flex items-center justify-center mb-4 animate-glow-breathe shadow-lg">
-          <span className="text-4xl font-display font-bold text-primary-foreground">N</span>
-        </div>
-        <h1 className="text-2xl font-display font-bold text-foreground glow-text tracking-wider">NOTILUS</h1>
+        <img
+          src="/notilus-logo.png"
+          alt="Notilus"
+          className="w-24 h-24 object-contain mb-4 animate-glow-breathe drop-shadow-[0_0_16px_hsl(var(--primary)/0.35)]"
+        />
         <p className="text-sm font-body text-muted-foreground mt-1">{greeting()}, Developer</p>
       </div>
 
@@ -152,13 +154,21 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
 
       {/* Search */}
       <form onSubmit={handleSearch} className="w-full max-w-lg mb-10 relative z-10 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-        <div className="flex items-center h-12 rounded-xl glass-strong px-4 gap-3 focus-within:ring-2 focus-within:ring-primary/30 focus-within:glow-primary transition-all">
+        <div
+          className={`flex items-center h-12 rounded-xl border px-4 gap-3 transition-colors duration-fast ${
+            searchFocused
+              ? 'bg-notilus-surface-1 border-primary/50'
+              : 'bg-transparent border-transparent hover:bg-primary/10'
+          }`}
+        >
           <Search size={18} className="text-muted-foreground" />
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             placeholder={searchPlaceholder}
-            className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none"
+            className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none selection:bg-primary selection:text-primary-foreground"
           />
         </div>
       </form>

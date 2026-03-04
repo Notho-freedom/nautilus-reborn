@@ -44,13 +44,13 @@ describe('NavigationBar actions', () => {
     const onSnapshotFullPage = vi.fn().mockResolvedValue(undefined);
     renderNavigationBar({ onSnapshotVisible, onSnapshotFullPage });
 
-    fireEvent.click(screen.getByTitle('Snapshot'));
+    fireEvent.click(screen.getByRole('button', { name: 'Snapshot' }));
     fireEvent.click(screen.getByText('Capture visible area'));
     await waitFor(() => {
       expect(onSnapshotVisible).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByTitle('Snapshot'));
+    fireEvent.click(screen.getByRole('button', { name: 'Snapshot' }));
     fireEvent.click(screen.getByText('Capture full page'));
     await waitFor(() => {
       expect(onSnapshotFullPage).toHaveBeenCalledTimes(1);
@@ -59,7 +59,7 @@ describe('NavigationBar actions', () => {
 
   it('renders translation button disabled', () => {
     renderNavigationBar();
-    expect(screen.getByTitle('Translate (coming soon)')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Translate (coming soon)' })).toBeDisabled();
   });
 
   it('applies focus border on URL container without glow/ring classes', () => {
@@ -79,7 +79,7 @@ describe('NavigationBar actions', () => {
 
   it('wires action button as tooltip trigger', () => {
     renderNavigationBar();
-    expect(screen.getByTitle('Back')).toHaveAttribute('data-state', 'closed');
+    expect(screen.getByRole('button', { name: 'Back' })).toHaveAttribute('data-state', 'closed');
   });
 
   it('renders vertical separator before right-side action group', () => {
@@ -89,9 +89,9 @@ describe('NavigationBar actions', () => {
 
   it('keeps URL action icons neutral (no primary tint)', () => {
     renderNavigationBar();
-    expect(screen.getByTitle('Add favorite').className).not.toContain('text-primary');
-    expect(screen.getByTitle('Pin tab').className).not.toContain('text-primary');
-    expect(screen.getByTitle('Snapshot').className).not.toContain('text-primary');
+    expect(screen.getByRole('button', { name: 'Add favorite' }).className).not.toContain('text-primary');
+    expect(screen.getByRole('button', { name: 'Pin tab' }).className).not.toContain('text-primary');
+    expect(screen.getByRole('button', { name: 'Snapshot' }).className).not.toContain('text-primary');
   });
 
   it('selects full URL text on focus', async () => {
@@ -103,5 +103,35 @@ describe('NavigationBar actions', () => {
       expect(input.selectionEnd).toBe(input.value.length);
     });
     expect(input.className).toContain('selection:bg-primary');
+  });
+
+  it('renders settings button after profile', () => {
+    renderNavigationBar();
+    const allButtons = screen.getAllByRole('button');
+    const profileIdx = allButtons.findIndex(button => button.getAttribute('aria-label') === 'Profile');
+    const settingsIdx = allButtons.findIndex(button => button.getAttribute('aria-label') === 'Settings');
+
+    expect(profileIdx).toBeGreaterThan(-1);
+    expect(settingsIdx).toBe(profileIdx + 1);
+  });
+
+  it('uses native title mode for external tabs and skips tooltip wrapper', () => {
+    renderNavigationBar({ useNativeTitleMode: true });
+    const back = screen.getByRole('button', { name: 'Back' });
+    const snapshot = screen.getByRole('button', { name: 'Snapshot' });
+
+    expect(back).toHaveAttribute('title', 'Back');
+    expect(snapshot).toHaveAttribute('title', 'Snapshot');
+    expect(back).not.toHaveAttribute('data-state');
+  });
+
+  it('uses tooltip mode for internal tabs and removes native title attributes', () => {
+    renderNavigationBar({ useNativeTitleMode: false });
+    const back = screen.getByRole('button', { name: 'Back' });
+    const snapshot = screen.getByRole('button', { name: 'Snapshot' });
+
+    expect(back).not.toHaveAttribute('title');
+    expect(snapshot).not.toHaveAttribute('title');
+    expect(back).toHaveAttribute('data-state', 'closed');
   });
 });
