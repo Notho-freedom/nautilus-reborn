@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Terminal } from 'lucide-react';
+import { SidebarPanelShell } from './SidebarPanelShell';
 
 const INITIAL_LINES = [
   { type: 'system', text: '╔══════════════════════════════════╗' },
@@ -20,13 +22,17 @@ const COMMANDS: Record<string, string> = {
   ║   N O T I L U S  ║    Host: Web Browser
   ║   ░░░░░░░░░░░░   ║    Kernel: React 18.3
   ║   ░░██░░░░██░░   ║    Shell: Notilus Terminal
-  ║   ░░░░░░░░░░░░   ║    Resolution: ${window.innerWidth}x${window.innerHeight}
+  ║   ░░░░░░░░░░░░   ║    Resolution: ${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'N/A'}
   ║   ░░░████░░░░░   ║    Theme: Rouge Notilus
   ║   ░░░░░░░░░░░░   ║    Engine: Vite + TypeScript
   ╚══════════════════╝    Font: Orbitron + Rajdhani`,
 };
 
-export function TerminalPanel() {
+interface TerminalPanelProps {
+  onClose?: () => void;
+}
+
+export function TerminalPanel({ onClose }: TerminalPanelProps = {}) {
   const [lines, setLines] = useState(INITIAL_LINES);
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
@@ -68,11 +74,15 @@ export function TerminalPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full p-2">
-      <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest px-1 pb-2">
-        Terminal
-      </h3>
-      <div className="flex-1 bg-background/50 rounded-lg border border-border p-2 overflow-y-auto scrollbar-thin font-mono text-xs space-y-0.5">
+    <SidebarPanelShell
+      title="Terminal"
+      icon={Terminal}
+      onClose={onClose ?? (() => {})}
+      menuItems={[
+        { label: 'Clear terminal', onClick: () => setLines([{ type: 'system', text: 'Terminal cleared.' }, { type: 'prompt', text: '' }]) },
+      ]}
+    >
+      <div className="flex-1 bg-background/50 rounded-lg border border-border p-2 m-2 overflow-y-auto scrollbar-thin font-mono text-xs space-y-0.5">
         {lines.map((line, i) => {
           if (line.type === 'prompt') return null;
           return (
@@ -97,6 +107,6 @@ export function TerminalPanel() {
           />
         </form>
       </div>
-    </div>
+    </SidebarPanelShell>
   );
 }

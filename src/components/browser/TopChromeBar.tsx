@@ -142,7 +142,7 @@ export function TopChromeBar({
     };
   }, [searchOpen]);
 
-  const noDragStyle = { WebkitAppRegion: 'no-drag' as const };
+  const noDragStyle = { WebkitAppRegion: 'no-drag' } as React.CSSProperties;
   const pinnedTabs = useMemo(() => tabs.filter(tab => tab.isPinned), [tabs]);
   const regularTabs = useMemo(() => tabs.filter(tab => !tab.isPinned), [tabs]);
   const tabWidth = useMemo(
@@ -228,7 +228,7 @@ export function TopChromeBar({
     <>
       <div
         className="flex items-center h-9 bg-background border-b border-border px-2 gap-2 select-none shrink-0"
-        style={{ WebkitAppRegion: 'drag' }}
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         onDoubleClick={event => {
           if (!desktopMode) return;
           if (event.target !== event.currentTarget) return;
@@ -307,7 +307,7 @@ export function TopChromeBar({
                       )}
 
                       <TabIcon tab={tab} size={iconSize} />
-                      <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
+                      <span className="truncate flex-1 min-w-0 text-left pr-4">{tab.title}</span>
 
                       {showClose && (
                         <span
@@ -315,10 +315,7 @@ export function TopChromeBar({
                             event.stopPropagation();
                             onCloseTab(tab.id);
                           }}
-                          className={cn(
-                            'hover:bg-muted rounded-sm p-0.5 transition-opacity duration-fast shrink-0',
-                            closeOnHoverOnly ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
-                          )}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-muted rounded-sm p-0.5 transition-opacity duration-fast opacity-0 group-hover:opacity-100 bg-card/80"
                         >
                           <X size={10} />
                         </span>
@@ -338,25 +335,24 @@ export function TopChromeBar({
                       </div>
                     </div>
                     <div className="my-2 h-px notilus-gradient-full opacity-50" />
-                    <div className="space-y-0.5">
-                      {sameDomainTabs.length > 0 ? (
-                        sameDomainTabs.map(other => (
-                          <button
-                            key={other.id}
-                            data-testid={`hover-tab-item-${tab.id}-${other.id}`}
-                            onClick={() => onSelectTab(other.id)}
-                            className="w-full h-8 px-1.5 rounded-md flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast"
-                          >
-                            <TabIcon tab={other} size={12} />
-                            <span className="truncate text-xs font-body text-foreground">{other.title}</span>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-1.5 py-1 text-xs font-body text-muted-foreground">
-                          No tabs from this domain
+                    {sameDomainTabs.length > 0 && (
+                      <>
+                        <div className="my-2 h-px notilus-gradient-full opacity-50" />
+                        <div className="space-y-0.5">
+                          {sameDomainTabs.map(other => (
+                            <button
+                              key={other.id}
+                              data-testid={`hover-tab-item-${tab.id}-${other.id}`}
+                              onClick={() => onSelectTab(other.id)}
+                              className="w-full h-8 px-1.5 rounded-md flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast"
+                            >
+                              <TabIcon tab={other} size={12} />
+                              <span className="truncate text-xs font-body text-foreground">{other.title}</span>
+                            </button>
+                          ))}
                         </div>
-                      )}
-                    </div>
+                      </>
+                    )}
                   </HoverCardContent>
                 </HoverCard>
               );

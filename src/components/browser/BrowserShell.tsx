@@ -235,7 +235,7 @@ export function BrowserShell() {
         onToggleAI={browser.toggleAiPanel}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         <DevToolsSidebar
           isOpen={browser.sidebarOpen}
           activePanel={browser.sidebarPanel}
@@ -244,14 +244,16 @@ export function BrowserShell() {
           activeWebServiceUrl={activeWebService?.url ?? null}
         />
         {browser.sidebarOpen && (
-          <SidebarPanel
-            panel={browser.sidebarPanel}
-            stats={stats}
-            webService={activeWebService}
-            onOpenWebServiceInTab={handleOpenWebServiceInTab}
-            onClosePanel={handleCloseSidebarPanel}
-            onNavigate={browser.navigateTo}
-          />
+          <div className="absolute left-11 top-0 bottom-0 z-40">
+            <SidebarPanel
+              panel={browser.sidebarPanel}
+              stats={stats}
+              webService={activeWebService}
+              onOpenWebServiceInTab={handleOpenWebServiceInTab}
+              onClosePanel={handleCloseSidebarPanel}
+              onNavigate={browser.navigateTo}
+            />
+          </div>
         )}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 flex overflow-hidden">
