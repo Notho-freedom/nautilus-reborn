@@ -11,6 +11,7 @@ import {
   desktopNavigate,
   desktopOpenDevTools,
   desktopReload,
+  desktopSetPinnedTabs,
   desktopSetViewportBounds,
   isDesktopRuntime,
   onDesktopStateChanged,
@@ -275,6 +276,11 @@ export function useBrowserState() {
   }, [pinnedTabIds]);
 
   useEffect(() => {
+    if (!desktopMode) return;
+    void desktopSetPinnedTabs({ tabIds: pinnedTabIds });
+  }, [desktopMode, pinnedTabIds]);
+
+  useEffect(() => {
     writeRecentlyClosedTabs(recentlyClosedTabs);
   }, [recentlyClosedTabs]);
 
@@ -352,15 +358,27 @@ export function useBrowserState() {
         setLocalActiveTabId(fallback.id);
         return [fallback];
       }
+      const nonPinnedTabs = next.filter(tab => !pinnedTabIds.includes(tab.id));
+      if (nonPinnedTabs.length === 0) {
+        const fallback: BrowserTab = {
+          id: `tab-${Date.now()}`,
+          title: 'Speed Dial',
+          url: 'notilus://speed-dial',
+          kind: 'internal',
+        };
+        setLocalActiveTabId(fallback.id);
+        return [...next, fallback];
+      }
       if (id === localActiveTabId) {
         const idx = prev.findIndex(t => t.id === id);
-        const newActive = next[Math.min(idx, next.length - 1)];
+        const fallbackIndex = Math.max(0, Math.min(idx, nonPinnedTabs.length - 1));
+        const newActive = nonPinnedTabs[fallbackIndex] ?? nonPinnedTabs[0];
         setLocalActiveTabId(newActive.id);
       }
       return next;
     });
     setPinnedTabIds(prev => prev.filter(tabId => tabId !== id));
-  }, [desktopMode, localActiveTabId, tabs]);
+  }, [desktopMode, localActiveTabId, pinnedTabIds, tabs]);
 
   const updateTabUrl = useCallback((id: string, url: string, title?: string) => {
     const normalizedUrl = normalizeUrl(url);

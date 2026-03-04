@@ -1,5 +1,3 @@
-import type { ExternalOverlayEvent, ExternalOverlayState } from './overlay-contract';
-
 export type TabKind = 'internal' | 'external';
 
 export interface TabDescriptor {
@@ -72,6 +70,10 @@ export interface NavigateRequest {
 
 export interface TabActionRequest {
   tabId?: string;
+}
+
+export interface SetPinnedTabsRequest {
+  tabIds: string[];
 }
 
 export interface DownloadActionRequest {
@@ -158,10 +160,8 @@ export interface BrowserDesktopApi {
   reload: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   openDevTools: (payload: TabActionRequest) => Promise<void>;
   setViewportBounds: (payload: ViewportBounds) => Promise<void>;
-  setOverlayState: (payload: ExternalOverlayState) => Promise<void>;
-  clearOverlay: () => Promise<void>;
+  setPinnedTabs: (payload: SetPinnedTabsRequest) => Promise<void>;
   onStateChanged: (listener: (snapshot: BrowserSnapshot) => void) => () => void;
-  onOverlayEvent: (listener: (event: ExternalOverlayEvent) => void) => () => void;
   minimizeWindow: () => Promise<void>;
   toggleMaximizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
@@ -205,10 +205,7 @@ export const BrowserIpcChannels = {
   reload: 'browser:reload',
   openDevTools: 'browser:open-devtools',
   setViewportBounds: 'browser:set-viewport-bounds',
-  overlaySetState: 'overlay:set-state',
-  overlayClear: 'overlay:clear',
-  overlayRender: 'overlay:render',
-  overlayEvent: 'overlay:event',
+  setPinnedTabs: 'browser:set-pinned-tabs',
   stateChanged: 'browser:state-changed',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',

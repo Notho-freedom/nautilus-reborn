@@ -10,7 +10,6 @@ import { registerWindowIpc } from './ipc/window-ipc';
 import { DownloadManager } from './download-manager';
 import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
-import { OverlayRouter } from './overlay-router';
 import { StudioManager } from './studio-manager';
 import { TabManager } from './tab-manager';
 import { createMainWindow } from './window-manager';
@@ -23,7 +22,6 @@ let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
 let studioManager: StudioManager | null = null;
-let overlayRouter: OverlayRouter | null = null;
 
 function resolvePreloadPath(): string {
   const mjsPath = join(__dirname, '../preload/index.mjs');
@@ -31,10 +29,10 @@ function resolvePreloadPath(): string {
   return join(__dirname, '../preload/index.js');
 }
 
-function resolveTabOverlayPreloadPath(): string {
-  const mjsPath = join(__dirname, '../preload/tab-overlay.mjs');
+function resolveExternalPreloadPath(): string {
+  const mjsPath = join(__dirname, '../preload/external.mjs');
   if (existsSync(mjsPath)) return mjsPath;
-  return join(__dirname, '../preload/tab-overlay.js');
+  return join(__dirname, '../preload/external.js');
 }
 
 function broadcastState() {
@@ -44,7 +42,7 @@ function broadcastState() {
 
 function createDesktopWindow() {
   const preloadPath = resolvePreloadPath();
-  const tabOverlayPreloadPath = resolveTabOverlayPreloadPath();
+  const externalPreloadPath = resolveExternalPreloadPath();
   mainWindow = createMainWindow({ preloadPath });
 
   const networkLayer = new NetworkLayer(session.defaultSession, DEBUG_IPC);
@@ -52,21 +50,13 @@ function createDesktopWindow() {
 
   tabManager = new TabManager({
     window: mainWindow,
-    tabOverlayPreloadPath,
+    externalPreloadPath,
     debug: DEBUG_IPC,
     onStateChanged: snapshot => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send(BrowserIpcChannels.stateChanged, snapshot);
-      overlayRouter?.onTabStateChanged();
     },
   });
-
-  overlayRouter = new OverlayRouter({
-    mainWindow,
-    tabManager,
-    debug: DEBUG_IPC,
-  });
-  overlayRouter.setup();
 
   downloadManager = new DownloadManager(
     session.defaultSession,
@@ -80,12 +70,6 @@ function createDesktopWindow() {
 
   registerBrowserIpc({
     tabManager,
-    onOverlaySetState: payload => {
-      overlayRouter?.setState(payload);
-    },
-    onOverlayClear: () => {
-      overlayRouter?.clear();
-    },
     debug: DEBUG_IPC,
   });
   registerDownloadIpc({ downloadManager, debug: DEBUG_IPC });
@@ -125,8 +109,6 @@ function createDesktopWindow() {
   });
 
   mainWindow.on('closed', () => {
-    overlayRouter?.dispose();
-    overlayRouter = null;
     mainWindow = null;
     tabManager = null;
     downloadManager = null;

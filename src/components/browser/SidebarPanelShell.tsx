@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode } from 'react';
 import { MoreVertical, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -11,6 +11,7 @@ import {
 export interface SidebarPanelShellProps {
   title: string;
   icon?: React.ElementType;
+  titleIcon?: ReactNode;
   searchable?: boolean;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
@@ -27,6 +28,7 @@ export interface SidebarPanelShellProps {
 export function SidebarPanelShell({
   title,
   icon: Icon,
+  titleIcon,
   searchable = false,
   searchValue = '',
   onSearchChange,
@@ -45,7 +47,7 @@ export function SidebarPanelShell({
       <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-0">
           <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest flex items-center gap-1.5">
-            {Icon && <Icon size={12} />}
+            {titleIcon ?? (Icon ? <Icon size={12} /> : null)}
             {title}
           </h3>
           <div className="flex items-center gap-0.5">

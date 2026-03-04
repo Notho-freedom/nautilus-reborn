@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   desktopGetState,
+  desktopSetPinnedTabs,
   getDesktopBridge,
   isDesktopRuntime,
   onDesktopStateChanged,
@@ -16,6 +17,7 @@ describe('electronBridge fallback', () => {
   it('returns null snapshot when desktop bridge is unavailable', async () => {
     delete window.notilusDesktop;
     await expect(desktopGetState()).resolves.toBeNull();
+    await expect(desktopSetPinnedTabs({ tabIds: [] })).resolves.toBeUndefined();
   });
 
   it('returns noop unsubscribe when desktop bridge is unavailable', () => {
@@ -25,4 +27,3 @@ describe('electronBridge fallback', () => {
     unsubscribe();
   });
 });
-

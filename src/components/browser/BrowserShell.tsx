@@ -30,6 +30,9 @@ export function BrowserShell() {
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
   const [sidebarPanelWidth, setSidebarPanelWidth] = useState(280);
+  const [topOverlayBlocking, setTopOverlayBlocking] = useState(false);
+  const [navigationOverlayBlocking, setNavigationOverlayBlocking] = useState(false);
+  const isBlockingOverlayOpen = topOverlayBlocking || navigationOverlayBlocking;
 
   useEffect(() => {
     initializeSettings();
@@ -84,6 +87,10 @@ export function BrowserShell() {
     if (!viewport) return;
 
     const updateBounds = () => {
+      if (browser.isExternalActiveTab && isBlockingOverlayOpen) {
+        browser.setViewportBounds({ x: 0, y: 0, width: 0, height: 0 });
+        return;
+      }
       const rect = viewport.getBoundingClientRect();
       const leftInset = browser.sidebarOpen ? sidebarPanelWidth : 0;
       browser.setViewportBounds({
@@ -107,6 +114,7 @@ export function BrowserShell() {
     browser.isDesktopMode,
     browser.isExternalActiveTab,
     browser.activeTabId,
+    isBlockingOverlayOpen,
     browser.sidebarOpen,
     browser.setViewportBounds,
     sidebarPanelWidth,
@@ -199,7 +207,6 @@ export function BrowserShell() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
       <TopChromeBar
-        isExternalOverlayMode={browser.isDesktopMode && browser.isExternalActiveTab}
         tabs={browser.tabs}
         activeTabId={browser.activeTabId}
         onSelectTab={browser.setActiveTabId}
@@ -213,10 +220,9 @@ export function BrowserShell() {
         recentlyClosedTabs={browser.recentlyClosedTabs}
         onReopenClosedTab={browser.reopenClosedTab}
         onClearClosedTabs={browser.clearClosedTabs}
+        onOverlayBlockingChange={setTopOverlayBlocking}
       />
       <NavigationBar
-        isExternalOverlayMode={browser.isDesktopMode && browser.isExternalActiveTab}
-        activeTabId={browser.activeTabId}
         url={browser.activeTab?.url || ''}
         onNavigate={browser.navigateTo}
         onHome={() => browser.navigateTo('notilus://speed-dial')}
@@ -245,6 +251,7 @@ export function BrowserShell() {
         onOpenDownloads={() => browser.toggleSidebar('downloads')}
         onOpenExtensions={() => browser.toggleSidebar('extensions')}
         onToggleAI={browser.toggleAiPanel}
+        onOverlayBlockingChange={setNavigationOverlayBlocking}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
