@@ -80,7 +80,7 @@ function createDesktopWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     broadcastState();
     if (downloadManager && !mainWindow?.isDestroyed()) {
-      mainWindow.webContents.send(
+      mainWindow!.webContents.send(
         BrowserIpcChannels.downloadsStateChanged,
         downloadManager.getSnapshot()
       );
