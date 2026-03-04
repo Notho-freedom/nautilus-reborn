@@ -12,9 +12,13 @@ const api: BrowserDesktopApi = {
   goForward: payload => ipcRenderer.invoke(BrowserIpcChannels.goForward, payload),
   reload: payload => ipcRenderer.invoke(BrowserIpcChannels.reload, payload),
   openDevTools: payload => ipcRenderer.invoke(BrowserIpcChannels.openDevTools, payload),
-  setViewportBounds: payload =>
-    ipcRenderer.invoke(BrowserIpcChannels.setViewportBounds, payload),
   setPinnedTabs: payload => ipcRenderer.invoke(BrowserIpcChannels.setPinnedTabs, payload),
+  bindTabWebContents: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.tabBindWebContents, payload),
+  unbindTabWebContents: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.tabUnbindWebContents, payload),
+  updateTabRuntime: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.tabRuntimeUpdate, payload),
   onStateChanged: listener => {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: Parameters<typeof listener>[0]) => {
       listener(snapshot);

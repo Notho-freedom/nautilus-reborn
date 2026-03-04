@@ -33,8 +33,6 @@ interface TopChromeBarProps {
   recentlyClosedTabs: RecentlyClosedTab[];
   onReopenClosedTab: (id: string) => void;
   onClearClosedTabs: () => void;
-  onOverlayBlockingChange?: (isBlocking: boolean) => void;
-  useNativeTitleMode?: boolean;
 }
 
 function getFaviconUrl(url: string): string | null {
@@ -70,17 +68,11 @@ function TabIcon({ tab, size }: { tab: BrowserTab; size: number }) {
 
 function ActionHint({
   label,
-  useNativeTitleMode,
   children,
 }: {
   label: string;
-  useNativeTitleMode: boolean;
   children: ReactNode;
 }) {
-  if (useNativeTitleMode) {
-    return <>{children}</>;
-  }
-
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -102,8 +94,6 @@ export function TopChromeBar({
   recentlyClosedTabs,
   onReopenClosedTab,
   onClearClosedTabs,
-  onOverlayBlockingChange,
-  useNativeTitleMode = false,
 }: TopChromeBarProps) {
   const desktopMode = isDesktopRuntime();
   const [isMaximized, setIsMaximized] = useState(false);
@@ -162,16 +152,6 @@ export function TopChromeBar({
       window.clearTimeout(timeoutId);
     };
   }, [searchOpen]);
-
-  useEffect(() => {
-    onOverlayBlockingChange?.(searchOpen || Boolean(contextMenu));
-  }, [searchOpen, contextMenu, onOverlayBlockingChange]);
-
-  useEffect(() => {
-    return () => {
-      onOverlayBlockingChange?.(false);
-    };
-  }, [onOverlayBlockingChange]);
 
   const noDragStyle = { WebkitAppRegion: 'no-drag' } as CSSProperties;
   const pinnedTabs = useMemo(() => tabs.filter(tab => tab.isPinned), [tabs]);
@@ -235,12 +215,11 @@ export function TopChromeBar({
     children: ReactNode;
     className?: string;
   }) => (
-    <ActionHint label={label} useNativeTitleMode={useNativeTitleMode}>
+    <ActionHint label={label}>
       <button
         style={noDragStyle}
         onClick={onClick}
         aria-label={label}
-        title={useNativeTitleMode ? label : undefined}
         className={cn(
           'h-8 w-9 flex items-center justify-center transition-colors duration-fast text-primary',
           className
@@ -275,13 +254,12 @@ export function TopChromeBar({
           {pinnedTabs.map(tab => {
             const isActive = tab.id === activeTabId;
             return (
-              <ActionHint key={tab.id} label={`${tab.title} - ${extractDisplayDomain(tab.url)}`} useNativeTitleMode={useNativeTitleMode}>
+              <ActionHint key={tab.id} label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}>
                 <button
                   data-testid={`pinned-tab-${tab.id}`}
                   style={noDragStyle}
                   onClick={() => onSelectTab(tab.id)}
                   aria-label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}
-                  title={useNativeTitleMode ? `${tab.title} - ${extractDisplayDomain(tab.url)}` : undefined}
                   className={cn(
                     'h-8 w-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0 text-muted-foreground hover:text-foreground',
                     isActive ? 'text-white scale-[1.05]' : ''
@@ -382,12 +360,11 @@ export function TopChromeBar({
               );
             })}
 
-            <ActionHint label="New tab" useNativeTitleMode={useNativeTitleMode}>
+            <ActionHint label="New tab">
               <button
                 style={noDragStyle}
                 onClick={onAddTab}
                 aria-label="New tab"
-                title={useNativeTitleMode ? 'New tab' : undefined}
                 className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-fast shrink-0"
               >
                 <Plus size={14} />
@@ -542,13 +519,10 @@ export function TopChromeBar({
       {contextMenu && (
         <>
           <div
-            data-occluding-overlay="true"
-            data-occlusion-mode="blocking"
             className="fixed inset-0 z-50"
             onClick={() => setContextMenu(null)}
           />
           <div
-            data-occluding-overlay="true"
             className="fixed z-50 glass rounded-lg border border-border py-1 min-w-[190px] shadow-lg"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >

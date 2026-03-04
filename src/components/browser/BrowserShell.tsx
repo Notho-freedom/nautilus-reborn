@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -25,15 +25,9 @@ import { ToastAction } from '@/components/ui/toast';
 export function BrowserShell() {
   const browser = useBrowserState();
   const stats = useSystemMonitor();
-  const viewportRef = useRef<HTMLDivElement>(null);
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
-  const [sidebarPanelWidth, setSidebarPanelWidth] = useState(280);
-  const [topOverlayBlocking, setTopOverlayBlocking] = useState(false);
-  const [navigationOverlayBlocking, setNavigationOverlayBlocking] = useState(false);
-  const isBlockingOverlayOpen = topOverlayBlocking || navigationOverlayBlocking;
-  const useNativeTitleMode = browser.isDesktopMode && browser.isExternalActiveTab;
 
   useEffect(() => {
     initializeSettings();
@@ -81,45 +75,6 @@ export function BrowserShell() {
   }), [browser]);
 
   useKeyboardShortcuts(shortcuts);
-
-  useEffect(() => {
-    if (!browser.isDesktopMode) return;
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-
-    const updateBounds = () => {
-      if (browser.isExternalActiveTab && isBlockingOverlayOpen) {
-        browser.setViewportBounds({ x: 0, y: 0, width: 0, height: 0 });
-        return;
-      }
-      const rect = viewport.getBoundingClientRect();
-      const leftInset = browser.sidebarOpen ? sidebarPanelWidth : 0;
-      browser.setViewportBounds({
-        x: Math.round(rect.left + leftInset),
-        y: Math.round(rect.top),
-        width: Math.max(0, Math.round(rect.width - leftInset)),
-        height: Math.max(0, Math.round(rect.height)),
-      });
-    };
-
-    updateBounds();
-    const observer = new ResizeObserver(updateBounds);
-    observer.observe(viewport);
-    window.addEventListener('resize', updateBounds);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', updateBounds);
-    };
-  }, [
-    browser.isDesktopMode,
-    browser.isExternalActiveTab,
-    browser.activeTabId,
-    isBlockingOverlayOpen,
-    browser.sidebarOpen,
-    browser.setViewportBounds,
-    sidebarPanelWidth,
-  ]);
 
   const handleSidebarToggle = (panel?: string) => {
     if (panel === 'devtools-panel') {
@@ -221,8 +176,6 @@ export function BrowserShell() {
         recentlyClosedTabs={browser.recentlyClosedTabs}
         onReopenClosedTab={browser.reopenClosedTab}
         onClearClosedTabs={browser.clearClosedTabs}
-        onOverlayBlockingChange={setTopOverlayBlocking}
-        useNativeTitleMode={useNativeTitleMode}
       />
       <NavigationBar
         url={browser.activeTab?.url || ''}
@@ -254,8 +207,6 @@ export function BrowserShell() {
         onOpenExtensions={() => browser.toggleSidebar('extensions')}
         onOpenSettings={() => browser.toggleSidebar('settings')}
         onToggleAI={browser.toggleAiPanel}
-        onOverlayBlockingChange={setNavigationOverlayBlocking}
-        useNativeTitleMode={useNativeTitleMode}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -267,15 +218,12 @@ export function BrowserShell() {
           activeWebServiceUrl={activeWebService?.url ?? null}
         />
         {browser.sidebarOpen && (
-          <div
-            data-occluding-overlay="true"
-            className="absolute left-11 top-0 bottom-0 z-40"
-          >
+          <div className="absolute left-11 top-0 bottom-0 z-40">
             <SidebarPanel
               panel={browser.sidebarPanel}
               stats={stats}
               webService={activeWebService}
-              onWidthChange={setSidebarPanelWidth}
+              onWidthChange={() => {}}
               onOpenWebServiceInTab={handleOpenWebServiceInTab}
               onClosePanel={handleCloseSidebarPanel}
               onNavigate={browser.navigateTo}
@@ -288,7 +236,9 @@ export function BrowserShell() {
               url={browser.activeTab?.url || 'notilus://speed-dial'}
               onNavigate={browser.navigateTo}
               isDesktopMode={browser.isDesktopMode}
-              viewportRef={viewportRef}
+              tabs={browser.tabs}
+              activeTabId={browser.activeTabId}
+              onCreateTab={browser.addTab}
             />
           </div>
           <DevToolsPanel

@@ -4,9 +4,11 @@ import type {
   SetPinnedTabsRequest,
   TabActivateRequest,
   TabActionRequest,
+  TabRuntimeUpdateRequest,
+  TabWebContentsBindRequest,
+  TabWebContentsUnbindRequest,
   TabCloseRequest,
   TabCreateRequest,
-  ViewportBounds,
 } from '../../../shared/browser-contract';
 import { BrowserIpcChannels } from '../../../shared/browser-contract';
 import { TabManager } from '../tab-manager';
@@ -26,8 +28,10 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.goForward);
   ipcMain.removeHandler(BrowserIpcChannels.reload);
   ipcMain.removeHandler(BrowserIpcChannels.openDevTools);
-  ipcMain.removeHandler(BrowserIpcChannels.setViewportBounds);
   ipcMain.removeHandler(BrowserIpcChannels.setPinnedTabs);
+  ipcMain.removeHandler(BrowserIpcChannels.tabBindWebContents);
+  ipcMain.removeHandler(BrowserIpcChannels.tabUnbindWebContents);
+  ipcMain.removeHandler(BrowserIpcChannels.tabRuntimeUpdate);
 }
 
 export function registerBrowserIpc({
@@ -88,18 +92,34 @@ export function registerBrowserIpc({
   });
 
   ipcMain.handle(
-    BrowserIpcChannels.setViewportBounds,
-    (_event, payload: ViewportBounds) => {
-      log(BrowserIpcChannels.setViewportBounds, payload);
-      tabManager.setViewportBounds(payload);
-    }
-  );
-
-  ipcMain.handle(
     BrowserIpcChannels.setPinnedTabs,
     (_event, payload: SetPinnedTabsRequest) => {
       log(BrowserIpcChannels.setPinnedTabs, payload);
       tabManager.setPinnedTabs(payload.tabIds);
+    }
+  );
+
+  ipcMain.handle(
+    BrowserIpcChannels.tabBindWebContents,
+    (_event, payload: TabWebContentsBindRequest) => {
+      log(BrowserIpcChannels.tabBindWebContents, payload);
+      tabManager.bindWebContents(payload.tabId, payload.webContentsId);
+    }
+  );
+
+  ipcMain.handle(
+    BrowserIpcChannels.tabUnbindWebContents,
+    (_event, payload: TabWebContentsUnbindRequest) => {
+      log(BrowserIpcChannels.tabUnbindWebContents, payload);
+      tabManager.unbindWebContents(payload.tabId);
+    }
+  );
+
+  ipcMain.handle(
+    BrowserIpcChannels.tabRuntimeUpdate,
+    (_event, payload: TabRuntimeUpdateRequest) => {
+      log(BrowserIpcChannels.tabRuntimeUpdate, payload);
+      return tabManager.updateTabRuntime(payload);
     }
   );
 }

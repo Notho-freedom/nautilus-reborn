@@ -115,18 +115,8 @@ describe('NavigationBar actions', () => {
     expect(settingsIdx).toBe(profileIdx + 1);
   });
 
-  it('uses native title mode for external tabs and skips tooltip wrapper', () => {
-    renderNavigationBar({ useNativeTitleMode: true });
-    const back = screen.getByRole('button', { name: 'Back' });
-    const snapshot = screen.getByRole('button', { name: 'Snapshot' });
-
-    expect(back).toHaveAttribute('title', 'Back');
-    expect(snapshot).toHaveAttribute('title', 'Snapshot');
-    expect(back).not.toHaveAttribute('data-state');
-  });
-
-  it('uses tooltip mode for internal tabs and removes native title attributes', () => {
-    renderNavigationBar({ useNativeTitleMode: false });
+  it('uses tooltip mode and removes native title attributes', () => {
+    renderNavigationBar();
     const back = screen.getByRole('button', { name: 'Back' });
     const snapshot = screen.getByRole('button', { name: 'Snapshot' });
 

@@ -29,6 +29,7 @@ export function createMainWindow({ preloadPath }: CreateMainWindowOptions): Brow
       contextIsolation: true,
       sandbox: false,
       webSecurity: true,
+      webviewTag: true,
     },
   });
 

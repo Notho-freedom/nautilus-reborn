@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
 import { BrowserIpcChannels } from '../../shared/browser-contract';
@@ -16,12 +16,32 @@ import { createMainWindow } from './window-manager';
 
 const DEBUG_IPC = process.env.NOTILUS_DEBUG_IPC === '1';
 const INITIAL_URL = 'notilus://speed-dial';
+const SHARED_WEBVIEW_PARTITION = 'persist:notilus-default';
+const IS_DEV = !app.isPackaged;
+const SINGLE_INSTANCE_LOCK = app.requestSingleInstanceLock();
 
 let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
 let studioManager: StudioManager | null = null;
+
+if (!SINGLE_INSTANCE_LOCK) {
+  app.quit();
+  process.exit(0);
+}
+
+function configureSessionDataPath() {
+  try {
+    const sessionRoot = join(app.getPath('userData'), IS_DEV ? 'session-dev' : 'session');
+    mkdirSync(sessionRoot, { recursive: true });
+    app.setPath('sessionData', sessionRoot);
+    app.commandLine.appendSwitch('disk-cache-dir', join(sessionRoot, 'disk-cache'));
+    app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+  } catch (error) {
+    console.error('[bootstrap] failed to configure sessionData path', error);
+  }
+}
 
 function resolvePreloadPath(): string {
   const mjsPath = join(__dirname, '../preload/index.mjs');
@@ -45,12 +65,39 @@ function createDesktopWindow() {
   const externalPreloadPath = resolveExternalPreloadPath();
   mainWindow = createMainWindow({ preloadPath });
 
+  mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
+    const sourceUrl = typeof params.src === 'string' ? params.src.trim() : '';
+    const blocked =
+      sourceUrl.startsWith('notilus://') ||
+      sourceUrl.startsWith('javascript:') ||
+      sourceUrl.startsWith('file://');
+
+    if (blocked) {
+      event.preventDefault();
+      if (DEBUG_IPC) {
+        console.info(`[webview] blocked source=${sourceUrl || '(empty)'}`);
+      }
+      return;
+    }
+
+    delete (webPreferences as Record<string, unknown>).preloadURL;
+    webPreferences.preload = externalPreloadPath;
+    webPreferences.nodeIntegration = false;
+    webPreferences.contextIsolation = true;
+    webPreferences.sandbox = true;
+    webPreferences.webSecurity = true;
+    webPreferences.partition = SHARED_WEBVIEW_PARTITION;
+  });
+
   const networkLayer = new NetworkLayer(session.defaultSession, DEBUG_IPC);
   networkLayer.setup();
+  const webviewSession = session.fromPartition(SHARED_WEBVIEW_PARTITION);
+  if (webviewSession !== session.defaultSession) {
+    const webviewNetworkLayer = new NetworkLayer(webviewSession, DEBUG_IPC);
+    webviewNetworkLayer.setup();
+  }
 
   tabManager = new TabManager({
-    window: mainWindow,
-    externalPreloadPath,
     debug: DEBUG_IPC,
     onStateChanged: snapshot => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -117,6 +164,7 @@ function createDesktopWindow() {
   });
 }
 
+
 app.whenReady().then(() => {
   app.setAppUserModelId('com.notilus.reborn');
 
@@ -129,8 +177,18 @@ app.whenReady().then(() => {
   });
 });
 
+app.on('second-instance', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.focus();
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
+
+configureSessionDataPath();

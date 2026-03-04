@@ -1,36 +1,29 @@
-import { BrowserWindow, WebContentsView, type WebContents } from 'electron';
+import {
+  Menu,
+  clipboard,
+  webContents,
+  type MenuItemConstructorOptions,
+  type WebContents,
+} from 'electron';
 import type {
   BrowserSnapshot,
   NavigateRequest,
   TabActionRequest,
   TabDescriptor,
-  ViewportBounds,
+  TabRuntimeUpdateRequest,
 } from '../../shared/browser-contract';
 
 interface ManagedTab {
   descriptor: TabDescriptor;
-  view?: WebContentsView;
 }
 
 interface TabManagerOptions {
-  window: BrowserWindow;
-  externalPreloadPath: string;
   onStateChanged: (snapshot: BrowserSnapshot) => void;
   debug: boolean;
 }
 
 const INTERNAL_PREFIX = 'notilus://';
 const DEFAULT_INTERNAL_URL = 'notilus://speed-dial';
-const EXTERNAL_SCROLLBAR_HIDE_CSS = `
-* {
-  scrollbar-width: none !important;
-}
-*::-webkit-scrollbar {
-  width: 0 !important;
-  height: 0 !important;
-  display: none !important;
-}
-`;
 
 function isInternalUrl(url: string): boolean {
   return url.startsWith(INTERNAL_PREFIX);
@@ -58,13 +51,25 @@ function deriveTitle(url: string): string {
   }
 }
 
+function normalizeRuntimeUrl(rawUrl: string, fallback: string): string {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return fallback;
+  if (trimmed === 'about:blank') return fallback;
+  if (trimmed.startsWith('chrome-error://')) return fallback;
+  return trimmed;
+}
+
 export class TabManager {
   private readonly tabs = new Map<string, ManagedTab>();
   private readonly order: string[] = [];
   private activeTabId: string | null = null;
   private sequence = 1;
-  private viewportBounds: ViewportBounds = { x: 0, y: 0, width: 0, height: 0 };
   private pinnedTabIds = new Set<string>();
+  private readonly webContentsByTabId = new Map<string, number>();
+  private readonly contextMenuByWebContentsId = new Map<
+    number,
+    { tabId: string; cleanup: () => void }
+  >();
 
   constructor(private readonly options: TabManagerOptions) {}
 
@@ -86,18 +91,12 @@ export class TabManager {
       title: deriveTitle(url),
       url,
       kind: isInternalUrl(url) ? 'internal' : 'external',
-      isLoading: false,
+      isLoading: !isInternalUrl(url),
       canGoBack: false,
       canGoForward: false,
     };
 
-    const managedTab: ManagedTab = { descriptor };
-    if (descriptor.kind === 'external') {
-      managedTab.view = this.createExternalView(tabId, url);
-      descriptor.isLoading = true;
-    }
-
-    this.tabs.set(tabId, managedTab);
+    this.tabs.set(tabId, { descriptor });
     this.order.push(tabId);
 
     this.log('tab:create', `${tabId} -> ${url}`);
@@ -110,14 +109,12 @@ export class TabManager {
     const target = this.tabs.get(tabId);
     if (!target) return this.getSnapshot();
 
-    if (target.view) {
-      this.destroyView(target.view);
-    }
-
     const closingIndex = this.order.indexOf(tabId);
     this.tabs.delete(tabId);
     this.order.splice(closingIndex, 1);
     this.pinnedTabIds.delete(tabId);
+    this.webContentsByTabId.delete(tabId);
+    this.detachContextMenuForTab(tabId);
     this.log('tab:close', tabId);
 
     if (this.order.length === 0) {
@@ -136,9 +133,9 @@ export class TabManager {
 
     if (this.activeTabId === tabId) {
       this.activeTabId = this.findClosestNonPinnedTabId(closingIndex);
+      this.log('tab:activate', this.activeTabId ?? 'null');
     }
 
-    this.syncViewVisibility();
     this.notifyStateChanged();
     return this.getSnapshot();
   }
@@ -159,10 +156,6 @@ export class TabManager {
 
     const url = normalizeUrl(request.url);
     if (isInternalUrl(url)) {
-      if (tab.view) {
-        this.destroyView(tab.view);
-        tab.view = undefined;
-      }
       tab.descriptor = {
         ...tab.descriptor,
         url,
@@ -172,23 +165,22 @@ export class TabManager {
         canGoBack: false,
         canGoForward: false,
       };
+      this.webContentsByTabId.delete(targetId);
       this.log('tab:navigate', `${targetId} -> ${url}`);
       this.activateTabInternal(targetId);
       this.notifyStateChanged();
       return this.getSnapshot();
     }
 
-    tab.descriptor.kind = 'external';
-    tab.descriptor.url = url;
-    tab.descriptor.title = deriveTitle(url);
-    tab.descriptor.isLoading = true;
-    if (!tab.view) {
-      tab.view = this.createExternalView(targetId, url);
-    } else {
-      void tab.view.webContents.loadURL(url).catch(error => {
-        this.log('tab:navigate:error', String(error));
-      });
-    }
+    tab.descriptor = {
+      ...tab.descriptor,
+      kind: 'external',
+      url,
+      title: deriveTitle(url),
+      isLoading: true,
+      canGoBack: tab.descriptor.canGoBack ?? false,
+      canGoForward: tab.descriptor.canGoForward ?? false,
+    };
 
     this.log('tab:navigate', `${targetId} -> ${url}`);
     this.activateTabInternal(targetId);
@@ -198,53 +190,94 @@ export class TabManager {
 
   goBack(request: TabActionRequest): BrowserSnapshot {
     const target = this.resolveTargetTab(request.tabId);
-    if (target?.view?.webContents.canGoBack()) {
-      target.view.webContents.goBack();
-      this.log('tab:go-back', target.descriptor.id);
+    const targetWebContents = this.resolveWebContents(target?.descriptor.id);
+    if (targetWebContents?.canGoBack()) {
+      targetWebContents.goBack();
+      this.log('tab:go-back', target!.descriptor.id);
     }
     return this.getSnapshot();
   }
 
   goForward(request: TabActionRequest): BrowserSnapshot {
     const target = this.resolveTargetTab(request.tabId);
-    if (target?.view?.webContents.canGoForward()) {
-      target.view.webContents.goForward();
-      this.log('tab:go-forward', target.descriptor.id);
+    const targetWebContents = this.resolveWebContents(target?.descriptor.id);
+    if (targetWebContents?.canGoForward()) {
+      targetWebContents.goForward();
+      this.log('tab:go-forward', target!.descriptor.id);
     }
     return this.getSnapshot();
   }
 
   reload(request: TabActionRequest): BrowserSnapshot {
     const target = this.resolveTargetTab(request.tabId);
-    if (target?.view) {
-      target.view.webContents.reload();
-      this.log('tab:reload', target.descriptor.id);
+    const targetWebContents = this.resolveWebContents(target?.descriptor.id);
+    if (targetWebContents) {
+      targetWebContents.reload();
+      this.log('tab:reload', target!.descriptor.id);
     }
     return this.getSnapshot();
   }
 
   openDevTools(request: TabActionRequest): void {
     const target = this.resolveTargetTab(request.tabId);
-    if (!target?.view) return;
-    target.view.webContents.openDevTools({ mode: 'detach' });
-    this.log('tab:open-devtools', target.descriptor.id);
+    const targetWebContents = this.resolveWebContents(target?.descriptor.id);
+    if (!targetWebContents) return;
+    targetWebContents.openDevTools({ mode: 'right' });
+    this.log('tab:open-devtools', target!.descriptor.id);
   }
 
-  setViewportBounds(bounds: ViewportBounds): void {
-    this.viewportBounds = {
-      x: Math.max(0, Math.floor(bounds.x)),
-      y: Math.max(0, Math.floor(bounds.y)),
-      width: Math.max(0, Math.floor(bounds.width)),
-      height: Math.max(0, Math.floor(bounds.height)),
+  bindWebContents(tabId: string, webContentsId: number): void {
+    const tab = this.tabs.get(tabId);
+    if (!tab) return;
+    if (tab.descriptor.kind !== 'external') return;
+
+    const targetWebContents = webContents.fromId(webContentsId);
+    if (!targetWebContents || targetWebContents.isDestroyed()) {
+      this.log('tab:bind-webcontents:invalid', `${tabId} -> ${webContentsId}`);
+      return;
+    }
+
+    this.webContentsByTabId.set(tabId, webContentsId);
+    this.attachContextMenuForTab(tabId, targetWebContents);
+    this.refreshTabFromWebContents(tabId, targetWebContents);
+    this.log('tab:bind-webcontents', `${tabId} -> ${webContentsId}`);
+    this.notifyStateChanged();
+  }
+
+  unbindWebContents(tabId: string): void {
+    if (!this.webContentsByTabId.has(tabId)) return;
+    this.webContentsByTabId.delete(tabId);
+    this.detachContextMenuForTab(tabId);
+    this.log('tab:unbind-webcontents', tabId);
+  }
+
+  updateTabRuntime(payload: TabRuntimeUpdateRequest): BrowserSnapshot {
+    const tab = this.tabs.get(payload.tabId);
+    if (!tab) return this.getSnapshot();
+    if (tab.descriptor.kind !== 'external') return this.getSnapshot();
+
+    const url = normalizeRuntimeUrl(payload.url, tab.descriptor.url);
+    const title = payload.title.trim() || deriveTitle(url);
+
+    tab.descriptor = {
+      ...tab.descriptor,
+      kind: 'external',
+      url,
+      title,
+      isLoading: Boolean(payload.isLoading),
+      canGoBack: Boolean(payload.canGoBack),
+      canGoForward: Boolean(payload.canGoForward),
     };
-    this.syncViewVisibility();
+
+    this.notifyStateChanged();
+    return this.getSnapshot();
   }
 
   getActiveExternalWebContents(): WebContents | null {
     const target = this.resolveTargetTab(this.activeTabId ?? undefined);
-    if (!target?.view) return null;
+    if (!target) return null;
     if (target.descriptor.kind !== 'external') return null;
-    return target.view.webContents;
+    return this.resolveWebContents(target.descriptor.id);
   }
 
   getActiveTabId(): string | null {
@@ -258,8 +291,7 @@ export class TabManager {
 
   hasActiveExternalTab(): boolean {
     const target = this.resolveTargetTab(this.activeTabId ?? undefined);
-    if (!target?.view) return false;
-    return target.descriptor.kind === 'external';
+    return Boolean(target && target.descriptor.kind === 'external');
   }
 
   setPinnedTabs(tabIds: string[]): void {
@@ -279,118 +311,156 @@ export class TabManager {
     return id;
   }
 
-  private createExternalView(tabId: string, initialUrl: string): WebContentsView {
-    const view = new WebContentsView({
-      webPreferences: {
-        preload: this.options.externalPreloadPath,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-        webSecurity: true,
-      },
-    });
-
-    view.setVisible(false);
-    this.options.window.contentView.addChildView(view);
-    view.setBounds(this.getEffectiveBounds());
-    this.attachWebContentsListeners(tabId, view);
-    void view.webContents.loadURL(initialUrl).catch(error => {
-      this.log('tab:load:error', String(error));
-    });
-    return view;
-  }
-
-  private attachWebContentsListeners(tabId: string, view: WebContentsView): void {
-    const refresh = () => {
-      this.refreshTabFromWebContents(tabId);
-      this.notifyStateChanged();
-    };
-    const applyExternalStyles = () => {
-      void view.webContents.insertCSS(EXTERNAL_SCROLLBAR_HIDE_CSS).catch(error => {
-        this.log('tab:css:error', String(error));
-      });
-    };
-
-    view.webContents.setWindowOpenHandler(({ url }) => {
-      this.createTab(url);
-      return { action: 'deny' };
-    });
-
-    view.webContents.on('did-start-loading', refresh);
-    view.webContents.on('did-stop-loading', refresh);
-    view.webContents.on('did-navigate', refresh);
-    view.webContents.on('did-navigate-in-page', refresh);
-    view.webContents.on('did-fail-load', refresh);
-    view.webContents.on('did-finish-load', () => {
-      applyExternalStyles();
-      refresh();
-    });
-    view.webContents.on('page-title-updated', event => {
-      event.preventDefault();
-      refresh();
-    });
-  }
-
-  private refreshTabFromWebContents(tabId: string): void {
+  private refreshTabFromWebContents(tabId: string, targetWebContents: WebContents): void {
     const tab = this.tabs.get(tabId);
-    if (!tab?.view) return;
+    if (!tab) return;
+    if (tab.descriptor.kind !== 'external') return;
 
-    const { webContents } = tab.view;
-    const currentUrl = webContents.getURL() || tab.descriptor.url;
-    const currentTitle = webContents.getTitle().trim();
-
+    const currentUrl = normalizeRuntimeUrl(targetWebContents.getURL(), tab.descriptor.url);
+    const currentTitle = targetWebContents.getTitle().trim();
     tab.descriptor = {
       ...tab.descriptor,
       kind: 'external',
       url: currentUrl,
       title: currentTitle || deriveTitle(currentUrl),
-      isLoading: webContents.isLoading(),
-      canGoBack: webContents.canGoBack(),
-      canGoForward: webContents.canGoForward(),
+      isLoading: targetWebContents.isLoading(),
+      canGoBack: targetWebContents.canGoBack(),
+      canGoForward: targetWebContents.canGoForward(),
     };
   }
 
   private activateTabInternal(tabId: string): void {
     this.activeTabId = tabId;
-    this.syncViewVisibility();
     this.log('tab:activate', tabId);
   }
 
-  private syncViewVisibility(): void {
-    const activeId = this.activeTabId;
-    if (!activeId) return;
+  private resolveWebContents(tabId?: string): WebContents | null {
+    if (!tabId) return null;
+    const targetId = this.webContentsByTabId.get(tabId);
+    if (!targetId) return null;
+    const targetWebContents = webContents.fromId(targetId);
+    if (!targetWebContents || targetWebContents.isDestroyed()) {
+      this.webContentsByTabId.delete(tabId);
+      this.detachContextMenuByWebContentsId(targetId);
+      return null;
+    }
+    return targetWebContents;
+  }
 
-    const bounds = this.getEffectiveBounds();
-    const hasBounds = bounds.width > 0 && bounds.height > 0;
-    for (const id of this.order) {
-      const tab = this.tabs.get(id);
-      if (!tab?.view) continue;
+  private attachContextMenuForTab(tabId: string, targetWebContents: WebContents): void {
+    const webContentsId = targetWebContents.id;
+    const existing = this.contextMenuByWebContentsId.get(webContentsId);
+    if (existing?.tabId === tabId) return;
+    if (existing) {
+      existing.cleanup();
+      this.contextMenuByWebContentsId.delete(webContentsId);
+    }
 
-      const shouldShow = id === activeId && tab.descriptor.kind === 'external' && hasBounds;
-      tab.view.setVisible(shouldShow);
-      if (shouldShow) {
-        tab.view.setBounds(bounds);
-      }
+    const onContextMenu = (_event: Electron.Event, params: Electron.ContextMenuParams) => {
+      const menuTemplate = this.buildContextMenuTemplate(tabId, targetWebContents, params);
+      if (menuTemplate.length === 0) return;
+      const menu = Menu.buildFromTemplate(menuTemplate);
+      menu.popup();
+    };
+
+    const onDestroyed = () => {
+      this.detachContextMenuByWebContentsId(webContentsId);
+    };
+
+    targetWebContents.on('context-menu', onContextMenu);
+    targetWebContents.once('destroyed', onDestroyed);
+
+    const cleanup = () => {
+      targetWebContents.removeListener('context-menu', onContextMenu);
+      targetWebContents.removeListener('destroyed', onDestroyed);
+    };
+
+    this.contextMenuByWebContentsId.set(webContentsId, { tabId, cleanup });
+  }
+
+  private detachContextMenuForTab(tabId: string): void {
+    for (const [webContentsId, subscription] of this.contextMenuByWebContentsId.entries()) {
+      if (subscription.tabId !== tabId) continue;
+      subscription.cleanup();
+      this.contextMenuByWebContentsId.delete(webContentsId);
     }
   }
 
-  private destroyView(view: WebContentsView): void {
-    try {
-      this.options.window.contentView.removeChildView(view);
-    } catch {
-      // Ignore if already detached.
-    }
-
-    if (!view.webContents.isDestroyed()) {
-      (view.webContents as any).destroy?.();
-    }
+  private detachContextMenuByWebContentsId(webContentsId: number): void {
+    const subscription = this.contextMenuByWebContentsId.get(webContentsId);
+    if (!subscription) return;
+    subscription.cleanup();
+    this.contextMenuByWebContentsId.delete(webContentsId);
   }
 
-  private getEffectiveBounds(): ViewportBounds {
-    if (this.viewportBounds.width > 0 && this.viewportBounds.height > 0) {
-      return this.viewportBounds;
+  private buildContextMenuTemplate(
+    tabId: string,
+    targetWebContents: WebContents,
+    params: Electron.ContextMenuParams
+  ): MenuItemConstructorOptions[] {
+    const template: MenuItemConstructorOptions[] = [
+      {
+        label: 'Back',
+        enabled: targetWebContents.canGoBack(),
+        click: () => targetWebContents.goBack(),
+      },
+      {
+        label: 'Forward',
+        enabled: targetWebContents.canGoForward(),
+        click: () => targetWebContents.goForward(),
+      },
+      {
+        label: 'Reload',
+        click: () => targetWebContents.reload(),
+      },
+    ];
+
+    if (params.linkURL) {
+      template.push(
+        { type: 'separator' },
+        {
+          label: 'Open Link in New Tab',
+          click: () => {
+            this.log('tab:context-open-link', `${tabId} -> ${params.linkURL}`);
+            this.createTab(params.linkURL);
+          },
+        },
+        {
+          label: 'Copy Link',
+          click: () => clipboard.writeText(params.linkURL),
+        }
+      );
     }
-    return { x: 0, y: 0, width: 0, height: 0 };
+
+    const { editFlags, selectionText } = params;
+    if (params.isEditable) {
+      template.push(
+        { type: 'separator' },
+        { label: 'Cut', enabled: editFlags.canCut, role: 'cut' },
+        { label: 'Copy', enabled: editFlags.canCopy || Boolean(selectionText), role: 'copy' },
+        { label: 'Paste', enabled: editFlags.canPaste, role: 'paste' },
+        { label: 'Select All', enabled: editFlags.canSelectAll, role: 'selectAll' }
+      );
+    } else if (selectionText) {
+      template.push({ type: 'separator' }, { label: 'Copy', role: 'copy' });
+    }
+
+    if (this.options.debug || process.env.NODE_ENV !== 'production') {
+      template.push(
+        { type: 'separator' },
+        {
+          label: 'Inspect Element',
+          click: () => {
+            targetWebContents.inspectElement(params.x, params.y);
+            if (!targetWebContents.isDevToolsOpened()) {
+              targetWebContents.openDevTools({ mode: 'right' });
+            }
+          },
+        }
+      );
+    }
+
+    return template;
   }
 
   private hasNonPinnedTabs(): boolean {

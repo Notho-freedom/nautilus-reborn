@@ -126,23 +126,14 @@ describe('TopChromeBar tabs behavior', () => {
     expect(props.onSelectTab).toHaveBeenCalledWith('tab-2');
   });
 
-  it('uses native title attributes for top chrome actions when external mode is active', () => {
-    const tabs: BrowserTab[] = [
-      { id: 'tab-1', title: 'Google', url: 'https://google.com' },
-    ];
-    renderTopChromeBar(tabs, { useNativeTitleMode: true });
-
-    expect(screen.getByRole('button', { name: 'Search tabs' })).toHaveAttribute('title', 'Search tabs');
-    expect(screen.getByRole('button', { name: 'New tab' })).toHaveAttribute('title', 'New tab');
-  });
-
-  it('uses tooltip mode and removes native title attributes when not in external mode', () => {
+  it('uses tooltip mode for top chrome actions', () => {
     const tabs: BrowserTab[] = [
       { id: 'tab-1', title: 'Speed Dial', url: 'notilus://speed-dial', kind: 'internal' },
     ];
-    renderTopChromeBar(tabs, { useNativeTitleMode: false });
+    renderTopChromeBar(tabs);
 
     expect(screen.getByRole('button', { name: 'Search tabs' })).not.toHaveAttribute('title');
     expect(screen.getByRole('button', { name: 'New tab' })).not.toHaveAttribute('title');
+    expect(screen.getByRole('button', { name: 'Search tabs' })).toHaveAttribute('data-state', 'closed');
   });
 });
