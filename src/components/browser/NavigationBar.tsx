@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Camera,
   ChevronLeft,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface NavigationBarProps {
   url: string;
@@ -43,6 +44,17 @@ interface NavigationBarProps {
   onOpenExtensions?: () => void;
   onOpenDownloads?: () => void;
   onToggleAI: () => void;
+}
+
+function ButtonTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Tooltip delayDuration={250}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="bottom" className="glass text-xs font-body">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function NavigationBar({
@@ -72,6 +84,7 @@ export function NavigationBar({
   const [focused, setFocused] = useState(false);
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const [snapshotBusy, setSnapshotBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
@@ -111,19 +124,21 @@ export function NavigationBar({
     label: string;
     disabled?: boolean;
   }) => (
-    <button
-      onClick={onClick}
-      title={label}
-      disabled={disabled}
-      className={cn(
-        'h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-fast',
-        disabled
-          ? 'text-muted-foreground/40 cursor-not-allowed'
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-      )}
-    >
-      {children}
-    </button>
+    <ButtonTooltip label={label}>
+      <button
+        onClick={onClick}
+        title={label}
+        disabled={disabled}
+        className={cn(
+          'h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-fast',
+          disabled
+            ? 'text-muted-foreground/40 cursor-not-allowed'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        )}
+      >
+        {children}
+      </button>
+    </ButtonTooltip>
   );
 
   const UrlActionButton = ({
@@ -139,22 +154,24 @@ export function NavigationBar({
     disabled?: boolean;
     active?: boolean;
   }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      disabled={disabled}
-      className={cn(
-        'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast',
-        disabled
-          ? 'text-muted-foreground/40 cursor-not-allowed'
-          : active
-            ? 'text-primary hover:text-primary hover:bg-primary/10'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-      )}
-    >
-      {children}
-    </button>
+    <ButtonTooltip label={label}>
+      <button
+        type="button"
+        onClick={onClick}
+        title={label}
+        disabled={disabled}
+        className={cn(
+          'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast',
+          disabled
+            ? 'text-muted-foreground/40 cursor-not-allowed'
+            : active
+              ? 'text-foreground hover:text-foreground hover:bg-muted/60'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+        )}
+      >
+        {children}
+      </button>
+    </ButtonTooltip>
   );
 
   return (
@@ -166,7 +183,11 @@ export function NavigationBar({
         <ChevronRight size={15} />
       </NavButton>
       <NavButton label="Reload" onClick={onReload}>
-        {isLoading ? <Loader2 size={14} className="animate-spin text-primary" /> : <RotateCw size={14} />}
+        {isLoading ? (
+          <Loader2 size={14} className="animate-spin text-muted-foreground" />
+        ) : (
+          <RotateCw size={14} />
+        )}
       </NavButton>
       <NavButton label="Home" onClick={onHome}>
         <Home size={15} />
@@ -175,28 +196,34 @@ export function NavigationBar({
       <form onSubmit={handleSubmit} className="flex-1 mx-2">
         <div
           className={cn(
-            'flex items-center h-8 rounded-lg bg-notilus-surface-1 border px-3 gap-1.5 transition-colors duration-fast',
-            focused ? 'border-primary/50' : 'border-transparent'
+            'flex items-center h-8 rounded-lg border px-3 gap-1.5 transition-colors duration-fast',
+            focused
+              ? 'bg-notilus-surface-1 border-primary/50'
+              : 'bg-transparent border-transparent hover:bg-primary/10'
           )}
         >
           {isInternal ? (
             <Shield size={13} className="text-muted-foreground shrink-0" />
           ) : isHttps ? (
-            <Lock size={13} className="text-success shrink-0" />
+            <Lock size={13} className="text-muted-foreground shrink-0" />
           ) : (
             <ShieldCheck size={13} className="text-muted-foreground shrink-0" />
           )}
           <input
+            ref={inputRef}
             data-url-input
             value={focused ? inputValue : ''}
             onChange={event => setInputValue(event.target.value)}
             onFocus={() => {
               setFocused(true);
               setInputValue(url);
+              window.requestAnimationFrame(() => {
+                inputRef.current?.select();
+              });
             }}
             onBlur={() => setFocused(false)}
             placeholder={url}
-            className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none"
+            className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none selection:bg-primary selection:text-primary-foreground"
           />
 
           <UrlActionButton
@@ -207,35 +234,24 @@ export function NavigationBar({
             <Star size={13} fill={isBookmarked ? 'currentColor' : 'none'} />
           </UrlActionButton>
 
-          <UrlActionButton
-            label={isPinned ? 'Unpin tab' : 'Pin tab'}
-            onClick={onTogglePin}
-            active={isPinned}
-          >
+          <UrlActionButton label={isPinned ? 'Unpin tab' : 'Pin tab'} onClick={onTogglePin} active={isPinned}>
             <Pin size={13} fill={isPinned ? 'currentColor' : 'none'} />
           </UrlActionButton>
 
           <Popover open={snapshotOpen} onOpenChange={setSnapshotOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
+            <ButtonTooltip label="Snapshot">
+              <PopoverTrigger
                 title="Snapshot"
-                disabled={snapshotBusy}
                 className={cn(
-                  'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast',
-                  snapshotBusy
-                    ? 'text-muted-foreground/40 cursor-not-allowed'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                  'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                  snapshotBusy ? 'opacity-60 cursor-not-allowed' : ''
                 )}
+                disabled={snapshotBusy}
               >
                 {snapshotBusy ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              sideOffset={8}
-              className="w-52 p-2 glass border-border"
-            >
+              </PopoverTrigger>
+            </ButtonTooltip>
+            <PopoverContent align="end" sideOffset={8} className="w-52 p-2 glass border-border">
               <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5 px-1">
                 Snapshot
               </div>
@@ -265,8 +281,9 @@ export function NavigationBar({
           <UrlActionButton
             label={adBlockEnabled ? 'Disable ad block' : 'Enable ad block'}
             onClick={onToggleAdBlock}
+            active={adBlockEnabled}
           >
-            <Shield size={13} className={adBlockEnabled ? 'text-success' : ''} />
+            <Shield size={13} />
           </UrlActionButton>
 
           <UrlActionButton label="Translate (coming soon)" disabled>
@@ -285,13 +302,15 @@ export function NavigationBar({
       <NavButton label="Downloads" onClick={onOpenDownloads}>
         <Download size={15} />
       </NavButton>
-      <button
-        onClick={onToggleAI}
-        title="AI Assistant"
-        className="h-8 w-8 flex items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors duration-fast"
-      >
-        <Sparkles size={14} />
-      </button>
+      <ButtonTooltip label="AI assistant">
+        <button
+          onClick={onToggleAI}
+          title="AI Assistant"
+          className="h-8 w-8 flex items-center justify-center rounded-md bg-muted/60 text-foreground hover:bg-muted transition-colors duration-fast"
+        >
+          <Sparkles size={14} />
+        </button>
+      </ButtonTooltip>
       <NavButton label="Profile">
         <User size={15} />
       </NavButton>

@@ -41,6 +41,15 @@ export interface BrowserState {
 }
 
 const PINNED_TABS_KEY = 'notilus_pinned_tabs';
+const RECENTLY_CLOSED_TABS_KEY = 'notilus_recently_closed_tabs';
+const RECENTLY_CLOSED_TABS_LIMIT = 30;
+
+export interface RecentlyClosedTab {
+  id: string;
+  title: string;
+  url: string;
+  closedAt: string;
+}
 
 const DEFAULT_TAB: BrowserTab = {
   id: 'tab-1',
@@ -68,6 +77,52 @@ function readPinnedTabs(): string[] {
 function writePinnedTabs(ids: string[]): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(PINNED_TABS_KEY, JSON.stringify(ids));
+}
+
+function readRecentlyClosedTabs(): RecentlyClosedTab[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RECENTLY_CLOSED_TABS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((entry): entry is RecentlyClosedTab => {
+        if (!entry || typeof entry !== 'object') return false;
+        const candidate = entry as Partial<RecentlyClosedTab>;
+        return Boolean(
+          typeof candidate.id === 'string' &&
+            typeof candidate.title === 'string' &&
+            typeof candidate.url === 'string' &&
+            typeof candidate.closedAt === 'string'
+        );
+      })
+      .slice(0, RECENTLY_CLOSED_TABS_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentlyClosedTabs(entries: RecentlyClosedTab[]): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(RECENTLY_CLOSED_TABS_KEY, JSON.stringify(entries));
+}
+
+function pushRecentlyClosed(
+  entries: RecentlyClosedTab[],
+  closedTab: Omit<RecentlyClosedTab, 'id' | 'closedAt'>
+): RecentlyClosedTab[] {
+  const nextEntry: RecentlyClosedTab = {
+    id: `closed-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    title: closedTab.title,
+    url: closedTab.url,
+    closedAt: new Date().toISOString(),
+  };
+  const first = entries[0];
+  if (first && first.title === nextEntry.title && first.url === nextEntry.url) {
+    return [nextEntry, ...entries.slice(1)].slice(0, RECENTLY_CLOSED_TABS_LIMIT);
+  }
+  return [nextEntry, ...entries].slice(0, RECENTLY_CLOSED_TABS_LIMIT);
 }
 
 function isInternalUrl(url: string): boolean {
@@ -110,6 +165,9 @@ export function useBrowserState() {
   const [localActiveTabId, setLocalActiveTabId] = useState('tab-1');
   const [desktopSnapshot, setDesktopSnapshot] = useState<BrowserSnapshot | null>(null);
   const [pinnedTabIds, setPinnedTabIds] = useState<string[]>(() => readPinnedTabs());
+  const [recentlyClosedTabs, setRecentlyClosedTabs] = useState<RecentlyClosedTab[]>(
+    () => readRecentlyClosedTabs()
+  );
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarPanel, setSidebarPanel] = useState<string | null>(null);
@@ -166,6 +224,10 @@ export function useBrowserState() {
   }, [pinnedTabIds]);
 
   useEffect(() => {
+    writeRecentlyClosedTabs(recentlyClosedTabs);
+  }, [recentlyClosedTabs]);
+
+  useEffect(() => {
     const validIds = new Set(baseTabs.map(tab => tab.id));
     setPinnedTabIds(prev => {
       const filtered = prev.filter(id => validIds.has(id));
@@ -205,6 +267,16 @@ export function useBrowserState() {
   }, [desktopMode]);
 
   const closeTab = useCallback((id: string) => {
+    const closedTab = tabs.find(tab => tab.id === id);
+    if (closedTab) {
+      setRecentlyClosedTabs(prev =>
+        pushRecentlyClosed(prev, {
+          title: closedTab.title,
+          url: closedTab.url,
+        })
+      );
+    }
+
     if (desktopMode) {
       void desktopCloseTab({ tabId: id });
       setPinnedTabIds(prev => prev.filter(tabId => tabId !== id));
@@ -231,7 +303,7 @@ export function useBrowserState() {
       return next;
     });
     setPinnedTabIds(prev => prev.filter(tabId => tabId !== id));
-  }, [desktopMode, localActiveTabId]);
+  }, [desktopMode, localActiveTabId, tabs]);
 
   const updateTabUrl = useCallback((id: string, url: string, title?: string) => {
     const normalizedUrl = normalizeUrl(url);
@@ -348,6 +420,21 @@ export function useBrowserState() {
     return pinnedSet.has(id);
   }, [pinnedSet]);
 
+  const reopenClosedTab = useCallback((id: string) => {
+    const target = recentlyClosedTabs.find(tab => tab.id === id);
+    if (!target) return;
+    addTab(target.url, target.title);
+    setRecentlyClosedTabs(prev => prev.filter(tab => tab.id !== id));
+  }, [addTab, recentlyClosedTabs]);
+
+  const removeClosedTab = useCallback((id: string) => {
+    setRecentlyClosedTabs(prev => prev.filter(tab => tab.id !== id));
+  }, []);
+
+  const clearClosedTabs = useCallback(() => {
+    setRecentlyClosedTabs([]);
+  }, []);
+
   return {
     isDesktopMode: desktopMode,
     tabs,
@@ -363,6 +450,7 @@ export function useBrowserState() {
     canGoForward: Boolean(activeTab?.canGoForward),
     isLoading: Boolean(activeTab?.isLoading),
     isPinned: Boolean(activeTab?.isPinned),
+    recentlyClosedTabs,
     setActiveTabId,
     addTab,
     closeTab,
@@ -383,5 +471,8 @@ export function useBrowserState() {
     prevTab,
     togglePinTab,
     isTabPinned,
+    reopenClosedTab,
+    removeClosedTab,
+    clearClosedTabs,
   };
 }

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { NavigationBar } from '@/components/browser/NavigationBar';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 function renderNavigationBar(overrides?: Partial<ComponentProps<typeof NavigationBar>>) {
   const props: ComponentProps<typeof NavigationBar> = {
@@ -29,7 +30,11 @@ function renderNavigationBar(overrides?: Partial<ComponentProps<typeof Navigatio
     ...overrides,
   };
 
-  render(<NavigationBar {...props} />);
+  render(
+    <TooltipProvider>
+      <NavigationBar {...props} />
+    </TooltipProvider>
+  );
   return props;
 }
 
@@ -63,10 +68,35 @@ describe('NavigationBar actions', () => {
     const urlContainer = input.parentElement;
     expect(urlContainer).not.toBeNull();
     expect(urlContainer?.className).toContain('border-transparent');
+    expect(urlContainer?.className).toContain('bg-transparent');
 
     fireEvent.focus(input);
     expect(urlContainer?.className).toContain('border-primary/50');
+    expect(urlContainer?.className).toContain('bg-notilus-surface-1');
     expect(urlContainer?.className).not.toContain('ring-');
     expect(urlContainer?.className).not.toContain('glow-primary-sm');
+  });
+
+  it('wires action button as tooltip trigger', () => {
+    renderNavigationBar();
+    expect(screen.getByTitle('Back')).toHaveAttribute('data-state', 'closed');
+  });
+
+  it('keeps URL action icons neutral (no primary tint)', () => {
+    renderNavigationBar();
+    expect(screen.getByTitle('Add favorite').className).not.toContain('text-primary');
+    expect(screen.getByTitle('Pin tab').className).not.toContain('text-primary');
+    expect(screen.getByTitle('Snapshot').className).not.toContain('text-primary');
+  });
+
+  it('selects full URL text on focus', async () => {
+    renderNavigationBar();
+    const input = screen.getByPlaceholderText('https://example.com') as HTMLInputElement;
+    fireEvent.focus(input);
+    await waitFor(() => {
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(input.value.length);
+    });
+    expect(input.className).toContain('selection:bg-primary');
   });
 });

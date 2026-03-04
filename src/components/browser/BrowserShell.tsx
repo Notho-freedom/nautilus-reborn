@@ -200,6 +200,9 @@ export function BrowserShell() {
           if (tab) browser.addTab(tab.url, tab.title);
         }}
         onTogglePinTab={browser.togglePinTab}
+        recentlyClosedTabs={browser.recentlyClosedTabs}
+        onReopenClosedTab={browser.reopenClosedTab}
+        onClearClosedTabs={browser.clearClosedTabs}
       />
       <NavigationBar
         url={browser.activeTab?.url || ''}
