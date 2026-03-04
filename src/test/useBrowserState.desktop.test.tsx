@@ -34,10 +34,12 @@ describe('useBrowserState desktop mode', () => {
       reload: vi.fn().mockResolvedValue(initialSnapshot),
       openDevTools: vi.fn().mockResolvedValue(undefined),
       setViewportBounds: vi.fn().mockResolvedValue(undefined),
+      setViewportLayout: vi.fn().mockResolvedValue(undefined),
       minimizeWindow: vi.fn().mockResolvedValue(undefined),
       toggleMaximizeWindow: vi.fn().mockResolvedValue(undefined),
       closeWindow: vi.fn().mockResolvedValue(undefined),
       getWindowState: vi.fn().mockResolvedValue({ isMaximized: false }),
+      getRuntimeMode: vi.fn().mockResolvedValue('dual-window'),
       getDownloads: vi.fn().mockResolvedValue({ downloads: [] }),
       pauseDownload: vi.fn().mockResolvedValue({ downloads: [] }),
       resumeDownload: vi.fn().mockResolvedValue({ downloads: [] }),
@@ -148,6 +150,7 @@ describe('useBrowserState desktop mode', () => {
         };
       }),
       onWindowStateChanged: vi.fn(() => () => {}),
+      onRuntimeModeChanged: vi.fn(() => () => {}),
       onDownloadsChanged: vi.fn(() => () => {}),
       onGitStateChanged: vi.fn(() => () => {}),
     };

@@ -12,12 +12,15 @@ import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
 import { StudioManager } from './studio-manager';
 import { TabManager } from './tab-manager';
-import { createMainWindow } from './window-manager';
+import { ViewportLayoutManager } from './viewport-layout-manager';
+import { WindowStackManager } from './window-stack-manager';
 
 const DEBUG_IPC = process.env.NOTILUS_DEBUG_IPC === '1';
 const INITIAL_URL = 'notilus://speed-dial';
 
 let mainWindow: BrowserWindow | null = null;
+let windowStack: WindowStackManager | null = null;
+let viewportLayoutManager: ViewportLayoutManager | null = null;
 let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
@@ -36,19 +39,31 @@ function broadcastState() {
 
 function createDesktopWindow() {
   const preloadPath = resolvePreloadPath();
-  mainWindow = createMainWindow({ preloadPath });
+  windowStack = new WindowStackManager({ preloadPath, debug: DEBUG_IPC });
+  mainWindow = windowStack.getChromeWindow();
+
+  const runtimeMode = windowStack.getRuntimeMode();
+  const contentWindow = windowStack.getContentWindow();
+  const hostWindow = runtimeMode === 'dual-window' && contentWindow ? contentWindow : mainWindow;
 
   const networkLayer = new NetworkLayer(session.defaultSession, DEBUG_IPC);
   networkLayer.setup();
 
   tabManager = new TabManager({
-    window: mainWindow,
+    hostWindow,
     preloadPath,
     debug: DEBUG_IPC,
     onStateChanged: snapshot => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send(BrowserIpcChannels.stateChanged, snapshot);
+      viewportLayoutManager?.reapply();
     },
+  });
+
+  viewportLayoutManager = new ViewportLayoutManager({
+    windowStack,
+    tabManager,
+    debug: DEBUG_IPC,
   });
 
   downloadManager = new DownloadManager(
@@ -61,9 +76,21 @@ function createDesktopWindow() {
   );
   downloadManager.setup();
 
-  registerBrowserIpc({ tabManager, debug: DEBUG_IPC });
+  registerBrowserIpc({
+    tabManager,
+    onSetViewportLayout: payload => {
+      viewportLayoutManager?.setLayout(payload);
+    },
+    debug: DEBUG_IPC,
+  });
   registerDownloadIpc({ downloadManager, debug: DEBUG_IPC });
-  registerWindowIpc(mainWindow, DEBUG_IPC);
+  registerWindowIpc({
+    window: mainWindow,
+    debug: DEBUG_IPC,
+    getRuntimeMode: () => windowStack?.getRuntimeMode() ?? 'single-window-fallback',
+    onRuntimeModeChanged: listener =>
+      windowStack?.onRuntimeModeChanged(listener) ?? (() => {}),
+  });
   gitManager = new GitManager(DEBUG_IPC);
   registerGitIpc({
     gitManager,
@@ -80,7 +107,7 @@ function createDesktopWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     broadcastState();
     if (downloadManager && !mainWindow?.isDestroyed()) {
-      mainWindow!.webContents.send(
+      mainWindow.webContents.send(
         BrowserIpcChannels.downloadsStateChanged,
         downloadManager.getSnapshot()
       );
@@ -89,6 +116,10 @@ function createDesktopWindow() {
       mainWindow.webContents.send(BrowserIpcChannels.windowStateChanged, {
         isMaximized: mainWindow.isMaximized(),
       });
+      mainWindow.webContents.send(
+        BrowserIpcChannels.windowRuntimeModeChanged,
+        windowStack?.getRuntimeMode() ?? 'single-window-fallback'
+      );
     }
     if (gitManager && mainWindow && !mainWindow.isDestroyed()) {
       void gitManager.refresh().then(snapshot => {
@@ -96,6 +127,18 @@ function createDesktopWindow() {
         mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
       });
     }
+  });
+
+  mainWindow.on('closed', () => {
+    viewportLayoutManager?.dispose();
+    viewportLayoutManager = null;
+    windowStack?.destroy();
+    windowStack = null;
+    mainWindow = null;
+    tabManager = null;
+    downloadManager = null;
+    gitManager = null;
+    studioManager = null;
   });
 }
 
@@ -105,7 +148,7 @@ app.whenReady().then(() => {
   createDesktopWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
       createDesktopWindow();
     }
   });

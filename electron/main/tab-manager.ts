@@ -13,7 +13,7 @@ interface ManagedTab {
 }
 
 interface TabManagerOptions {
-  window: BrowserWindow;
+  hostWindow: BrowserWindow;
   preloadPath: string;
   onStateChanged: (snapshot: BrowserSnapshot) => void;
   debug: boolean;
@@ -226,6 +226,12 @@ export class TabManager {
     return target.view.webContents;
   }
 
+  hasActiveExternalTab(): boolean {
+    const target = this.resolveTargetTab(this.activeTabId ?? undefined);
+    if (!target?.view) return false;
+    return target.descriptor.kind === 'external';
+  }
+
   private resolveTargetTab(tabId?: string): ManagedTab | null {
     const resolvedId = tabId ?? this.activeTabId;
     if (!resolvedId) return null;
@@ -250,7 +256,7 @@ export class TabManager {
     });
 
     view.setVisible(false);
-    this.options.window.contentView.addChildView(view);
+    this.options.hostWindow.contentView.addChildView(view);
     view.setBounds(this.getEffectiveBounds());
     this.attachWebContentsListeners(tabId, view);
     void view.webContents.loadURL(initialUrl).catch(error => {
@@ -325,7 +331,7 @@ export class TabManager {
 
   private destroyView(view: WebContentsView): void {
     try {
-      this.options.window.contentView.removeChildView(view);
+      this.options.hostWindow.contentView.removeChildView(view);
     } catch {
       // Ignore if already detached.
     }
@@ -340,7 +346,7 @@ export class TabManager {
       return this.viewportBounds;
     }
 
-    const bounds = this.options.window.getContentBounds();
+    const bounds = this.options.hostWindow.getContentBounds();
     return { x: 0, y: 0, width: bounds.width, height: bounds.height };
   }
 
