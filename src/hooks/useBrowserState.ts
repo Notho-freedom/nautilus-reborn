@@ -3,6 +3,7 @@ import type { BrowserSnapshot, TabDescriptor } from '../../shared/browser-contra
 import { addHistoryItem } from '@/lib/history';
 import {
   desktopActivateTab,
+  desktopCloseDevTools,
   desktopCloseTab,
   desktopCreateTab,
   desktopGetState,
@@ -438,6 +439,11 @@ export function useBrowserState() {
     void desktopOpenDevTools({ tabId: activeTab?.id });
   }, [desktopMode, activeTab]);
 
+  const closeNativeDevTools = useCallback(() => {
+    if (!desktopMode) return;
+    void desktopCloseDevTools({});
+  }, [desktopMode]);
+
   const goBack = useCallback(() => {
     if (desktopMode) {
       void desktopGoBack({ tabId: activeTab?.id });
@@ -530,6 +536,7 @@ export function useBrowserState() {
     goForward,
     reload,
     openNativeDevTools,
+    closeNativeDevTools,
     toggleSidebar,
     toggleAiPanel,
     toggleDevTools,

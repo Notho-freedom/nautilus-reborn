@@ -28,6 +28,7 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.goForward);
   ipcMain.removeHandler(BrowserIpcChannels.reload);
   ipcMain.removeHandler(BrowserIpcChannels.openDevTools);
+  ipcMain.removeHandler(BrowserIpcChannels.closeDevTools);
   ipcMain.removeHandler(BrowserIpcChannels.setPinnedTabs);
   ipcMain.removeHandler(BrowserIpcChannels.tabBindWebContents);
   ipcMain.removeHandler(BrowserIpcChannels.tabUnbindWebContents);
@@ -89,6 +90,11 @@ export function registerBrowserIpc({
   ipcMain.handle(BrowserIpcChannels.openDevTools, (_event, payload: TabActionRequest = {}) => {
     log(BrowserIpcChannels.openDevTools, payload);
     tabManager.openDevTools(payload);
+  });
+
+  ipcMain.handle(BrowserIpcChannels.closeDevTools, (_event, payload: TabActionRequest = {}) => {
+    log(BrowserIpcChannels.closeDevTools, payload);
+    tabManager.closeDevTools(payload);
   });
 
   ipcMain.handle(

@@ -1,5 +1,6 @@
 import type {
   BrowserDesktopApi,
+  DevToolsCloseRequest,
   DownloadActionRequest,
   DownloadsSnapshot,
   SetPinnedTabsRequest,
@@ -99,6 +100,14 @@ export async function desktopOpenDevTools(
   const bridge = getDesktopBridge();
   if (!bridge) return;
   await bridge.openDevTools(payload);
+}
+
+export async function desktopCloseDevTools(
+  payload: DevToolsCloseRequest = {}
+): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.closeDevTools(payload);
 }
 
 export async function desktopSetPinnedTabs(

@@ -12,6 +12,7 @@ const api: BrowserDesktopApi = {
   goForward: payload => ipcRenderer.invoke(BrowserIpcChannels.goForward, payload),
   reload: payload => ipcRenderer.invoke(BrowserIpcChannels.reload, payload),
   openDevTools: payload => ipcRenderer.invoke(BrowserIpcChannels.openDevTools, payload),
+  closeDevTools: payload => ipcRenderer.invoke(BrowserIpcChannels.closeDevTools, payload),
   setPinnedTabs: payload => ipcRenderer.invoke(BrowserIpcChannels.setPinnedTabs, payload),
   bindTabWebContents: payload =>
     ipcRenderer.invoke(BrowserIpcChannels.tabBindWebContents, payload),

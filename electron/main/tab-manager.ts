@@ -222,8 +222,33 @@ export class TabManager {
     const target = this.resolveTargetTab(request.tabId);
     const targetWebContents = this.resolveWebContents(target?.descriptor.id);
     if (!targetWebContents) return;
-    targetWebContents.openDevTools({ mode: 'right' });
+    targetWebContents.openDevTools({ mode: 'detach', activate: true });
     this.log('tab:open-devtools', target!.descriptor.id);
+  }
+
+  closeDevTools(request: TabActionRequest = {}): void {
+    const explicitTarget = this.resolveTargetTab(request.tabId);
+    const explicitWebContents = this.resolveWebContents(explicitTarget?.descriptor.id);
+    if (explicitWebContents?.isDevToolsOpened()) {
+      explicitWebContents.closeDevTools();
+      this.log('tab:close-devtools', explicitTarget!.descriptor.id);
+      return;
+    }
+
+    const activeTarget = this.resolveTargetTab(this.activeTabId ?? undefined);
+    const activeWebContents = this.resolveWebContents(activeTarget?.descriptor.id);
+    if (activeWebContents?.isDevToolsOpened()) {
+      activeWebContents.closeDevTools();
+      this.log('tab:close-devtools', activeTarget!.descriptor.id);
+      return;
+    }
+
+    for (const tabId of this.order) {
+      const targetWebContents = this.resolveWebContents(tabId);
+      if (!targetWebContents?.isDevToolsOpened()) continue;
+      targetWebContents.closeDevTools();
+      this.log('tab:close-devtools', tabId);
+    }
   }
 
   bindWebContents(tabId: string, webContentsId: number): void {
@@ -451,10 +476,15 @@ export class TabManager {
         {
           label: 'Inspect Element',
           click: () => {
-            targetWebContents.inspectElement(params.x, params.y);
-            if (!targetWebContents.isDevToolsOpened()) {
-              targetWebContents.openDevTools({ mode: 'right' });
+            const inspect = () => {
+              targetWebContents.inspectElement(params.x, params.y);
+            };
+            if (targetWebContents.isDevToolsOpened()) {
+              inspect();
+              return;
             }
+            targetWebContents.once('devtools-opened', inspect);
+            targetWebContents.openDevTools({ mode: 'detach', activate: true });
           },
         }
       );
