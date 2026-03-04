@@ -133,11 +133,11 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
       <div className="absolute inset-0 gradient-overlay pointer-events-none" />
 
       {/* Logo */}
-      <div className="mb-6 mt-8 flex flex-col items-center animate-fade-in-up relative z-10">
+      <div className="mb-6 mt-6 flex flex-col items-center animate-fade-in-up relative z-10">
         <img
-          src="/notilus-logo.png"
+          src="/logo_n_no_bg.png"
           alt="Notilus"
-          className="w-24 h-24 object-contain mb-4 animate-glow-breathe drop-shadow-[0_0_16px_hsl(var(--primary)/0.35)]"
+          className="w-36 h-36 object-contain mb-2 animate-glow-breathe drop-shadow-[0_0_16px_hsl(var(--primary)/0.35)]"
         />
         <p className="text-sm font-body text-muted-foreground mt-1">{greeting()}, Developer</p>
       </div>
