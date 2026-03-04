@@ -1,5 +1,6 @@
-import { BookOpen, Keyboard, Zap, Info, Search } from 'lucide-react';
+import { BookOpen, Keyboard, Zap, Info } from 'lucide-react';
 import { useState } from 'react';
+import { SidebarPanelShell } from './SidebarPanelShell';
 
 const SHORTCUTS = [
   { keys: 'Ctrl+T', action: 'New tab' },
@@ -36,7 +37,11 @@ const FEATURES = [
   'Keyboard shortcuts for everything',
 ];
 
-export function DocumentationPanel() {
+interface DocumentationPanelProps {
+  onClose?: () => void;
+}
+
+export function DocumentationPanel({ onClose }: DocumentationPanelProps = {}) {
   const [search, setSearch] = useState('');
 
   const filteredShortcuts = SHORTCUTS.filter(s =>
@@ -44,24 +49,16 @@ export function DocumentationPanel() {
   );
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-border">
-        <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest flex items-center gap-1.5">
-          <BookOpen size={12} /> Documentation
-        </h3>
-        <div className="flex items-center h-8 rounded-lg bg-notilus-surface-1 border border-border px-2 gap-1.5 mt-2">
-          <Search size={12} className="text-muted-foreground" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search docs..."
-            className="flex-1 bg-transparent text-xs font-body text-foreground placeholder:text-muted-foreground outline-none"
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-4">
-        {/* About */}
+    <SidebarPanelShell
+      title="Documentation"
+      icon={BookOpen}
+      searchable
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search docs..."
+      onClose={onClose ?? (() => {})}
+    >
+      <div className="p-3 space-y-4">
         <div>
           <div className="flex items-center gap-1.5 text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-2">
             <Info size={10} /> About Notilus
@@ -82,7 +79,6 @@ export function DocumentationPanel() {
           </div>
         </div>
 
-        {/* Shortcuts */}
         <div>
           <div className="flex items-center gap-1.5 text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-2">
             <Keyboard size={10} /> Shortcuts
@@ -97,7 +93,6 @@ export function DocumentationPanel() {
           </div>
         </div>
 
-        {/* Features */}
         <div>
           <div className="flex items-center gap-1.5 text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-2">
             <Zap size={10} /> Features
@@ -112,6 +107,6 @@ export function DocumentationPanel() {
           </div>
         </div>
       </div>
-    </div>
+    </SidebarPanelShell>
   );
 }

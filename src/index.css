@@ -217,6 +217,11 @@
   animation: slide-in-left var(--motion-panel) var(--ease-sharp) forwards;
 }
 
+/* Force Radix portals above everything */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   * {

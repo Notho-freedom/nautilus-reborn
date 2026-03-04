@@ -43,6 +43,8 @@ export interface BrowserState {
 const PINNED_TABS_KEY = 'notilus_pinned_tabs';
 const RECENTLY_CLOSED_TABS_KEY = 'notilus_recently_closed_tabs';
 const RECENTLY_CLOSED_TABS_LIMIT = 30;
+const TABS_KEY = 'notilus_tabs';
+const ACTIVE_TAB_KEY = 'notilus_active_tab';
 
 export interface RecentlyClosedTab {
   id: string;
@@ -160,9 +162,58 @@ function mapDesktopTab(tab: TabDescriptor): BrowserTab {
   };
 }
 
+interface SerializedTab {
+  id: string;
+  title: string;
+  url: string;
+  kind?: 'internal' | 'external';
+}
+
+function readPersistedTabs(): { tabs: BrowserTab[]; activeTabId: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const rawTabs = window.localStorage.getItem(TABS_KEY);
+    const rawActive = window.localStorage.getItem(ACTIVE_TAB_KEY);
+    if (!rawTabs) return null;
+    const parsed = JSON.parse(rawTabs) as SerializedTab[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    const tabs: BrowserTab[] = parsed.map(t => ({
+      id: t.id,
+      title: t.title,
+      url: t.url,
+      kind: t.kind,
+      isLoading: false,
+      canGoBack: false,
+      canGoForward: false,
+    }));
+    const activeTabId = typeof rawActive === 'string' && tabs.some(t => t.id === rawActive) ? rawActive : tabs[0].id;
+    return { tabs, activeTabId };
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedTabs(tabs: BrowserTab[], activeTabId: string): void {
+  if (typeof window === 'undefined') return;
+  const serialized: SerializedTab[] = tabs.map(t => ({
+    id: t.id,
+    title: t.title,
+    url: t.url,
+    kind: t.kind,
+  }));
+  window.localStorage.setItem(TABS_KEY, JSON.stringify(serialized));
+  window.localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+}
+
 export function useBrowserState() {
-  const [localTabs, setLocalTabs] = useState<BrowserTab[]>([DEFAULT_TAB]);
-  const [localActiveTabId, setLocalActiveTabId] = useState('tab-1');
+  const [localTabs, setLocalTabs] = useState<BrowserTab[]>(() => {
+    const persisted = readPersistedTabs();
+    return persisted ? persisted.tabs : [DEFAULT_TAB];
+  });
+  const [localActiveTabId, setLocalActiveTabId] = useState(() => {
+    const persisted = readPersistedTabs();
+    return persisted ? persisted.activeTabId : 'tab-1';
+  });
   const [desktopSnapshot, setDesktopSnapshot] = useState<BrowserSnapshot | null>(null);
   const [pinnedTabIds, setPinnedTabIds] = useState<string[]>(() => readPinnedTabs());
   const [recentlyClosedTabs, setRecentlyClosedTabs] = useState<RecentlyClosedTab[]>(
@@ -235,6 +286,12 @@ export function useBrowserState() {
       return filtered;
     });
   }, [baseTabs]);
+
+  // Persist tabs to localStorage
+  useEffect(() => {
+    if (desktopMode) return;
+    writePersistedTabs(localTabs, localActiveTabId);
+  }, [localTabs, localActiveTabId, desktopMode]);
 
   const setActiveTabId = useCallback((id: string) => {
     if (desktopMode) {

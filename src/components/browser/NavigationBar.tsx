@@ -147,12 +147,14 @@ export function NavigationBar({
     label,
     disabled,
     active,
+    activeColor,
   }: {
     children: React.ReactNode;
     onClick?: () => void;
     label: string;
     disabled?: boolean;
     active?: boolean;
+    activeColor?: string;
   }) => (
     <ButtonTooltip label={label}>
       <button
@@ -165,7 +167,7 @@ export function NavigationBar({
           disabled
             ? 'text-muted-foreground/40 cursor-not-allowed'
             : active
-              ? 'text-foreground hover:text-foreground hover:bg-muted/60'
+              ? `${activeColor ?? 'text-primary'} hover:bg-muted/60`
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
         )}
       >
@@ -282,8 +284,9 @@ export function NavigationBar({
             label={adBlockEnabled ? 'Disable ad block' : 'Enable ad block'}
             onClick={onToggleAdBlock}
             active={adBlockEnabled}
+            activeColor="text-success"
           >
-            <Shield size={13} />
+            <Shield size={13} fill={adBlockEnabled ? 'currentColor' : 'none'} />
           </UrlActionButton>
 
           <UrlActionButton label="Translate (coming soon)" disabled>
