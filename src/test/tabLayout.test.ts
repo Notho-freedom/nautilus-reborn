@@ -8,7 +8,7 @@ describe('tab layout helper', () => {
   });
 
   it('computes proportional tab width from available area and tab count', () => {
-    const width = computeTabWidth(900, 6, { addButtonWidth: 34, gap: 4, min: 40, max: 220 });
+    const width = computeTabWidth(900, 6, { addButtonWidth: 34, gap: 4, minWidth: 40, maxWidth: 220 });
     expect(width).toBe(141);
   });
 

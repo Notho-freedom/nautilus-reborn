@@ -1,4 +1,6 @@
 import { cn } from '@/lib/utils';
+import { BookOpen } from 'lucide-react';
+import { SidebarPanelShell } from './SidebarPanelShell';
 
 const ENDPOINTS = [
   { method: 'GET', path: '/api/tabs', desc: 'List all open tabs' },
@@ -20,23 +22,26 @@ const METHOD_COLORS: Record<string, string> = {
   PUT: 'bg-warning/15 text-warning',
 };
 
-export function ApiDocsPanel() {
+interface ApiDocsPanelProps {
+  onClose?: () => void;
+}
+
+export function ApiDocsPanel({ onClose }: ApiDocsPanelProps = {}) {
   return (
-    <div className="p-3 space-y-3 overflow-y-auto scrollbar-thin flex-1">
-      <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest">
-        API Documentation
-      </h3>
-      <p className="text-[11px] font-body text-muted-foreground">Notilus REST API v2.0</p>
-      <div className="space-y-1">
-        {ENDPOINTS.map((ep, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs p-2 rounded-lg hover:bg-muted/50 transition-colors duration-fast cursor-pointer border border-transparent hover:border-border">
-            <span className={cn("px-1.5 py-0.5 rounded-md font-display text-[9px] font-semibold shrink-0 uppercase tracking-wider", METHOD_COLORS[ep.method])}>
-              {ep.method}
-            </span>
-            <span className="font-mono text-foreground truncate flex-1">{ep.path}</span>
-          </div>
-        ))}
+    <SidebarPanelShell title="API Documentation" icon={BookOpen} onClose={onClose ?? (() => {})}>
+      <div className="p-3 space-y-3">
+        <p className="text-[11px] font-body text-muted-foreground">Notilus REST API v2.0</p>
+        <div className="space-y-1">
+          {ENDPOINTS.map((ep, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs p-2 rounded-lg hover:bg-muted/50 transition-colors duration-fast cursor-pointer border border-transparent hover:border-border">
+              <span className={cn("px-1.5 py-0.5 rounded-md font-display text-[9px] font-semibold shrink-0 uppercase tracking-wider", METHOD_COLORS[ep.method])}>
+                {ep.method}
+              </span>
+              <span className="font-mono text-foreground truncate flex-1">{ep.path}</span>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </SidebarPanelShell>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LayoutGrid, Columns2, Columns3, Rows2, SquareSplitHorizontal, Maximize, MonitorSmartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SidebarPanelShell } from './SidebarPanelShell';
 
 interface LayoutOption {
   id: string;
@@ -20,19 +21,21 @@ const LAYOUTS: LayoutOption[] = [
   { id: 'dev', name: 'Dev Mode', description: 'Code + Preview + Terminal', icon: MonitorSmartphone, preview: [['C', 'P'], ['T T']] },
 ];
 
-export function MosaicPanel() {
+interface MosaicPanelProps {
+  onClose?: () => void;
+}
+
+export function MosaicPanel({ onClose }: MosaicPanelProps = {}) {
   const [active, setActive] = useState('single');
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-border">
-        <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest flex items-center gap-1.5">
-          <LayoutGrid size={12} /> Mosaic
-        </h3>
-        <p className="text-[10px] font-body text-muted-foreground mt-1">Choose a split-view layout</p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-2">
+    <SidebarPanelShell
+      title="Mosaic"
+      icon={LayoutGrid}
+      onClose={onClose ?? (() => {})}
+      footer="Ctrl+Shift+M to toggle"
+    >
+      <div className="p-3 space-y-2">
         {LAYOUTS.map(layout => (
           <button
             key={layout.id}
@@ -55,10 +58,7 @@ export function MosaicPanel() {
                   {row.map((cell, ci) => (
                     <div
                       key={ci}
-                      className={cn(
-                        "h-4 rounded-sm flex-1",
-                        active === layout.id ? "bg-primary/30" : "bg-notilus-surface-2"
-                      )}
+                      className={cn("h-4 rounded-sm flex-1", active === layout.id ? "bg-primary/30" : "bg-notilus-surface-2")}
                       style={{ flex: cell.length > 1 ? cell.length : 1 }}
                     />
                   ))}
@@ -68,10 +68,6 @@ export function MosaicPanel() {
           </button>
         ))}
       </div>
-
-      <div className="p-2 border-t border-border">
-        <div className="text-[10px] font-body text-muted-foreground text-center">Ctrl+Shift+M to toggle</div>
-      </div>
-    </div>
+    </SidebarPanelShell>
   );
 }
