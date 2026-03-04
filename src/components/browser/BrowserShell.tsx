@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -28,6 +28,7 @@ export function BrowserShell() {
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
+  const [externalDevToolsOpen, setExternalDevToolsOpen] = useState(false);
 
   useEffect(() => {
     initializeSettings();
@@ -52,12 +53,33 @@ export function BrowserShell() {
     return subscribeToBookmarksUpdates(refreshBookmarkState);
   }, [browser.activeTab?.url]);
 
+  const toggleDevToolsPanel = useCallback(() => {
+    const externalDesktopMode = browser.isDesktopMode && browser.isExternalActiveTab;
+    if (externalDesktopMode) {
+      if (externalDevToolsOpen) {
+        browser.closeNativeDevTools();
+      } else {
+        browser.openNativeDevTools();
+      }
+      setExternalDevToolsOpen(previous => !previous);
+      return;
+    }
+    browser.toggleDevTools();
+  }, [
+    browser.closeNativeDevTools,
+    browser.openNativeDevTools,
+    browser.isDesktopMode,
+    browser.isExternalActiveTab,
+    browser.toggleDevTools,
+    externalDevToolsOpen,
+  ]);
+
   const shortcuts = useMemo(() => ({
     newTab: () => browser.addTab(),
     closeTab: () => browser.closeTab(browser.activeTabId),
     nextTab: browser.nextTab,
     prevTab: browser.prevTab,
-    toggleDevTools: browser.isDesktopMode ? browser.openNativeDevTools : browser.toggleDevTools,
+    toggleDevTools: toggleDevToolsPanel,
     openHistory: () => browser.toggleSidebar('history'),
     openDownloads: () => browser.toggleSidebar('downloads'),
     openSettings: () => browser.toggleSidebar('settings'),
@@ -72,13 +94,29 @@ export function BrowserShell() {
       }
       browser.toggleSidebar('bookmarks');
     },
-  }), [browser]);
+  }), [browser, toggleDevToolsPanel]);
 
   useKeyboardShortcuts(shortcuts);
 
+  useEffect(() => {
+    if (!browser.isDesktopMode || !externalDevToolsOpen) return;
+    if (!browser.isExternalActiveTab) {
+      browser.closeNativeDevTools();
+      setExternalDevToolsOpen(false);
+      return;
+    }
+    browser.openNativeDevTools();
+  }, [
+    browser.closeNativeDevTools,
+    browser.openNativeDevTools,
+    browser.isDesktopMode,
+    browser.isExternalActiveTab,
+    externalDevToolsOpen,
+  ]);
+
   const handleSidebarToggle = (panel?: string) => {
     if (panel === 'devtools-panel') {
-      browser.toggleDevTools();
+      toggleDevToolsPanel();
       return;
     }
     browser.toggleSidebar(panel);
@@ -242,8 +280,8 @@ export function BrowserShell() {
             />
           </div>
           <DevToolsPanel
-            isOpen={browser.devToolsOpen}
-            onClose={browser.toggleDevTools}
+            isOpen={browser.devToolsOpen && !(browser.isDesktopMode && browser.isExternalActiveTab)}
+            onClose={toggleDevToolsPanel}
             height={browser.devToolsHeight}
             onHeightChange={browser.setDevToolsHeight}
           />

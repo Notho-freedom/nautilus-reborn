@@ -33,6 +33,7 @@ describe('useBrowserState desktop mode', () => {
       goForward: vi.fn().mockResolvedValue(initialSnapshot),
       reload: vi.fn().mockResolvedValue(initialSnapshot),
       openDevTools: vi.fn().mockResolvedValue(undefined),
+      closeDevTools: vi.fn().mockResolvedValue(undefined),
       setPinnedTabs: vi.fn().mockResolvedValue(undefined),
       bindTabWebContents: vi.fn().mockResolvedValue(undefined),
       unbindTabWebContents: vi.fn().mockResolvedValue(undefined),

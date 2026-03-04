@@ -87,6 +87,10 @@ export interface TabRuntimeUpdateRequest {
   canGoForward: boolean;
 }
 
+export interface DevToolsCloseRequest {
+  tabId?: string;
+}
+
 export interface DownloadActionRequest {
   downloadId: string;
 }
@@ -170,6 +174,7 @@ export interface BrowserDesktopApi {
   goForward: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   reload: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   openDevTools: (payload: TabActionRequest) => Promise<void>;
+  closeDevTools: (payload?: DevToolsCloseRequest) => Promise<void>;
   setPinnedTabs: (payload: SetPinnedTabsRequest) => Promise<void>;
   bindTabWebContents: (payload: TabWebContentsBindRequest) => Promise<void>;
   unbindTabWebContents: (payload: TabWebContentsUnbindRequest) => Promise<void>;
@@ -217,6 +222,7 @@ export const BrowserIpcChannels = {
   goForward: 'browser:go-forward',
   reload: 'browser:reload',
   openDevTools: 'browser:open-devtools',
+  closeDevTools: 'browser:close-devtools',
   setPinnedTabs: 'browser:set-pinned-tabs',
   tabBindWebContents: 'browser:tab-bind-webcontents',
   tabUnbindWebContents: 'browser:tab-unbind-webcontents',

@@ -24,7 +24,12 @@ const TABS = [
   { id: 'sources', label: 'Sources' },
 ];
 
-export function DevToolsPanel({ isOpen, onClose, height, onHeightChange }: DevToolsPanelProps) {
+export function DevToolsPanel({
+  isOpen,
+  onClose,
+  height,
+  onHeightChange,
+}: DevToolsPanelProps) {
   const [activeTab, setActiveTab] = useState('console');
   const [isDragging, setIsDragging] = useState(false);
 
