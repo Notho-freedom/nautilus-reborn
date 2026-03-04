@@ -87,5 +87,5 @@ const api: BrowserDesktopApi = {
 if (process.contextIsolated) {
   contextBridge.exposeInMainWorld('notilusDesktop', api);
 } else {
-  (window as Window & { notilusDesktop: BrowserDesktopApi }).notilusDesktop = api;
+  (globalThis as any).notilusDesktop = api;
 }
