@@ -14,6 +14,7 @@ import { MosaicPanel } from './MosaicPanel';
 import { UpdatesPanel } from './UpdatesPanel';
 import { StudioPanel } from './StudioPanel';
 import { GitHubReposPanel } from './GitHubReposPanel';
+import { FlouPanel } from './FlouPanel';
 import { SystemStats } from '@/hooks/useSystemMonitor';
 import { WebServicePanel } from './WebServicePanel';
 import type { WebServiceItem } from './DevToolsSidebar';
@@ -49,6 +50,7 @@ const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
   updates: UpdatesPanel,
   vscode: StudioPanel,
   github: GitHubReposPanel,
+  flou: FlouPanel,
 };
 
 export function SidebarPanel({
@@ -77,13 +79,14 @@ export function SidebarPanel({
   const isBookmarksPanel = panel === 'bookmarks';
   const isHistoryPanel = panel === 'history';
   const isGitHubPanel = panel === 'github';
+  const isFlouPanel = panel === 'flou';
 
   return (
     <div className="w-64 h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left">
       {Component ? (
         panel === 'monitor' ? (
           <Component stats={stats} />
-        ) : isBookmarksPanel || isHistoryPanel || isGitHubPanel ? (
+        ) : isBookmarksPanel || isHistoryPanel || isGitHubPanel || isFlouPanel ? (
           <Component onNavigate={onNavigate} />
         ) : (
           <Component />

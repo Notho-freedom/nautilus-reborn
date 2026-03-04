@@ -40,6 +40,8 @@ export interface BrowserState {
   adsBlocked: number;
 }
 
+const PINNED_TABS_KEY = 'notilus_pinned_tabs';
+
 const DEFAULT_TAB: BrowserTab = {
   id: 'tab-1',
   title: 'Speed Dial',
@@ -49,6 +51,24 @@ const DEFAULT_TAB: BrowserTab = {
   canGoBack: false,
   canGoForward: false,
 };
+
+function readPinnedTabs(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(PINNED_TABS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is string => typeof id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function writePinnedTabs(ids: string[]): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(PINNED_TABS_KEY, JSON.stringify(ids));
+}
 
 function isInternalUrl(url: string): boolean {
   return url.startsWith('notilus://');
@@ -89,6 +109,7 @@ export function useBrowserState() {
   const [localTabs, setLocalTabs] = useState<BrowserTab[]>([DEFAULT_TAB]);
   const [localActiveTabId, setLocalActiveTabId] = useState('tab-1');
   const [desktopSnapshot, setDesktopSnapshot] = useState<BrowserSnapshot | null>(null);
+  const [pinnedTabIds, setPinnedTabIds] = useState<string[]>(() => readPinnedTabs());
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarPanel, setSidebarPanel] = useState<string | null>(null);
@@ -127,9 +148,31 @@ export function useBrowserState() {
     return desktopSnapshot.tabs.map(mapDesktopTab);
   }, [desktopSnapshot]);
 
-  const tabs = desktopMode && desktopSnapshot ? desktopTabs : localTabs;
+  const baseTabs = desktopMode && desktopSnapshot ? desktopTabs : localTabs;
+  const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
+  const tabs = useMemo(
+    () =>
+      baseTabs.map(tab => ({
+        ...tab,
+        isPinned: pinnedSet.has(tab.id),
+      })),
+    [baseTabs, pinnedSet]
+  );
   const activeTabId = desktopMode && desktopSnapshot ? desktopSnapshot.activeTabId ?? '' : localActiveTabId;
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0] || DEFAULT_TAB;
+
+  useEffect(() => {
+    writePinnedTabs(pinnedTabIds);
+  }, [pinnedTabIds]);
+
+  useEffect(() => {
+    const validIds = new Set(baseTabs.map(tab => tab.id));
+    setPinnedTabIds(prev => {
+      const filtered = prev.filter(id => validIds.has(id));
+      if (filtered.length === prev.length) return prev;
+      return filtered;
+    });
+  }, [baseTabs]);
 
   const setActiveTabId = useCallback((id: string) => {
     if (desktopMode) {
@@ -164,6 +207,7 @@ export function useBrowserState() {
   const closeTab = useCallback((id: string) => {
     if (desktopMode) {
       void desktopCloseTab({ tabId: id });
+      setPinnedTabIds(prev => prev.filter(tabId => tabId !== id));
       return;
     }
 
@@ -186,6 +230,7 @@ export function useBrowserState() {
       }
       return next;
     });
+    setPinnedTabIds(prev => prev.filter(tabId => tabId !== id));
   }, [desktopMode, localActiveTabId]);
 
   const updateTabUrl = useCallback((id: string, url: string, title?: string) => {
@@ -290,6 +335,19 @@ export function useBrowserState() {
     if (prev) setActiveTabId(prev.id);
   }, [tabs, activeTabId, setActiveTabId]);
 
+  const togglePinTab = useCallback((id: string) => {
+    setPinnedTabIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(tabId => tabId !== id);
+      }
+      return [...prev, id];
+    });
+  }, []);
+
+  const isTabPinned = useCallback((id: string) => {
+    return pinnedSet.has(id);
+  }, [pinnedSet]);
+
   return {
     isDesktopMode: desktopMode,
     tabs,
@@ -304,6 +362,7 @@ export function useBrowserState() {
     canGoBack: Boolean(activeTab?.canGoBack),
     canGoForward: Boolean(activeTab?.canGoForward),
     isLoading: Boolean(activeTab?.isLoading),
+    isPinned: Boolean(activeTab?.isPinned),
     setActiveTabId,
     addTab,
     closeTab,
@@ -322,5 +381,7 @@ export function useBrowserState() {
     setSidebarPanel,
     nextTab,
     prevTab,
+    togglePinTab,
+    isTabPinned,
   };
 }

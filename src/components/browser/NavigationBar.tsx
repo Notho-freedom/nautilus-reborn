@@ -1,9 +1,25 @@
 import { useState } from 'react';
 import {
-  ArrowLeft, ArrowRight, RotateCw, Home, Shield, Lock,
-  Download, Puzzle, User, Sparkles, Star, ShieldCheck, Loader2
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Home,
+  Languages,
+  Loader2,
+  Lock,
+  Pin,
+  Puzzle,
+  RotateCw,
+  Send,
+  Shield,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface NavigationBarProps {
   url: string;
@@ -17,10 +33,16 @@ interface NavigationBarProps {
   isLoading?: boolean;
   isBookmarked?: boolean;
   onToggleBookmark?: () => void;
+  onTogglePin: () => void;
+  isPinned: boolean;
+  onSnapshotVisible: () => Promise<void> | void;
+  onSnapshotFullPage: () => Promise<void> | void;
+  onSendToFlou: () => void;
+  adBlockEnabled: boolean;
+  onToggleAdBlock: () => void;
   onOpenExtensions?: () => void;
   onOpenDownloads?: () => void;
   onToggleAI: () => void;
-  adsBlocked?: number;
 }
 
 export function NavigationBar({
@@ -35,24 +57,46 @@ export function NavigationBar({
   isLoading = false,
   isBookmarked = false,
   onToggleBookmark,
+  onTogglePin,
+  isPinned,
+  onSnapshotVisible,
+  onSnapshotFullPage,
+  onSendToFlou,
+  adBlockEnabled,
+  onToggleAdBlock,
   onOpenExtensions,
   onOpenDownloads,
   onToggleAI,
-  adsBlocked = 0,
 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
+  const [snapshotOpen, setSnapshotOpen] = useState(false);
+  const [snapshotBusy, setSnapshotBusy] = useState(false);
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim()) {
-      const finalUrl = inputValue.includes('://') ? inputValue : `https://${inputValue}`;
-      onNavigate(finalUrl);
-      setInputValue('');
-      setFocused(false);
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!inputValue.trim()) return;
+    const finalUrl = inputValue.includes('://') ? inputValue : `https://${inputValue}`;
+    onNavigate(finalUrl);
+    setInputValue('');
+    setFocused(false);
+  };
+
+  const handleSnapshot = async (mode: 'visible' | 'full') => {
+    if (snapshotBusy) return;
+    setSnapshotBusy(true);
+    try {
+      if (mode === 'visible') {
+        await onSnapshotVisible();
+      } else {
+        await onSnapshotFullPage();
+      }
+      setSnapshotOpen(false);
+    } finally {
+      setSnapshotBusy(false);
     }
   };
 
@@ -82,24 +126,59 @@ export function NavigationBar({
     </button>
   );
 
+  const UrlActionButton = ({
+    children,
+    onClick,
+    label,
+    disabled,
+    active,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    label: string;
+    disabled?: boolean;
+    active?: boolean;
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      disabled={disabled}
+      className={cn(
+        'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast',
+        disabled
+          ? 'text-muted-foreground/40 cursor-not-allowed'
+          : active
+            ? 'text-primary hover:text-primary hover:bg-primary/10'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+      )}
+    >
+      {children}
+    </button>
+  );
+
   return (
     <div className="flex items-center h-10 bg-background border-b border-border px-2 gap-1 shrink-0">
       <NavButton label="Back" onClick={onBack} disabled={!canGoBack}>
-        <ArrowLeft size={15} />
+        <ChevronLeft size={15} />
       </NavButton>
       <NavButton label="Forward" onClick={onForward} disabled={!canGoForward}>
-        <ArrowRight size={15} />
+        <ChevronRight size={15} />
       </NavButton>
       <NavButton label="Reload" onClick={onReload}>
         {isLoading ? <Loader2 size={14} className="animate-spin text-primary" /> : <RotateCw size={14} />}
       </NavButton>
-      <NavButton label="Home" onClick={onHome}><Home size={15} /></NavButton>
+      <NavButton label="Home" onClick={onHome}>
+        <Home size={15} />
+      </NavButton>
 
       <form onSubmit={handleSubmit} className="flex-1 mx-2">
-        <div className={cn(
-          "flex items-center h-8 rounded-lg bg-notilus-surface-1 border transition-all duration-fast px-3 gap-2",
-          focused ? "border-primary/50 ring-2 ring-primary/20 glow-primary-sm" : "border-border"
-        )}>
+        <div
+          className={cn(
+            'flex items-center h-8 rounded-lg bg-notilus-surface-1 border px-3 gap-1.5 transition-colors duration-fast',
+            focused ? 'border-primary/50' : 'border-transparent'
+          )}
+        >
           {isInternal ? (
             <Shield size={13} className="text-muted-foreground shrink-0" />
           ) : isHttps ? (
@@ -110,40 +189,112 @@ export function NavigationBar({
           <input
             data-url-input
             value={focused ? inputValue : ''}
-            onChange={e => setInputValue(e.target.value)}
-            onFocus={() => { setFocused(true); setInputValue(url); }}
+            onChange={event => setInputValue(event.target.value)}
+            onFocus={() => {
+              setFocused(true);
+              setInputValue(url);
+            }}
             onBlur={() => setFocused(false)}
             placeholder={url}
             className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none"
           />
-          <button
-            type="button"
+
+          <UrlActionButton
+            label={isBookmarked ? 'Remove favorite' : 'Add favorite'}
             onClick={() => onToggleBookmark?.()}
-            className={cn("shrink-0 transition-colors duration-fast", isBookmarked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+            active={isBookmarked}
           >
-            <Star size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
-          </button>
+            <Star size={13} fill={isBookmarked ? 'currentColor' : 'none'} />
+          </UrlActionButton>
+
+          <UrlActionButton
+            label={isPinned ? 'Unpin tab' : 'Pin tab'}
+            onClick={onTogglePin}
+            active={isPinned}
+          >
+            <Pin size={13} fill={isPinned ? 'currentColor' : 'none'} />
+          </UrlActionButton>
+
+          <Popover open={snapshotOpen} onOpenChange={setSnapshotOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title="Snapshot"
+                disabled={snapshotBusy}
+                className={cn(
+                  'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast',
+                  snapshotBusy
+                    ? 'text-muted-foreground/40 cursor-not-allowed'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                )}
+              >
+                {snapshotBusy ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={8}
+              className="w-52 p-2 glass border-border"
+            >
+              <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5 px-1">
+                Snapshot
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSnapshot('visible');
+                }}
+                disabled={snapshotBusy}
+                className="w-full h-8 px-2 rounded-md text-xs font-body text-foreground hover:bg-muted/60 transition-colors duration-fast text-left"
+              >
+                Capture visible area
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSnapshot('full');
+                }}
+                disabled={snapshotBusy}
+                className="w-full h-8 px-2 rounded-md text-xs font-body text-foreground hover:bg-muted/60 transition-colors duration-fast text-left"
+              >
+                Capture full page
+              </button>
+            </PopoverContent>
+          </Popover>
+
+          <UrlActionButton
+            label={adBlockEnabled ? 'Disable ad block' : 'Enable ad block'}
+            onClick={onToggleAdBlock}
+          >
+            <Shield size={13} className={adBlockEnabled ? 'text-success' : ''} />
+          </UrlActionButton>
+
+          <UrlActionButton label="Translate (coming soon)" disabled>
+            <Languages size={13} />
+          </UrlActionButton>
+
+          <UrlActionButton label="Send to flou" onClick={onSendToFlou}>
+            <Send size={13} />
+          </UrlActionButton>
         </div>
       </form>
 
-      {adsBlocked > 0 && (
-        <div className="flex items-center gap-1 px-2 h-7 rounded-md bg-success/10 text-success text-[11px] font-display tracking-wider" title="Ads blocked">
-          <Shield size={12} />
-          <span>{adsBlocked}</span>
-        </div>
-      )}
-
-      <NavButton label="Extensions" onClick={onOpenExtensions}><Puzzle size={15} /></NavButton>
-      <NavButton label="Downloads" onClick={onOpenDownloads}><Download size={15} /></NavButton>
+      <NavButton label="Extensions" onClick={onOpenExtensions}>
+        <Puzzle size={15} />
+      </NavButton>
+      <NavButton label="Downloads" onClick={onOpenDownloads}>
+        <Download size={15} />
+      </NavButton>
       <button
         onClick={onToggleAI}
         title="AI Assistant"
-        className="h-8 px-3 flex items-center gap-1.5 rounded-md text-xs font-display tracking-wider bg-primary/10 text-primary hover:bg-primary/20 transition-colors duration-fast"
+        className="h-8 w-8 flex items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors duration-fast"
       >
-        <Sparkles size={13} />
-        <span className="hidden sm:inline">AI</span>
+        <Sparkles size={14} />
       </button>
-      <NavButton label="Profile"><User size={15} /></NavButton>
+      <NavButton label="Profile">
+        <User size={15} />
+      </NavButton>
     </div>
   );
 }
