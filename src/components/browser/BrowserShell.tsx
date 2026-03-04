@@ -11,6 +11,7 @@ import { AIAssistant } from './AIAssistant';
 import { StatusBar } from './StatusBar';
 import { DevToolsPanel } from './DevToolsPanel';
 import type { WebServiceItem } from './DevToolsSidebar';
+import { useViewportOcclusion } from '@/hooks/useViewportOcclusion';
 import { getSettings, initializeSettings, subscribeToSettingsUpdates, updateSettings } from '@/lib/settings';
 import {
   isBookmarked,
@@ -29,6 +30,13 @@ export function BrowserShell() {
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
+  const occlusionInsets = useViewportOcclusion({
+    enabled: browser.isDesktopMode,
+    viewportRef,
+    baseInsets: {
+      left: browser.sidebarOpen ? browser.sidebarPanelWidth : 0,
+    },
+  });
 
   useEffect(() => {
     initializeSettings();
@@ -78,17 +86,22 @@ export function BrowserShell() {
   useKeyboardShortcuts(shortcuts);
 
   useEffect(() => {
+    browser.setViewportOcclusionInsets(occlusionInsets);
+  }, [browser, occlusionInsets]);
+
+  useEffect(() => {
     if (!browser.isDesktopMode) return;
     const viewport = viewportRef.current;
     if (!viewport) return;
 
     const updateBounds = () => {
       const rect = viewport.getBoundingClientRect();
+      const insets = browser.viewportOcclusionInsets;
       browser.setViewportBounds({
-        x: Math.round(rect.left),
-        y: Math.round(rect.top),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
+        x: Math.round(rect.left + insets.left),
+        y: Math.round(rect.top + insets.top),
+        width: Math.max(0, Math.round(rect.width - insets.left - insets.right)),
+        height: Math.max(0, Math.round(rect.height - insets.top - insets.bottom)),
       });
     };
 
@@ -101,7 +114,7 @@ export function BrowserShell() {
       observer.disconnect();
       window.removeEventListener('resize', updateBounds);
     };
-  }, [browser]);
+  }, [browser, browser.viewportOcclusionInsets]);
 
   const handleSidebarToggle = (panel?: string) => {
     if (panel === 'devtools-panel') {
@@ -123,7 +136,6 @@ export function BrowserShell() {
 
   const handleCloseSidebarPanel = () => {
     browser.setSidebarOpen(false);
-    browser.setSidebarPanel(null);
   };
 
   const showCaptureToast = (filePath: string) => {
@@ -243,24 +255,28 @@ export function BrowserShell() {
           onOpenWebPanel={handleOpenWebPanel}
           activeWebServiceUrl={activeWebService?.url ?? null}
         />
-        {browser.sidebarOpen && (
-          <SidebarPanel
-            panel={browser.sidebarPanel}
-            stats={stats}
-            webService={activeWebService}
-            onOpenWebServiceInTab={handleOpenWebServiceInTab}
-            onClosePanel={handleCloseSidebarPanel}
-            onNavigate={browser.navigateTo}
-          />
-        )}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="flex-1 flex overflow-hidden relative">
             <ContentArea
               url={browser.activeTab?.url || 'notilus://speed-dial'}
               onNavigate={browser.navigateTo}
               isDesktopMode={browser.isDesktopMode}
               viewportRef={viewportRef}
             />
+            {browser.sidebarOpen && (
+              <div className="absolute inset-y-0 left-0 z-[60]">
+                <SidebarPanel
+                  panel={browser.sidebarPanel}
+                  stats={stats}
+                  webService={activeWebService}
+                  width={browser.sidebarPanelWidth}
+                  onWidthChange={browser.setSidebarPanelWidth}
+                  onOpenWebServiceInTab={handleOpenWebServiceInTab}
+                  onClosePanel={handleCloseSidebarPanel}
+                  onNavigate={browser.navigateTo}
+                />
+              </div>
+            )}
           </div>
           <DevToolsPanel
             isOpen={browser.devToolsOpen}

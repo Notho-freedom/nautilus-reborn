@@ -89,6 +89,15 @@ describe('NavigationBar actions', () => {
     expect(screen.getByTitle('Snapshot').className).not.toContain('text-primary');
   });
 
+  it('applies accent colors only to active favorite/pin/adblock toggles', () => {
+    renderNavigationBar({ isBookmarked: true, isPinned: true, adBlockEnabled: true });
+    expect(screen.getByTitle('Remove favorite').className).toContain('text-primary');
+    expect(screen.getByTitle('Unpin tab').className).toContain('text-primary');
+    expect(screen.getByTitle('Disable ad block').className).toContain('text-success');
+    expect(screen.getByTitle('Snapshot').className).not.toContain('text-primary');
+    expect(screen.getByTitle('Snapshot').className).not.toContain('text-success');
+  });
+
   it('selects full URL text on focus', async () => {
     renderNavigationBar();
     const input = screen.getByPlaceholderText('https://example.com') as HTMLInputElement;

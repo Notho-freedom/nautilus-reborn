@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { BrowserSnapshot, TabDescriptor, ViewportBounds } from '../../shared/browser-contract';
 import { addHistoryItem } from '@/lib/history';
+import { readPanelWidth, writePanelWidth } from '@/lib/panelLayout';
 import {
   desktopActivateTab,
   desktopCloseTab,
@@ -12,6 +13,7 @@ import {
   desktopOpenDevTools,
   desktopReload,
   desktopSetViewportBounds,
+  desktopSetPinnedTabs,
   isDesktopRuntime,
   onDesktopStateChanged,
 } from '@/lib/electronBridge';
@@ -40,9 +42,17 @@ export interface BrowserState {
   adsBlocked: number;
 }
 
+export interface ViewportOcclusionInsets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
 const PINNED_TABS_KEY = 'notilus_pinned_tabs';
 const RECENTLY_CLOSED_TABS_KEY = 'notilus_recently_closed_tabs';
 const RECENTLY_CLOSED_TABS_LIMIT = 30;
+const EMPTY_OCCLUSION_INSETS: ViewportOcclusionInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 
 export interface RecentlyClosedTab {
   id: string;
@@ -169,8 +179,11 @@ export function useBrowserState() {
     () => readRecentlyClosedTabs()
   );
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarPanel, setSidebarPanel] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpenState] = useState(false);
+  const [sidebarPanel, setSidebarPanelState] = useState<string | null>(null);
+  const [sidebarPanelWidth, setSidebarPanelWidthState] = useState(320);
+  const [viewportOcclusionInsets, setViewportOcclusionInsetsState] =
+    useState<ViewportOcclusionInsets>(EMPTY_OCCLUSION_INSETS);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [devToolsOpen, setDevToolsOpen] = useState(false);
   const [devToolsHeight, setDevToolsHeight] = useState(250);
@@ -222,6 +235,11 @@ export function useBrowserState() {
   useEffect(() => {
     writePinnedTabs(pinnedTabIds);
   }, [pinnedTabIds]);
+
+  useEffect(() => {
+    if (!desktopMode) return;
+    void desktopSetPinnedTabs({ tabIds: pinnedTabIds });
+  }, [desktopMode, pinnedTabIds]);
 
   useEffect(() => {
     writeRecentlyClosedTabs(recentlyClosedTabs);
@@ -338,18 +356,66 @@ export function useBrowserState() {
     }
   }, [desktopMode, activeTab, updateTabUrl]);
 
+  const setSidebarPanel = useCallback((panel: string | null) => {
+    setSidebarPanelState(panel);
+    if (panel) {
+      setSidebarPanelWidthState(readPanelWidth(panel));
+    }
+  }, []);
+
+  const setSidebarOpen = useCallback((next: boolean) => {
+    setSidebarOpenState(next);
+    if (!next) {
+      setSidebarPanelState(null);
+    }
+  }, []);
+
+  const setSidebarPanelWidth = useCallback((width: number) => {
+    if (!sidebarPanel) return;
+    const persisted = writePanelWidth(sidebarPanel, width);
+    setSidebarPanelWidthState(persisted);
+  }, [sidebarPanel]);
+
+  const setViewportOcclusionInsets = useCallback((insets: ViewportOcclusionInsets) => {
+    const normalized: ViewportOcclusionInsets = {
+      top: Math.max(0, Math.round(insets.top || 0)),
+      right: Math.max(0, Math.round(insets.right || 0)),
+      bottom: Math.max(0, Math.round(insets.bottom || 0)),
+      left: Math.max(0, Math.round(insets.left || 0)),
+    };
+
+    setViewportOcclusionInsetsState(prev => {
+      if (
+        prev.top === normalized.top &&
+        prev.right === normalized.right &&
+        prev.bottom === normalized.bottom &&
+        prev.left === normalized.left
+      ) {
+        return prev;
+      }
+      return normalized;
+    });
+  }, []);
+
   const toggleSidebar = useCallback((panel?: string) => {
     if (panel && sidebarPanel === panel && sidebarOpen) {
-      setSidebarOpen(false);
-      setSidebarPanel(null);
-    } else if (panel) {
-      setSidebarPanel(panel);
-      setSidebarOpen(true);
-    } else {
-      setSidebarOpen(prev => !prev);
-      if (sidebarOpen) setSidebarPanel(null);
+      setSidebarOpenState(false);
+      setSidebarPanelState(null);
+      return;
     }
-  }, [sidebarOpen, sidebarPanel]);
+
+    if (panel) {
+      setSidebarPanel(panel);
+      setSidebarOpenState(true);
+      return;
+    }
+
+    setSidebarOpenState(prev => {
+      const next = !prev;
+      if (!next) setSidebarPanelState(null);
+      return next;
+    });
+  }, [sidebarOpen, sidebarPanel, setSidebarPanel]);
 
   const toggleAiPanel = useCallback(() => {
     setAiPanelOpen(prev => !prev);
@@ -442,6 +508,8 @@ export function useBrowserState() {
     activeTab,
     sidebarOpen,
     sidebarPanel,
+    sidebarPanelWidth,
+    viewportOcclusionInsets,
     aiPanelOpen,
     devToolsOpen,
     devToolsHeight,
@@ -467,6 +535,8 @@ export function useBrowserState() {
     setDevToolsHeight,
     setSidebarOpen,
     setSidebarPanel,
+    setSidebarPanelWidth,
+    setViewportOcclusionInsets,
     nextTab,
     prevTab,
     togglePinTab,

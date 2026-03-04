@@ -10,18 +10,22 @@ import { registerWindowIpc } from './ipc/window-ipc';
 import { DownloadManager } from './download-manager';
 import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
+import { SessionStore } from './session-store';
 import { StudioManager } from './studio-manager';
 import { TabManager } from './tab-manager';
 import { createMainWindow } from './window-manager';
 
 const DEBUG_IPC = process.env.NOTILUS_DEBUG_IPC === '1';
 const INITIAL_URL = 'notilus://speed-dial';
+const SESSION_SAVE_DEBOUNCE_MS = 250;
 
 let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
 let studioManager: StudioManager | null = null;
+const sessionStore = new SessionStore();
+let sessionSaveTimer: NodeJS.Timeout | null = null;
 
 function resolvePreloadPath(): string {
   const mjsPath = join(__dirname, '../preload/index.mjs');
@@ -48,6 +52,14 @@ function createDesktopWindow() {
     onStateChanged: snapshot => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send(BrowserIpcChannels.stateChanged, snapshot);
+
+      if (sessionSaveTimer) {
+        clearTimeout(sessionSaveTimer);
+      }
+      sessionSaveTimer = setTimeout(() => {
+        if (!tabManager) return;
+        sessionStore.save(tabManager.exportSession());
+      }, SESSION_SAVE_DEBOUNCE_MS);
     },
   });
 
@@ -75,7 +87,12 @@ function createDesktopWindow() {
   });
   studioManager = new StudioManager(mainWindow, tabManager, DEBUG_IPC);
   registerStudioIpc({ studioManager, debug: DEBUG_IPC });
-  tabManager.createTab(INITIAL_URL);
+  const restoredSession = sessionStore.load();
+  if (restoredSession) {
+    tabManager.restoreSession(restoredSession);
+  } else {
+    tabManager.createTab(INITIAL_URL);
+  }
 
   mainWindow.webContents.on('did-finish-load', () => {
     broadcastState();
@@ -112,6 +129,13 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (tabManager) {
+    sessionStore.save(tabManager.exportSession());
+  }
+  if (sessionSaveTimer) {
+    clearTimeout(sessionSaveTimer);
+    sessionSaveTimer = null;
+  }
   if (process.platform !== 'darwin') {
     app.quit();
   }

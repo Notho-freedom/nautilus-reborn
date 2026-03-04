@@ -72,6 +72,10 @@ export interface TabActionRequest {
   tabId?: string;
 }
 
+export interface PinnedTabsRequest {
+  tabIds: string[];
+}
+
 export interface DownloadActionRequest {
   downloadId: string;
 }
@@ -156,6 +160,7 @@ export interface BrowserDesktopApi {
   reload: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   openDevTools: (payload: TabActionRequest) => Promise<void>;
   setViewportBounds: (payload: ViewportBounds) => Promise<void>;
+  setPinnedTabs: (payload: PinnedTabsRequest) => Promise<void>;
   onStateChanged: (listener: (snapshot: BrowserSnapshot) => void) => () => void;
   minimizeWindow: () => Promise<void>;
   toggleMaximizeWindow: () => Promise<void>;
@@ -200,6 +205,7 @@ export const BrowserIpcChannels = {
   reload: 'browser:reload',
   openDevTools: 'browser:open-devtools',
   setViewportBounds: 'browser:set-viewport-bounds',
+  setPinnedTabs: 'browser:set-pinned-tabs',
   stateChanged: 'browser:state-changed',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',

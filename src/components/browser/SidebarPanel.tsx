@@ -18,11 +18,15 @@ import { FlouPanel } from './FlouPanel';
 import { SystemStats } from '@/hooks/useSystemMonitor';
 import { WebServicePanel } from './WebServicePanel';
 import type { WebServiceItem } from './DevToolsSidebar';
+import { SidePanelShell } from './panels/SidePanelShell';
+import { getPanelDefaultWidth } from '@/lib/panelLayout';
 
 interface SidebarPanelProps {
   panel: string | null;
   stats: SystemStats;
   webService: WebServiceItem | null;
+  width: number;
+  onWidthChange: (width: number) => void;
   onOpenWebServiceInTab: (url: string, label: string) => void;
   onClosePanel: () => void;
   onNavigate: (url: string) => void;
@@ -53,25 +57,70 @@ const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
   flou: FlouPanel,
 };
 
+const PANEL_TITLES: Record<string, string> = {
+  monitor: 'System Monitor',
+  terminal: 'Terminal',
+  lighthouse: 'Lighthouse',
+  settings: 'Settings',
+  git: 'Git',
+  'api-docs': 'API Docs',
+  bookmarks: 'Favorites',
+  history: 'History',
+  downloads: 'Downloads',
+  widgets: 'Widgets',
+  extensions: 'Extensions',
+  docs: 'Documentation',
+  mosaic: 'Mosaic',
+  updates: 'Updates',
+  vscode: 'Studio',
+  github: 'GitHub',
+  flou: 'Flou',
+  'web-service': 'Web Service',
+};
+
 export function SidebarPanel({
   panel,
   stats,
   webService,
+  width,
+  onWidthChange,
   onOpenWebServiceInTab,
   onClosePanel,
   onNavigate,
 }: SidebarPanelProps) {
   if (!panel) return null;
 
+  const title = PANEL_TITLES[panel] ?? panel;
+
   if (panel === 'web-service') {
     return (
-      <div className="w-[420px] h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left">
+      <SidePanelShell
+        panelId={panel}
+        title={webService?.label ?? title}
+        subtitle={webService?.url}
+        width={width || getPanelDefaultWidth(panel)}
+        minWidth={280}
+        maxWidth={700}
+        onClose={onClosePanel}
+        onWidthChange={onWidthChange}
+        quickActions={
+          webService
+            ? [
+                {
+                  id: 'open-tab',
+                  label: 'Transfer to tab',
+                  onClick: () => onOpenWebServiceInTab(webService.url, webService.label),
+                },
+              ]
+            : undefined
+        }
+      >
         <WebServicePanel
           service={webService}
           onOpenInTab={onOpenWebServiceInTab}
           onClose={onClosePanel}
         />
-      </div>
+      </SidePanelShell>
     );
   }
 
@@ -82,7 +131,22 @@ export function SidebarPanel({
   const isFlouPanel = panel === 'flou';
 
   return (
-    <div className="w-64 h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left">
+    <SidePanelShell
+      panelId={panel}
+      title={title}
+      width={width || getPanelDefaultWidth(panel)}
+      minWidth={260}
+      maxWidth={720}
+      onClose={onClosePanel}
+      onWidthChange={onWidthChange}
+      quickActions={[
+        {
+          id: 'close',
+          label: 'Close panel',
+          onClick: onClosePanel,
+        },
+      ]}
+    >
       {Component ? (
         panel === 'monitor' ? (
           <Component stats={stats} />
@@ -97,6 +161,6 @@ export function SidebarPanel({
           <p className="text-xs font-body text-muted-foreground">Panel content coming soon.</p>
         </div>
       )}
-    </div>
+    </SidePanelShell>
   );
 }

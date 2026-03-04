@@ -14,6 +14,7 @@ const api: BrowserDesktopApi = {
   openDevTools: payload => ipcRenderer.invoke(BrowserIpcChannels.openDevTools, payload),
   setViewportBounds: payload =>
     ipcRenderer.invoke(BrowserIpcChannels.setViewportBounds, payload),
+  setPinnedTabs: payload => ipcRenderer.invoke(BrowserIpcChannels.setPinnedTabs, payload),
   onStateChanged: listener => {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: Parameters<typeof listener>[0]) => {
       listener(snapshot);

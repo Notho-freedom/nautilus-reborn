@@ -6,6 +6,7 @@ import type {
   TabDescriptor,
   ViewportBounds,
 } from '../../shared/browser-contract';
+import type { PersistedTabSession } from './session-store';
 
 interface ManagedTab {
   descriptor: TabDescriptor;
@@ -21,6 +22,7 @@ interface TabManagerOptions {
 
 const INTERNAL_PREFIX = 'notilus://';
 const DEFAULT_INTERNAL_URL = 'notilus://speed-dial';
+const MAX_SESSION_TABS = 50;
 
 function isInternalUrl(url: string): boolean {
   return url.startsWith(INTERNAL_PREFIX);
@@ -51,6 +53,7 @@ function deriveTitle(url: string): string {
 export class TabManager {
   private readonly tabs = new Map<string, ManagedTab>();
   private readonly order: string[] = [];
+  private pinnedTabIds: string[] = [];
   private activeTabId: string | null = null;
   private sequence = 1;
   private viewportBounds: ViewportBounds = { x: 0, y: 0, width: 0, height: 0 };
@@ -67,27 +70,87 @@ export class TabManager {
     };
   }
 
-  createTab(rawUrl = DEFAULT_INTERNAL_URL): BrowserSnapshot {
-    const url = normalizeUrl(rawUrl);
-    const tabId = this.createTabId();
-    const descriptor: TabDescriptor = {
-      id: tabId,
-      title: deriveTitle(url),
-      url,
-      kind: isInternalUrl(url) ? 'internal' : 'external',
-      isLoading: false,
-      canGoBack: false,
-      canGoForward: false,
-    };
+  restoreSession(session: PersistedTabSession): BrowserSnapshot {
+    this.destroyAllTabs();
 
-    const managedTab: ManagedTab = { descriptor };
-    if (descriptor.kind === 'external') {
-      managedTab.view = this.createExternalView(tabId, url);
-      descriptor.isLoading = true;
+    const restored = session.tabs.slice(0, MAX_SESSION_TABS);
+    for (const tab of restored) {
+      this.createTabFromDescriptor(
+        {
+          id: tab.id,
+          title: tab.title || deriveTitle(tab.url),
+          url: normalizeUrl(tab.url),
+          kind: tab.kind,
+          isLoading: tab.kind === 'external',
+          canGoBack: false,
+          canGoForward: false,
+        },
+        true
+      );
     }
 
-    this.tabs.set(tabId, managedTab);
-    this.order.push(tabId);
+    if (!this.order.length) {
+      return this.createTab(DEFAULT_INTERNAL_URL);
+    }
+
+    const validIds = new Set(this.order);
+    this.pinnedTabIds = session.pinnedTabIds.filter(id => validIds.has(id));
+
+    const restoredActive =
+      typeof session.activeTabId === 'string' && this.tabs.has(session.activeTabId)
+        ? session.activeTabId
+        : this.order[0];
+
+    if (restoredActive) {
+      this.activeTabId = restoredActive;
+      this.syncViewVisibility();
+    }
+
+    this.notifyStateChanged();
+    return this.getSnapshot();
+  }
+
+  exportSession(pinnedTabIds: string[] = []): PersistedTabSession {
+    const effectivePinned =
+      pinnedTabIds.length > 0 ? [...new Set(pinnedTabIds)] : [...this.pinnedTabIds];
+    return {
+      version: 1,
+      activeTabId: this.activeTabId,
+      tabs: this.order
+        .map(id => this.tabs.get(id)?.descriptor)
+        .filter((tab): tab is TabDescriptor => Boolean(tab))
+        .slice(0, MAX_SESSION_TABS)
+        .map(tab => ({
+          id: tab.id,
+          url: tab.url,
+          title: tab.title,
+          kind: tab.kind,
+        })),
+      pinnedTabIds: effectivePinned,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  setPinnedTabs(tabIds: string[]): void {
+    const validIds = new Set(this.order);
+    this.pinnedTabIds = tabIds.filter(id => validIds.has(id));
+  }
+
+  createTab(rawUrl = DEFAULT_INTERNAL_URL): BrowserSnapshot {
+    const url = normalizeUrl(rawUrl);
+    const kind = isInternalUrl(url) ? 'internal' : 'external';
+    const tabId = this.createTabFromDescriptor(
+      {
+        id: this.createTabId(),
+        title: deriveTitle(url),
+        url,
+        kind,
+        isLoading: kind === 'external',
+        canGoBack: false,
+        canGoForward: false,
+      },
+      true
+    );
 
     this.log('tab:create', `${tabId} -> ${url}`);
     this.activateTabInternal(tabId);
@@ -106,6 +169,7 @@ export class TabManager {
     const closingIndex = this.order.indexOf(tabId);
     this.tabs.delete(tabId);
     this.order.splice(closingIndex, 1);
+    this.pinnedTabIds = this.pinnedTabIds.filter(id => id !== tabId);
     this.log('tab:close', tabId);
 
     if (this.order.length === 0) {
@@ -238,7 +302,24 @@ export class TabManager {
     return id;
   }
 
-  private createExternalView(tabId: string, initialUrl: string): WebContentsView {
+  private createTabFromDescriptor(descriptor: TabDescriptor, withInitialLoad: boolean): string {
+    const managedTab: ManagedTab = { descriptor: { ...descriptor } };
+
+    if (descriptor.kind === 'external') {
+      managedTab.view = this.createExternalView(descriptor.id, descriptor.url, withInitialLoad);
+      managedTab.descriptor.isLoading = true;
+    }
+
+    this.tabs.set(descriptor.id, managedTab);
+    this.order.push(descriptor.id);
+    return descriptor.id;
+  }
+
+  private createExternalView(
+    tabId: string,
+    initialUrl: string,
+    shouldLoad: boolean
+  ): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
         preload: this.options.preloadPath,
@@ -253,9 +334,11 @@ export class TabManager {
     this.options.window.contentView.addChildView(view);
     view.setBounds(this.getEffectiveBounds());
     this.attachWebContentsListeners(tabId, view);
-    void view.webContents.loadURL(initialUrl).catch(error => {
-      this.log('tab:load:error', String(error));
-    });
+    if (shouldLoad) {
+      void view.webContents.loadURL(initialUrl).catch(error => {
+        this.log('tab:load:error', String(error));
+      });
+    }
     return view;
   }
 
@@ -333,6 +416,18 @@ export class TabManager {
     if (!view.webContents.isDestroyed()) {
       (view.webContents as any).destroy?.();
     }
+  }
+
+  private destroyAllTabs(): void {
+    for (const id of this.order) {
+      const tab = this.tabs.get(id);
+      if (!tab?.view) continue;
+      this.destroyView(tab.view);
+    }
+    this.tabs.clear();
+    this.order.splice(0, this.order.length);
+    this.pinnedTabIds = [];
+    this.activeTabId = null;
   }
 
   private getEffectiveBounds(): ViewportBounds {

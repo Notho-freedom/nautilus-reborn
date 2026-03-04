@@ -11,6 +11,7 @@ import type {
   StudioViewportRequest,
   BrowserSnapshot,
   NavigateRequest,
+  PinnedTabsRequest,
   TabActionRequest,
   TabActivateRequest,
   TabCloseRequest,
@@ -102,6 +103,12 @@ export async function desktopSetViewportBounds(bounds: ViewportBounds): Promise<
   const bridge = getDesktopBridge();
   if (!bridge) return;
   await bridge.setViewportBounds(bounds);
+}
+
+export async function desktopSetPinnedTabs(payload: PinnedTabsRequest): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.setPinnedTabs(payload);
 }
 
 export function onDesktopStateChanged(

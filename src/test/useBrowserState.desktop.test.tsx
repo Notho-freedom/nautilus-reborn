@@ -34,6 +34,7 @@ describe('useBrowserState desktop mode', () => {
       reload: vi.fn().mockResolvedValue(initialSnapshot),
       openDevTools: vi.fn().mockResolvedValue(undefined),
       setViewportBounds: vi.fn().mockResolvedValue(undefined),
+      setPinnedTabs: vi.fn().mockResolvedValue(undefined),
       minimizeWindow: vi.fn().mockResolvedValue(undefined),
       toggleMaximizeWindow: vi.fn().mockResolvedValue(undefined),
       closeWindow: vi.fn().mockResolvedValue(undefined),

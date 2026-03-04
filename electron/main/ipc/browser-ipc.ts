@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import type {
   NavigateRequest,
   TabActivateRequest,
+  PinnedTabsRequest,
   TabActionRequest,
   TabCloseRequest,
   TabCreateRequest,
@@ -26,6 +27,7 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.reload);
   ipcMain.removeHandler(BrowserIpcChannels.openDevTools);
   ipcMain.removeHandler(BrowserIpcChannels.setViewportBounds);
+  ipcMain.removeHandler(BrowserIpcChannels.setPinnedTabs);
 }
 
 export function registerBrowserIpc({ tabManager, debug }: RegisterBrowserIpcOptions) {
@@ -89,5 +91,9 @@ export function registerBrowserIpc({ tabManager, debug }: RegisterBrowserIpcOpti
       tabManager.setViewportBounds(payload);
     }
   );
-}
 
+  ipcMain.handle(BrowserIpcChannels.setPinnedTabs, (_event, payload: PinnedTabsRequest) => {
+    log(BrowserIpcChannels.setPinnedTabs, payload);
+    tabManager.setPinnedTabs(payload.tabIds);
+  });
+}

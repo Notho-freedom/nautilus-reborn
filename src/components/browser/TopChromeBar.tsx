@@ -281,7 +281,6 @@ export function TopChromeBar({
             {regularTabs.map(tab => {
               const isActive = tab.id === activeTabId;
               const showClose = displayMode !== 'icon-only';
-              const closeOnHoverOnly = displayMode !== 'full';
               const tabDomainGroup = extractDomainGroup(tab.url);
               const sameDomainTabs = tabs.filter(
                 other => other.id !== tab.id && extractDomainGroup(other.url) === tabDomainGroup
@@ -316,8 +315,8 @@ export function TopChromeBar({
                             onCloseTab(tab.id);
                           }}
                           className={cn(
-                            'hover:bg-muted rounded-sm p-0.5 transition-opacity duration-fast shrink-0',
-                            closeOnHoverOnly ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
+                            'absolute right-1 top-1/2 -translate-y-1/2 hover:bg-muted rounded-sm p-0.5 transition-opacity duration-fast',
+                            'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
                           )}
                         >
                           <X size={10} />
@@ -337,26 +336,24 @@ export function TopChromeBar({
                         {extractDisplayDomain(tab.url)}
                       </div>
                     </div>
-                    <div className="my-2 h-px notilus-gradient-full opacity-50" />
-                    <div className="space-y-0.5">
-                      {sameDomainTabs.length > 0 ? (
-                        sameDomainTabs.map(other => (
-                          <button
-                            key={other.id}
-                            data-testid={`hover-tab-item-${tab.id}-${other.id}`}
-                            onClick={() => onSelectTab(other.id)}
-                            className="w-full h-8 px-1.5 rounded-md flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast"
-                          >
-                            <TabIcon tab={other} size={12} />
-                            <span className="truncate text-xs font-body text-foreground">{other.title}</span>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-1.5 py-1 text-xs font-body text-muted-foreground">
-                          No tabs from this domain
+                    {sameDomainTabs.length > 0 ? (
+                      <>
+                        <div className="my-2 h-px notilus-gradient-full opacity-50" />
+                        <div className="space-y-0.5">
+                          {sameDomainTabs.map(other => (
+                            <button
+                              key={other.id}
+                              data-testid={`hover-tab-item-${tab.id}-${other.id}`}
+                              onClick={() => onSelectTab(other.id)}
+                              className="w-full h-8 px-1.5 rounded-md flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast"
+                            >
+                              <TabIcon tab={other} size={12} />
+                              <span className="truncate text-xs font-body text-foreground">{other.title}</span>
+                            </button>
+                          ))}
                         </div>
-                      )}
-                    </div>
+                      </>
+                    ) : null}
                   </HoverCardContent>
                 </HoverCard>
               );

@@ -58,6 +58,7 @@ describe('TopChromeBar tabs behavior', () => {
       expect(screen.getByTestId('hover-tab-item-tab-1-tab-2')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('hover-tab-item-tab-1-tab-3')).not.toBeInTheDocument();
+    expect(screen.queryByText('No tabs from this domain')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('hover-tab-item-tab-1-tab-2'));
     expect(props.onSelectTab).toHaveBeenCalledWith('tab-2');

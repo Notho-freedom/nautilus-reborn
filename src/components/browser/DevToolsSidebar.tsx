@@ -97,7 +97,7 @@ export function DevToolsSidebar({
                   className={cn(
                     "w-8 h-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0",
                     isActive
-                      ? "bg-primary/20 border border-primary/50 text-white"
+                      ? "bg-primary/20 text-white"
                       : "text-primary hover:text-primary hover:bg-primary/10"
                   )}
                 >
@@ -122,7 +122,7 @@ export function DevToolsSidebar({
                 className={cn(
                   'w-8 h-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0',
                   activePanel === 'web-service' && activeWebServiceUrl === svc.url
-                    ? 'bg-primary/20 border border-primary/50 text-white'
+                    ? 'bg-primary/20 text-white'
                     : 'text-primary hover:text-primary hover:bg-primary/10'
                 )}
               >

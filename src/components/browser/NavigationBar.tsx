@@ -147,12 +147,14 @@ export function NavigationBar({
     label,
     disabled,
     active,
+    activeTone = 'primary',
   }: {
     children: React.ReactNode;
     onClick?: () => void;
     label: string;
     disabled?: boolean;
     active?: boolean;
+    activeTone?: 'primary' | 'success';
   }) => (
     <ButtonTooltip label={label}>
       <button
@@ -165,7 +167,9 @@ export function NavigationBar({
           disabled
             ? 'text-muted-foreground/40 cursor-not-allowed'
             : active
-              ? 'text-foreground hover:text-foreground hover:bg-muted/60'
+              ? activeTone === 'success'
+                ? 'text-success hover:text-success hover:bg-success/15'
+                : 'text-primary hover:text-primary hover:bg-primary/10'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
         )}
       >
@@ -230,11 +234,17 @@ export function NavigationBar({
             label={isBookmarked ? 'Remove favorite' : 'Add favorite'}
             onClick={() => onToggleBookmark?.()}
             active={isBookmarked}
+            activeTone="primary"
           >
             <Star size={13} fill={isBookmarked ? 'currentColor' : 'none'} />
           </UrlActionButton>
 
-          <UrlActionButton label={isPinned ? 'Unpin tab' : 'Pin tab'} onClick={onTogglePin} active={isPinned}>
+          <UrlActionButton
+            label={isPinned ? 'Unpin tab' : 'Pin tab'}
+            onClick={onTogglePin}
+            active={isPinned}
+            activeTone="primary"
+          >
             <Pin size={13} fill={isPinned ? 'currentColor' : 'none'} />
           </UrlActionButton>
 
@@ -282,6 +292,7 @@ export function NavigationBar({
             label={adBlockEnabled ? 'Disable ad block' : 'Enable ad block'}
             onClick={onToggleAdBlock}
             active={adBlockEnabled}
+            activeTone="success"
           >
             <Shield size={13} />
           </UrlActionButton>
