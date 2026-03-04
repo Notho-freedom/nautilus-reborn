@@ -2,11 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, Globe, Clock, Zap, Quote, Terminal, Plus, Wrench, ShieldCheck } from 'lucide-react';
 import { getBookmarks, subscribeToBookmarksUpdates } from '@/lib/bookmarks';
 import { getHistoryItems, subscribeToHistoryUpdates } from '@/lib/history';
-import { getSettings, subscribeToSettingsUpdates } from '@/lib/settings';
+import { getSettings, subscribeToSettingsUpdates, type BrowserSettings } from '@/lib/settings';
+import { resolveInitialWallpaper } from '@/lib/defaultWallpapers';
 
 interface SpeedDialProps {
   onNavigate: (url: string) => void;
 }
+
+const SPEED_DIAL_WALLPAPER_KEY = 'notilus_v2_speed_dial_wallpaper';
+type WallpaperStatus = 'idle' | 'loading' | 'loaded' | 'error';
 
 const DEFAULT_FAVORITES = [
   { name: 'GitHub', url: 'https://github.com' },
@@ -50,6 +54,11 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [searchEngine, setSearchEngine] = useState(() => getSettings().searchEngine);
+  const [homePageStyle, setHomePageStyle] = useState<BrowserSettings['homePageStyle']>(
+    () => getSettings().homePageStyle
+  );
+  const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
+  const [wallpaperStatus, setWallpaperStatus] = useState<WallpaperStatus>('idle');
   const [favorites, setFavorites] = useState(DEFAULT_FAVORITES);
   const [recent, setRecent] = useState(DEFAULT_RECENT);
 
@@ -93,12 +102,34 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
 
   useEffect(() => {
     const refreshSettings = () => {
-      setSearchEngine(getSettings().searchEngine);
+      const settings = getSettings();
+      setSearchEngine(settings.searchEngine);
+      setHomePageStyle(settings.homePageStyle);
     };
 
     refreshSettings();
     return subscribeToSettingsUpdates(refreshSettings);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (homePageStyle !== 'modern') {
+      setWallpaperUrl(null);
+      setWallpaperStatus('idle');
+      return;
+    }
+
+    const storedUrl = window.localStorage.getItem(SPEED_DIAL_WALLPAPER_KEY);
+    const resolved = resolveInitialWallpaper(storedUrl);
+
+    if (storedUrl !== resolved) {
+      window.localStorage.setItem(SPEED_DIAL_WALLPAPER_KEY, resolved);
+    }
+
+    setWallpaperUrl(resolved);
+    setWallpaperStatus('loading');
+  }, [homePageStyle]);
 
   const searchPlaceholder = useMemo(() => {
     if (searchEngine === 'google') return 'Search with Google or enter URL...';
@@ -127,10 +158,40 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
     return 'Good evening';
   };
 
+  const showModernWallpaper =
+    homePageStyle === 'modern' &&
+    wallpaperUrl !== null &&
+    wallpaperStatus !== 'error';
+
   return (
     <div className="flex-1 flex flex-col items-center justify-start p-8 overflow-y-auto no-scrollbar relative">
+      {showModernWallpaper && (
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <img
+            data-testid="speed-dial-wallpaper-image"
+            src={wallpaperUrl}
+            alt=""
+            className={`h-full w-full object-cover transition-opacity duration-500 ${
+              wallpaperStatus === 'loaded' ? 'opacity-100' : 'opacity-0'
+            }`}
+            onLoad={() => setWallpaperStatus('loaded')}
+            onError={() => setWallpaperStatus('error')}
+          />
+        </div>
+      )}
+
+      {showModernWallpaper && (
+        <div
+          data-testid="speed-dial-wallpaper-scrim"
+          className="absolute inset-0 z-[1] bg-black/30 pointer-events-none"
+        />
+      )}
+
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 gradient-overlay pointer-events-none" />
+      <div
+        data-testid="speed-dial-gradient-overlay"
+        className="absolute inset-0 z-[2] gradient-overlay pointer-events-none"
+      />
 
       {/* Logo */}
       <div className="mb-6 mt-6 flex flex-col items-center animate-fade-in-up relative z-10">
