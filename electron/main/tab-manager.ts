@@ -331,7 +331,7 @@ export class TabManager {
     }
 
     if (!view.webContents.isDestroyed()) {
-      view.webContents.destroy();
+      (view.webContents as any).destroy?.();
     }
   }
 

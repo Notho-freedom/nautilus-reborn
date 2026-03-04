@@ -74,7 +74,7 @@ export class DownloadManager {
     const managed = this.downloads.get(downloadId);
     if (!managed) return this.getSnapshot();
 
-    if (managed.item && !managed.item.isDestroyed()) {
+    if (managed.item && !(managed.item as any).isDestroyed?.()) {
       managed.item.cancel();
     }
     managed.descriptor.status = 'cancelled';
@@ -88,7 +88,7 @@ export class DownloadManager {
     const managed = this.downloads.get(downloadId);
     if (!managed) return this.getSnapshot();
 
-    if (managed.item && !managed.item.isDestroyed()) {
+    if (managed.item && !(managed.item as any).isDestroyed?.()) {
       managed.item.cancel();
     }
 
