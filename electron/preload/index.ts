@@ -73,6 +73,15 @@ const api: BrowserDesktopApi = {
       ipcRenderer.removeListener(BrowserIpcChannels.gitStateChanged, handler);
     };
   },
+  studioResizeWindow: payload => ipcRenderer.invoke(BrowserIpcChannels.studioResizeWindow, payload),
+  studioCaptureViewport: () => ipcRenderer.invoke(BrowserIpcChannels.studioCaptureViewport),
+  studioCaptureFullPage: () => ipcRenderer.invoke(BrowserIpcChannels.studioCaptureFullPage),
+  studioApplyCss: payload => ipcRenderer.invoke(BrowserIpcChannels.studioApplyCss, payload),
+  studioClearCss: () => ipcRenderer.invoke(BrowserIpcChannels.studioClearCss),
+  studioRunScript: payload => ipcRenderer.invoke(BrowserIpcChannels.studioRunScript, payload),
+  studioStartRecording: () => ipcRenderer.invoke(BrowserIpcChannels.studioStartRecording),
+  studioStopRecording: () => ipcRenderer.invoke(BrowserIpcChannels.studioStopRecording),
+  studioGetRecording: () => ipcRenderer.invoke(BrowserIpcChannels.studioGetRecording),
 };
 
 if (process.contextIsolated) {

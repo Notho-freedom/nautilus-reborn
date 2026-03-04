@@ -107,6 +107,44 @@ export interface GitFileRequest {
   path: string;
 }
 
+export interface StudioViewportRequest {
+  width: number;
+  height: number;
+}
+
+export interface StudioScriptRequest {
+  script: string;
+}
+
+export interface StudioCssRequest {
+  css: string;
+}
+
+export interface StudioCaptureResult {
+  filePath: string;
+  capturedAt: string;
+  mode: 'viewport' | 'fullpage';
+}
+
+export interface StudioScriptResult {
+  output: string;
+}
+
+export interface StudioRecordedEvent {
+  type: string;
+  selector: string;
+  value: string;
+  x: number;
+  y: number;
+  timestamp: number;
+}
+
+export interface StudioRecordingSnapshot {
+  isRecording: boolean;
+  startedAt: string | null;
+  events: StudioRecordedEvent[];
+}
+
 export interface BrowserDesktopApi {
   getState: () => Promise<BrowserSnapshot>;
   createTab: (payload: TabCreateRequest) => Promise<BrowserSnapshot>;
@@ -140,6 +178,15 @@ export interface BrowserDesktopApi {
   unstageGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
   discardGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
   onGitStateChanged: (listener: (snapshot: GitSnapshot) => void) => () => void;
+  studioResizeWindow: (payload: StudioViewportRequest) => Promise<void>;
+  studioCaptureViewport: () => Promise<StudioCaptureResult>;
+  studioCaptureFullPage: () => Promise<StudioCaptureResult>;
+  studioApplyCss: (payload: StudioCssRequest) => Promise<void>;
+  studioClearCss: () => Promise<void>;
+  studioRunScript: (payload: StudioScriptRequest) => Promise<StudioScriptResult>;
+  studioStartRecording: () => Promise<StudioRecordingSnapshot>;
+  studioStopRecording: () => Promise<StudioRecordingSnapshot>;
+  studioGetRecording: () => Promise<StudioRecordingSnapshot>;
 }
 
 export const BrowserIpcChannels = {
@@ -175,4 +222,13 @@ export const BrowserIpcChannels = {
   gitUnstageFile: 'git:unstage-file',
   gitDiscardFile: 'git:discard-file',
   gitStateChanged: 'git:state-changed',
+  studioResizeWindow: 'studio:resize-window',
+  studioCaptureViewport: 'studio:capture-viewport',
+  studioCaptureFullPage: 'studio:capture-fullpage',
+  studioApplyCss: 'studio:apply-css',
+  studioClearCss: 'studio:clear-css',
+  studioRunScript: 'studio:run-script',
+  studioStartRecording: 'studio:start-recording',
+  studioStopRecording: 'studio:stop-recording',
+  studioGetRecording: 'studio:get-recording',
 } as const;

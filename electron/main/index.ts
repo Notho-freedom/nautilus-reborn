@@ -5,10 +5,12 @@ import { BrowserIpcChannels } from '../../shared/browser-contract';
 import { registerBrowserIpc } from './ipc/browser-ipc';
 import { registerDownloadIpc } from './ipc/download-ipc';
 import { registerGitIpc } from './ipc/git-ipc';
+import { registerStudioIpc } from './ipc/studio-ipc';
 import { registerWindowIpc } from './ipc/window-ipc';
 import { DownloadManager } from './download-manager';
 import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
+import { StudioManager } from './studio-manager';
 import { TabManager } from './tab-manager';
 import { createMainWindow } from './window-manager';
 
@@ -19,6 +21,7 @@ let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
+let studioManager: StudioManager | null = null;
 
 function resolvePreloadPath(): string {
   const mjsPath = join(__dirname, '../preload/index.mjs');
@@ -70,6 +73,8 @@ function createDesktopWindow() {
       mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
     },
   });
+  studioManager = new StudioManager(mainWindow, tabManager, DEBUG_IPC);
+  registerStudioIpc({ studioManager, debug: DEBUG_IPC });
   tabManager.createTab(INITIAL_URL);
 
   mainWindow.webContents.on('did-finish-load', () => {

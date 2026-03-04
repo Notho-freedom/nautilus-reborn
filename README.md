@@ -54,6 +54,7 @@ En mode desktop:
 - Téléchargements: capturés nativement via Electron session (`will-download`) et visibles dans le panneau Downloads
 - Git panel: connecté au vrai repo local (status/commits/commit)
 - Sidebar web services: configurable dans Settings, ouverture en panel + transfert en tab
+- Studio panel: resize presets, capture, live CSS/JS, recorder export (Playwright/Cypress)
 
 ## Workflow Git recommandé
 

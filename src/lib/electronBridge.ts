@@ -5,6 +5,10 @@ import type {
   GitCommitRequest,
   GitFileRequest,
   GitSnapshot,
+  StudioCaptureResult,
+  StudioRecordingSnapshot,
+  StudioScriptResult,
+  StudioViewportRequest,
   BrowserSnapshot,
   NavigateRequest,
   TabActionRequest,
@@ -256,4 +260,58 @@ export function onDesktopGitStateChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onGitStateChanged(listener);
+}
+
+export async function desktopStudioResizeWindow(payload: StudioViewportRequest): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.studioResizeWindow(payload);
+}
+
+export async function desktopStudioCaptureViewport(): Promise<StudioCaptureResult | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.studioCaptureViewport();
+}
+
+export async function desktopStudioCaptureFullPage(): Promise<StudioCaptureResult | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.studioCaptureFullPage();
+}
+
+export async function desktopStudioApplyCss(css: string): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.studioApplyCss({ css });
+}
+
+export async function desktopStudioClearCss(): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.studioClearCss();
+}
+
+export async function desktopStudioRunScript(script: string): Promise<StudioScriptResult | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.studioRunScript({ script });
+}
+
+export async function desktopStudioStartRecording(): Promise<StudioRecordingSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.studioStartRecording();
+}
+
+export async function desktopStudioStopRecording(): Promise<StudioRecordingSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.studioStopRecording();
+}
+
+export async function desktopStudioGetRecording(): Promise<StudioRecordingSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.studioGetRecording();
 }

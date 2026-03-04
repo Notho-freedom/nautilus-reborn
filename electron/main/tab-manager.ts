@@ -1,4 +1,4 @@
-import { BrowserWindow, WebContentsView } from 'electron';
+import { BrowserWindow, WebContentsView, type WebContents } from 'electron';
 import type {
   BrowserSnapshot,
   NavigateRequest,
@@ -217,6 +217,13 @@ export class TabManager {
       height: Math.max(0, Math.floor(bounds.height)),
     };
     this.syncViewVisibility();
+  }
+
+  getActiveExternalWebContents(): WebContents | null {
+    const target = this.resolveTargetTab(this.activeTabId ?? undefined);
+    if (!target?.view) return null;
+    if (target.descriptor.kind !== 'external') return null;
+    return target.view.webContents;
   }
 
   private resolveTargetTab(tabId?: string): ManagedTab | null {

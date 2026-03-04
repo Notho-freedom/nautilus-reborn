@@ -40,11 +40,18 @@ Ce document sert de base opérationnelle pour intégrer les fonctionnalités V1 
 - Updates:
   - V1: `lib/services/update_service.dart`
   - V2: vérification GitHub Releases + fallback local (`src/lib/updates.ts`, `src/components/browser/UpdatesPanel.tsx`)
+- Studio:
+  - V1: services `studio/*` (responsive, screenshot, live edit, recorder, mockup compare)
+  - V2: lot desktop connecté (`src/lib/studio.ts`, `electron/main/studio-manager.ts`, `src/components/browser/StudioPanel.tsx`)
+    - Resize window par preset
+    - Capture viewport/full page
+    - Injection CSS/JS live
+    - Recorder d'interactions + export Playwright/Cypress
 
 ## Priorité d’intégration (itérations)
 
 1. DevTools internes branchés à des données runtime réelles (console/network/elements custom)
-2. Studio avancé (responsive/screenshot/live-edit/recorder/mockup) à connecter aux capacités Electron/WebContentsView
+2. Studio: enrichir le mode mockup compare (overlay/diff réel d'images)
 3. Parité avancée IA/TTS/Cloudinary depuis V1
 4. Auth GitHub sécurisée (token backend/proxy au lieu localStorage brut)
 5. Couverture tests unitaires élargie sur toute la stack desktop

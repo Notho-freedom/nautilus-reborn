@@ -112,6 +112,35 @@ describe('useBrowserState desktop mode', () => {
         updatedAt: new Date().toISOString(),
         error: null,
       }),
+      studioResizeWindow: vi.fn().mockResolvedValue(undefined),
+      studioCaptureViewport: vi.fn().mockResolvedValue({
+        filePath: 'C:/tmp/capture.png',
+        capturedAt: new Date().toISOString(),
+        mode: 'viewport',
+      }),
+      studioCaptureFullPage: vi.fn().mockResolvedValue({
+        filePath: 'C:/tmp/capture-full.png',
+        capturedAt: new Date().toISOString(),
+        mode: 'fullpage',
+      }),
+      studioApplyCss: vi.fn().mockResolvedValue(undefined),
+      studioClearCss: vi.fn().mockResolvedValue(undefined),
+      studioRunScript: vi.fn().mockResolvedValue({ output: 'ok' }),
+      studioStartRecording: vi.fn().mockResolvedValue({
+        isRecording: true,
+        startedAt: new Date().toISOString(),
+        events: [],
+      }),
+      studioStopRecording: vi.fn().mockResolvedValue({
+        isRecording: false,
+        startedAt: new Date().toISOString(),
+        events: [],
+      }),
+      studioGetRecording: vi.fn().mockResolvedValue({
+        isRecording: false,
+        startedAt: null,
+        events: [],
+      }),
       onStateChanged: vi.fn(listener => {
         stateListener = listener;
         return () => {
