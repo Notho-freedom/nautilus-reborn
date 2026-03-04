@@ -97,8 +97,8 @@ export function DevToolsSidebar({
                   className={cn(
                     "w-8 h-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0",
                     isActive
-                      ? "bg-primary/15 text-primary glow-primary-sm"
-                      : "text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent"
+                      ? "bg-primary/20 border border-primary/50 text-white"
+                      : "text-primary hover:text-primary hover:bg-primary/10"
                   )}
                 >
                   <it.icon size={15} />
@@ -122,8 +122,8 @@ export function DevToolsSidebar({
                 className={cn(
                   'w-8 h-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0',
                   activePanel === 'web-service' && activeWebServiceUrl === svc.url
-                    ? 'bg-primary/15 text-primary glow-primary-sm'
-                    : 'text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent'
+                    ? 'bg-primary/20 border border-primary/50 text-white'
+                    : 'text-primary hover:text-primary hover:bg-primary/10'
                 )}
               >
                 <svc.icon size={14} />
@@ -137,12 +137,19 @@ export function DevToolsSidebar({
 
         <div className="flex-1" />
 
-        <button
-          onClick={() => onToggle()}
-          className="w-8 h-8 flex items-center justify-center rounded-md text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors duration-fast shrink-0"
-        >
-          {isOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
-        </button>
+        <Tooltip delayDuration={500}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => onToggle()}
+              className="w-8 h-8 flex items-center justify-center rounded-md text-primary hover:text-primary hover:bg-primary/10 transition-colors duration-fast shrink-0"
+            >
+              {isOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="glass text-xs font-body">
+            {isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
