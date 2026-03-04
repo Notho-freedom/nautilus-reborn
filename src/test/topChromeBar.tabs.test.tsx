@@ -37,8 +37,16 @@ describe('TopChromeBar tabs behavior', () => {
 
     expect(screen.getByTestId('pinned-tab-tab-2')).toBeInTheDocument();
     expect(screen.queryByTestId('tab-button-tab-2')).not.toBeInTheDocument();
-    expect(screen.getByText('Regular long tab title alpha')).toBeInTheDocument();
+    const regularTitle = screen.getByText('Regular long tab title alpha');
+    expect(regularTitle).toBeInTheDocument();
+    expect(regularTitle.className).not.toContain('pr-4');
     expect(screen.getByText('Regular beta')).toBeInTheDocument();
+    expect(screen.getByAltText('Notilus')).toBeInTheDocument();
+    expect(screen.queryByText('NOTILUS')).not.toBeInTheDocument();
+
+    const pinned = screen.getByTestId('pinned-tab-tab-2');
+    expect(pinned.className).not.toContain('border');
+    expect(pinned.className).not.toContain('bg-');
   });
 
   it('opens hover panel with other tabs and switches on click', async () => {

@@ -14,9 +14,7 @@ const api: BrowserDesktopApi = {
   openDevTools: payload => ipcRenderer.invoke(BrowserIpcChannels.openDevTools, payload),
   setViewportBounds: payload =>
     ipcRenderer.invoke(BrowserIpcChannels.setViewportBounds, payload),
-  setOverlayState: payload =>
-    ipcRenderer.invoke(BrowserIpcChannels.overlaySetState, payload),
-  clearOverlay: () => ipcRenderer.invoke(BrowserIpcChannels.overlayClear),
+  setPinnedTabs: payload => ipcRenderer.invoke(BrowserIpcChannels.setPinnedTabs, payload),
   onStateChanged: listener => {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: Parameters<typeof listener>[0]) => {
       listener(snapshot);
@@ -24,15 +22,6 @@ const api: BrowserDesktopApi = {
     ipcRenderer.on(BrowserIpcChannels.stateChanged, handler);
     return () => {
       ipcRenderer.removeListener(BrowserIpcChannels.stateChanged, handler);
-    };
-  },
-  onOverlayEvent: listener => {
-    const handler = (_event: Electron.IpcRendererEvent, payload: Parameters<typeof listener>[0]) => {
-      listener(payload);
-    };
-    ipcRenderer.on(BrowserIpcChannels.overlayEvent, handler);
-    return () => {
-      ipcRenderer.removeListener(BrowserIpcChannels.overlayEvent, handler);
     };
   },
   minimizeWindow: () => ipcRenderer.invoke(BrowserIpcChannels.windowMinimize),

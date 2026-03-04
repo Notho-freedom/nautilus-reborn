@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import type {
   NavigateRequest,
+  SetPinnedTabsRequest,
   TabActivateRequest,
   TabActionRequest,
   TabCloseRequest,
@@ -8,13 +9,10 @@ import type {
   ViewportBounds,
 } from '../../../shared/browser-contract';
 import { BrowserIpcChannels } from '../../../shared/browser-contract';
-import type { ExternalOverlayState } from '../../../shared/overlay-contract';
 import { TabManager } from '../tab-manager';
 
 interface RegisterBrowserIpcOptions {
   tabManager: TabManager;
-  onOverlaySetState: (payload: ExternalOverlayState) => void;
-  onOverlayClear: () => void;
   debug: boolean;
 }
 
@@ -29,14 +27,11 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.reload);
   ipcMain.removeHandler(BrowserIpcChannels.openDevTools);
   ipcMain.removeHandler(BrowserIpcChannels.setViewportBounds);
-  ipcMain.removeHandler(BrowserIpcChannels.overlaySetState);
-  ipcMain.removeHandler(BrowserIpcChannels.overlayClear);
+  ipcMain.removeHandler(BrowserIpcChannels.setPinnedTabs);
 }
 
 export function registerBrowserIpc({
   tabManager,
-  onOverlaySetState,
-  onOverlayClear,
   debug,
 }: RegisterBrowserIpcOptions) {
   const log = (channel: string, payload?: unknown) => {
@@ -101,21 +96,11 @@ export function registerBrowserIpc({
   );
 
   ipcMain.handle(
-    BrowserIpcChannels.overlaySetState,
-    (_event, payload: ExternalOverlayState) => {
-      log(BrowserIpcChannels.overlaySetState, payload);
-      onOverlaySetState(payload);
+    BrowserIpcChannels.setPinnedTabs,
+    (_event, payload: SetPinnedTabsRequest) => {
+      log(BrowserIpcChannels.setPinnedTabs, payload);
+      tabManager.setPinnedTabs(payload.tabIds);
     }
   );
-
-  ipcMain.handle(BrowserIpcChannels.overlayClear, () => {
-    log(BrowserIpcChannels.overlayClear);
-    onOverlayClear();
-  });
-
-  ipcMain.on(BrowserIpcChannels.overlayEvent, (_event, payload) => {
-    if (!debug) return;
-    log(BrowserIpcChannels.overlayEvent, payload);
-  });
 }
 

@@ -2,6 +2,7 @@ import type {
   BrowserDesktopApi,
   DownloadActionRequest,
   DownloadsSnapshot,
+  SetPinnedTabsRequest,
   GitCommitRequest,
   GitFileRequest,
   GitSnapshot,
@@ -18,7 +19,6 @@ import type {
   ViewportBounds,
   WindowState,
 } from '../../shared/browser-contract';
-import type { ExternalOverlayEvent, ExternalOverlayState } from '../../shared/overlay-contract';
 
 export function getDesktopBridge(): BrowserDesktopApi | null {
   if (typeof window === 'undefined') return null;
@@ -105,18 +105,12 @@ export async function desktopSetViewportBounds(bounds: ViewportBounds): Promise<
   await bridge.setViewportBounds(bounds);
 }
 
-export async function desktopSetOverlayState(
-  payload: ExternalOverlayState
+export async function desktopSetPinnedTabs(
+  payload: SetPinnedTabsRequest
 ): Promise<void> {
   const bridge = getDesktopBridge();
   if (!bridge) return;
-  await bridge.setOverlayState(payload);
-}
-
-export async function desktopClearOverlay(): Promise<void> {
-  const bridge = getDesktopBridge();
-  if (!bridge) return;
-  await bridge.clearOverlay();
+  await bridge.setPinnedTabs(payload);
 }
 
 export function onDesktopStateChanged(
@@ -125,14 +119,6 @@ export function onDesktopStateChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onStateChanged(listener);
-}
-
-export function onDesktopOverlayEvent(
-  listener: (event: ExternalOverlayEvent) => void
-): () => void {
-  const bridge = getDesktopBridge();
-  if (!bridge) return () => {};
-  return bridge.onOverlayEvent(listener);
 }
 
 export async function desktopMinimizeWindow(): Promise<void> {

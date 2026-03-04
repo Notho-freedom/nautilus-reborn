@@ -34,8 +34,7 @@ describe('useBrowserState desktop mode', () => {
       reload: vi.fn().mockResolvedValue(initialSnapshot),
       openDevTools: vi.fn().mockResolvedValue(undefined),
       setViewportBounds: vi.fn().mockResolvedValue(undefined),
-      setOverlayState: vi.fn().mockResolvedValue(undefined),
-      clearOverlay: vi.fn().mockResolvedValue(undefined),
+      setPinnedTabs: vi.fn().mockResolvedValue(undefined),
       minimizeWindow: vi.fn().mockResolvedValue(undefined),
       toggleMaximizeWindow: vi.fn().mockResolvedValue(undefined),
       closeWindow: vi.fn().mockResolvedValue(undefined),
@@ -149,7 +148,6 @@ describe('useBrowserState desktop mode', () => {
           stateListener = null;
         };
       }),
-      onOverlayEvent: vi.fn(() => () => {}),
       onWindowStateChanged: vi.fn(() => () => {}),
       onDownloadsChanged: vi.fn(() => () => {}),
       onGitStateChanged: vi.fn(() => () => {}),
@@ -172,6 +170,7 @@ describe('useBrowserState desktop mode', () => {
     expect(result.current.tabs[0]?.url).toBe('https://example.com');
     expect(result.current.canGoBack).toBe(true);
     expect(result.current.canGoForward).toBe(false);
+    expect(bridge.setPinnedTabs).toHaveBeenCalledWith({ tabIds: [] });
 
     await act(async () => {
       result.current.navigateTo('https://react.dev');

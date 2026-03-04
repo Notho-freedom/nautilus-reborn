@@ -4,12 +4,13 @@ import {
   Star, Clock, Download, LayoutGrid, Puzzle,
   FileText, Wrench, RefreshCw,
   Youtube, MessageCircle, Bot, Send, Music,
-  MonitorSmartphone, Github
+  MonitorSmartphone, Github, type LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getSettings, subscribeToSettingsUpdates, type WebServiceId } from '@/lib/settings';
 import { useEffect, useMemo, useState } from 'react';
+import { WebServiceIcon } from './WebServiceIcon';
 
 interface DevToolsSidebarProps {
   isOpen: boolean;
@@ -46,16 +47,16 @@ export interface WebServiceItem {
   id: WebServiceId;
   label: string;
   url: string;
-  icon: React.ElementType;
+  fallbackIcon: LucideIcon;
 }
 
 const WEB_SERVICES: WebServiceItem[] = [
-  { id: 'youtubeMusic', icon: Music, label: 'YouTube Music', url: 'https://music.youtube.com' },
-  { id: 'youtube', icon: Youtube, label: 'YouTube', url: 'https://youtube.com' },
-  { id: 'chatgpt', icon: Bot, label: 'ChatGPT', url: 'https://chat.openai.com' },
-  { id: 'deepseek', icon: Bot, label: 'DeepSeek', url: 'https://chat.deepseek.com' },
-  { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', url: 'https://web.whatsapp.com' },
-  { id: 'telegram', icon: Send, label: 'Telegram', url: 'https://web.telegram.org' },
+  { id: 'youtubeMusic', fallbackIcon: Music, label: 'YouTube Music', url: 'https://music.youtube.com' },
+  { id: 'youtube', fallbackIcon: Youtube, label: 'YouTube', url: 'https://youtube.com' },
+  { id: 'chatgpt', fallbackIcon: Bot, label: 'ChatGPT', url: 'https://chat.openai.com' },
+  { id: 'deepseek', fallbackIcon: Bot, label: 'DeepSeek', url: 'https://chat.deepseek.com' },
+  { id: 'whatsapp', fallbackIcon: MessageCircle, label: 'WhatsApp', url: 'https://web.whatsapp.com' },
+  { id: 'telegram', fallbackIcon: Send, label: 'Telegram', url: 'https://web.telegram.org' },
 ];
 
 export function DevToolsSidebar({
@@ -90,7 +91,7 @@ export function DevToolsSidebar({
           const it = item as { id: string; icon: React.ElementType; label: string };
           const isActive = activePanel === it.id && isOpen;
           return (
-            <Tooltip key={it.id} delayDuration={500}>
+            <Tooltip key={it.id}>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => onToggle(it.id)}
@@ -115,7 +116,7 @@ export function DevToolsSidebar({
         <div className="text-[7px] font-display text-muted-foreground uppercase tracking-widest mb-0.5">Web</div>
 
         {visibleWebServices.map(svc => (
-          <Tooltip key={svc.label} delayDuration={500}>
+          <Tooltip key={svc.label}>
             <TooltipTrigger asChild>
               <button
                 onClick={() => onOpenWebPanel?.(svc)}
@@ -126,7 +127,13 @@ export function DevToolsSidebar({
                     : 'text-primary hover:text-primary hover:bg-primary/10'
                 )}
               >
-                <svc.icon size={14} />
+                <WebServiceIcon
+                  serviceId={svc.id}
+                  serviceUrl={svc.url}
+                  serviceLabel={svc.label}
+                  size={14}
+                  fallbackIcon={svc.fallbackIcon}
+                />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="glass text-xs font-body">
@@ -137,7 +144,7 @@ export function DevToolsSidebar({
 
         <div className="flex-1" />
 
-        <Tooltip delayDuration={500}>
+        <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => onToggle()}

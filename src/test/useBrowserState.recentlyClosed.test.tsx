@@ -71,4 +71,26 @@ describe('useBrowserState recently closed tabs', () => {
 
     expect(result.current.recentlyClosedTabs.length).toBe(30);
   });
+
+  it('opens Speed Dial when only pinned tabs remain after closing others', () => {
+    const { result } = renderHook(() => useBrowserState());
+    const initialTabId = result.current.activeTabId;
+
+    act(() => {
+      result.current.addTab('https://pinned.example', 'Pinned');
+    });
+    const pinnedTabId = result.current.activeTabId;
+
+    act(() => {
+      result.current.togglePinTab(pinnedTabId);
+    });
+
+    act(() => {
+      result.current.closeTab(initialTabId);
+    });
+
+    expect(result.current.tabs.some(tab => tab.id === pinnedTabId && tab.isPinned)).toBe(true);
+    expect(result.current.activeTab.url).toBe('notilus://speed-dial');
+    expect(result.current.activeTab.isPinned).toBeFalsy();
+  });
 });

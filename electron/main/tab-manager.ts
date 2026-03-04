@@ -6,7 +6,6 @@ import type {
   TabDescriptor,
   ViewportBounds,
 } from '../../shared/browser-contract';
-import { BrowserIpcChannels } from '../../shared/browser-contract';
 
 interface ManagedTab {
   descriptor: TabDescriptor;
@@ -15,13 +14,23 @@ interface ManagedTab {
 
 interface TabManagerOptions {
   window: BrowserWindow;
-  tabOverlayPreloadPath: string;
+  externalPreloadPath: string;
   onStateChanged: (snapshot: BrowserSnapshot) => void;
   debug: boolean;
 }
 
 const INTERNAL_PREFIX = 'notilus://';
 const DEFAULT_INTERNAL_URL = 'notilus://speed-dial';
+const EXTERNAL_SCROLLBAR_HIDE_CSS = `
+* {
+  scrollbar-width: none !important;
+}
+*::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+`;
 
 function isInternalUrl(url: string): boolean {
   return url.startsWith(INTERNAL_PREFIX);
@@ -55,6 +64,7 @@ export class TabManager {
   private activeTabId: string | null = null;
   private sequence = 1;
   private viewportBounds: ViewportBounds = { x: 0, y: 0, width: 0, height: 0 };
+  private pinnedTabIds = new Set<string>();
 
   constructor(private readonly options: TabManagerOptions) {}
 
@@ -107,15 +117,25 @@ export class TabManager {
     const closingIndex = this.order.indexOf(tabId);
     this.tabs.delete(tabId);
     this.order.splice(closingIndex, 1);
+    this.pinnedTabIds.delete(tabId);
     this.log('tab:close', tabId);
 
     if (this.order.length === 0) {
       return this.createTab(DEFAULT_INTERNAL_URL);
     }
 
+    if (!this.hasNonPinnedTabs()) {
+      const speedDialId = this.findSpeedDialTabId();
+      if (speedDialId) {
+        this.activateTabInternal(speedDialId);
+        this.notifyStateChanged();
+        return this.getSnapshot();
+      }
+      return this.createTab(DEFAULT_INTERNAL_URL);
+    }
+
     if (this.activeTabId === tabId) {
-      const fallbackIndex = Math.max(0, Math.min(closingIndex, this.order.length - 1));
-      this.activeTabId = this.order[fallbackIndex] ?? null;
+      this.activeTabId = this.findClosestNonPinnedTabId(closingIndex);
     }
 
     this.syncViewVisibility();
@@ -242,22 +262,9 @@ export class TabManager {
     return target.descriptor.kind === 'external';
   }
 
-  getTabIdByWebContentsId(webContentsId: number): string | null {
-    for (const [tabId, tab] of this.tabs.entries()) {
-      if (tab.view?.webContents.id === webContentsId) {
-        return tabId;
-      }
-    }
-    return null;
-  }
-
-  sendOverlayToTab(tabId: string, payload: unknown): boolean {
-    const tab = this.tabs.get(tabId);
-    if (!tab?.view) return false;
-    if (tab.descriptor.kind !== 'external') return false;
-    if (tab.view.webContents.isDestroyed()) return false;
-    tab.view.webContents.send(BrowserIpcChannels.overlayRender, payload);
-    return true;
+  setPinnedTabs(tabIds: string[]): void {
+    const validIds = new Set(this.order);
+    this.pinnedTabIds = new Set(tabIds.filter(tabId => validIds.has(tabId)));
   }
 
   private resolveTargetTab(tabId?: string): ManagedTab | null {
@@ -275,7 +282,7 @@ export class TabManager {
   private createExternalView(tabId: string, initialUrl: string): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
-        preload: this.options.tabOverlayPreloadPath,
+        preload: this.options.externalPreloadPath,
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
@@ -298,6 +305,11 @@ export class TabManager {
       this.refreshTabFromWebContents(tabId);
       this.notifyStateChanged();
     };
+    const applyExternalStyles = () => {
+      void view.webContents.insertCSS(EXTERNAL_SCROLLBAR_HIDE_CSS).catch(error => {
+        this.log('tab:css:error', String(error));
+      });
+    };
 
     view.webContents.setWindowOpenHandler(({ url }) => {
       this.createTab(url);
@@ -309,6 +321,10 @@ export class TabManager {
     view.webContents.on('did-navigate', refresh);
     view.webContents.on('did-navigate-in-page', refresh);
     view.webContents.on('did-fail-load', refresh);
+    view.webContents.on('did-finish-load', () => {
+      applyExternalStyles();
+      refresh();
+    });
     view.webContents.on('page-title-updated', event => {
       event.preventDefault();
       refresh();
@@ -375,6 +391,41 @@ export class TabManager {
       return this.viewportBounds;
     }
     return { x: 0, y: 0, width: 0, height: 0 };
+  }
+
+  private hasNonPinnedTabs(): boolean {
+    return this.order.some(tabId => !this.pinnedTabIds.has(tabId));
+  }
+
+  private findSpeedDialTabId(): string | null {
+    const match = this.order.find(tabId => {
+      if (this.pinnedTabIds.has(tabId)) return false;
+      const tab = this.tabs.get(tabId);
+      return tab?.descriptor.url === DEFAULT_INTERNAL_URL;
+    });
+    return match ?? null;
+  }
+
+  private findClosestNonPinnedTabId(preferredIndex: number): string | null {
+    if (this.order.length === 0) return null;
+    const start = Math.max(0, Math.min(preferredIndex, this.order.length - 1));
+
+    for (let offset = 0; offset < this.order.length; offset += 1) {
+      const right = start + offset;
+      if (right < this.order.length) {
+        const rightId = this.order[right];
+        if (!this.pinnedTabIds.has(rightId)) return rightId;
+      }
+
+      if (offset === 0) continue;
+      const left = start - offset;
+      if (left >= 0) {
+        const leftId = this.order[left];
+        if (!this.pinnedTabIds.has(leftId)) return leftId;
+      }
+    }
+
+    return null;
   }
 
   private notifyStateChanged(): void {

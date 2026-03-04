@@ -82,6 +82,11 @@ describe('NavigationBar actions', () => {
     expect(screen.getByTitle('Back')).toHaveAttribute('data-state', 'closed');
   });
 
+  it('renders vertical separator before right-side action group', () => {
+    renderNavigationBar();
+    expect(screen.getByTestId('nav-right-separator')).toBeInTheDocument();
+  });
+
   it('keeps URL action icons neutral (no primary tint)', () => {
     renderNavigationBar();
     expect(screen.getByTitle('Add favorite').className).not.toContain('text-primary');

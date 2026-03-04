@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
       rollupOptions: {
         input: {
           index: resolve(__dirname, './electron/preload/index.ts'),
-          'tab-overlay': resolve(__dirname, './electron/preload/tab-overlay.ts'),
+          external: resolve(__dirname, './electron/preload/external.ts'),
         },
         output: {
           entryFileNames: '[name].mjs',
