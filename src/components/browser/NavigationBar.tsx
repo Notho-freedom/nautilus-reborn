@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import {
   Camera,
   ChevronLeft,
@@ -46,23 +46,15 @@ interface NavigationBarProps {
   onOpenDownloads?: () => void;
   onOpenSettings?: () => void;
   onToggleAI: () => void;
-  onOverlayBlockingChange?: (isBlocking: boolean) => void;
-  useNativeTitleMode?: boolean;
 }
 
 function ActionHint({
   label,
-  useNativeTitleMode,
   children,
 }: {
   label: string;
-  useNativeTitleMode: boolean;
   children: ReactNode;
 }) {
-  if (useNativeTitleMode) {
-    return <>{children}</>;
-  }
-
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -96,8 +88,6 @@ export function NavigationBar({
   onOpenDownloads,
   onOpenSettings,
   onToggleAI,
-  onOverlayBlockingChange,
-  useNativeTitleMode = false,
 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -107,16 +97,6 @@ export function NavigationBar({
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
-
-  useEffect(() => {
-    onOverlayBlockingChange?.(snapshotOpen);
-  }, [snapshotOpen, onOverlayBlockingChange]);
-
-  useEffect(() => {
-    return () => {
-      onOverlayBlockingChange?.(false);
-    };
-  }, [onOverlayBlockingChange]);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -153,11 +133,10 @@ export function NavigationBar({
     label: string;
     disabled?: boolean;
   }) => (
-    <ActionHint label={label} useNativeTitleMode={useNativeTitleMode}>
+    <ActionHint label={label}>
       <button
         onClick={onClick}
         aria-label={label}
-        title={useNativeTitleMode ? label : undefined}
         disabled={disabled}
         className={cn(
           'h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-fast',
@@ -186,12 +165,11 @@ export function NavigationBar({
     active?: boolean;
     activeColor?: string;
   }) => (
-    <ActionHint label={label} useNativeTitleMode={useNativeTitleMode}>
+    <ActionHint label={label}>
       <button
         type="button"
         onClick={onClick}
         aria-label={label}
-        title={useNativeTitleMode ? label : undefined}
         disabled={disabled}
         className={cn(
           'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast',
@@ -272,10 +250,9 @@ export function NavigationBar({
           </UrlActionButton>
 
           <Popover open={snapshotOpen} onOpenChange={setSnapshotOpen}>
-            <ActionHint label="Snapshot" useNativeTitleMode={useNativeTitleMode}>
+            <ActionHint label="Snapshot">
               <PopoverTrigger
                 aria-label="Snapshot"
-                title={useNativeTitleMode ? 'Snapshot' : undefined}
                 className={cn(
                   'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast text-muted-foreground hover:text-foreground hover:bg-primary/10',
                   snapshotBusy ? 'opacity-60 cursor-not-allowed' : ''
@@ -339,11 +316,10 @@ export function NavigationBar({
       <NavButton label="Downloads" onClick={onOpenDownloads}>
         <Download size={15} />
       </NavButton>
-      <ActionHint label="AI assistant" useNativeTitleMode={useNativeTitleMode}>
+      <ActionHint label="AI assistant">
         <button
           onClick={onToggleAI}
           aria-label="AI assistant"
-          title={useNativeTitleMode ? 'AI assistant' : undefined}
           className="h-8 w-8 flex items-center justify-center rounded-md bg-muted/60 text-foreground hover:bg-primary/10 transition-colors duration-fast"
         >
           <Sparkles size={14} />

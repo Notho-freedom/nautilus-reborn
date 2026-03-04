@@ -3,6 +3,9 @@ import type {
   DownloadActionRequest,
   DownloadsSnapshot,
   SetPinnedTabsRequest,
+  TabRuntimeUpdateRequest,
+  TabWebContentsBindRequest,
+  TabWebContentsUnbindRequest,
   GitCommitRequest,
   GitFileRequest,
   GitSnapshot,
@@ -16,7 +19,6 @@ import type {
   TabActivateRequest,
   TabCloseRequest,
   TabCreateRequest,
-  ViewportBounds,
   WindowState,
 } from '../../shared/browser-contract';
 
@@ -99,18 +101,36 @@ export async function desktopOpenDevTools(
   await bridge.openDevTools(payload);
 }
 
-export async function desktopSetViewportBounds(bounds: ViewportBounds): Promise<void> {
-  const bridge = getDesktopBridge();
-  if (!bridge) return;
-  await bridge.setViewportBounds(bounds);
-}
-
 export async function desktopSetPinnedTabs(
   payload: SetPinnedTabsRequest
 ): Promise<void> {
   const bridge = getDesktopBridge();
   if (!bridge) return;
   await bridge.setPinnedTabs(payload);
+}
+
+export async function desktopBindTabWebContents(
+  payload: TabWebContentsBindRequest
+): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.bindTabWebContents(payload);
+}
+
+export async function desktopUnbindTabWebContents(
+  payload: TabWebContentsUnbindRequest
+): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.unbindTabWebContents(payload);
+}
+
+export async function desktopUpdateTabRuntime(
+  payload: TabRuntimeUpdateRequest
+): Promise<BrowserSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.updateTabRuntime(payload);
 }
 
 export function onDesktopStateChanged(

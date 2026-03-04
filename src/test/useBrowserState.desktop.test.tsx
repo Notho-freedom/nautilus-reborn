@@ -33,8 +33,10 @@ describe('useBrowserState desktop mode', () => {
       goForward: vi.fn().mockResolvedValue(initialSnapshot),
       reload: vi.fn().mockResolvedValue(initialSnapshot),
       openDevTools: vi.fn().mockResolvedValue(undefined),
-      setViewportBounds: vi.fn().mockResolvedValue(undefined),
       setPinnedTabs: vi.fn().mockResolvedValue(undefined),
+      bindTabWebContents: vi.fn().mockResolvedValue(undefined),
+      unbindTabWebContents: vi.fn().mockResolvedValue(undefined),
+      updateTabRuntime: vi.fn().mockResolvedValue(initialSnapshot),
       minimizeWindow: vi.fn().mockResolvedValue(undefined),
       toggleMaximizeWindow: vi.fn().mockResolvedValue(undefined),
       closeWindow: vi.fn().mockResolvedValue(undefined),
@@ -179,16 +181,6 @@ describe('useBrowserState desktop mode', () => {
     expect(bridge.navigate).toHaveBeenCalledWith({
       tabId: 'tab-desktop-1',
       url: 'https://react.dev',
-    });
-
-    await act(async () => {
-      result.current.setViewportBounds({ x: 5, y: 10, width: 600, height: 400 });
-    });
-    expect(bridge.setViewportBounds).toHaveBeenCalledWith({
-      x: 5,
-      y: 10,
-      width: 600,
-      height: 400,
     });
   });
 

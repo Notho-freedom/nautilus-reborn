@@ -1,14 +1,24 @@
 import { SpeedDial } from './SpeedDial';
-import type { RefObject } from 'react';
+import { DesktopWebviewLayer } from './DesktopWebviewLayer';
+import type { BrowserTab } from '@/hooks/useBrowserState';
 
 interface ContentAreaProps {
   url: string;
   onNavigate: (url: string) => void;
   isDesktopMode: boolean;
-  viewportRef: RefObject<HTMLDivElement>;
+  tabs: BrowserTab[];
+  activeTabId: string;
+  onCreateTab: (url: string) => void;
 }
 
-export function ContentArea({ url, onNavigate, isDesktopMode, viewportRef }: ContentAreaProps) {
+export function ContentArea({
+  url,
+  onNavigate,
+  isDesktopMode,
+  tabs,
+  activeTabId,
+  onCreateTab,
+}: ContentAreaProps) {
   const isInternalPage = url.startsWith('notilus://');
 
   if (isInternalPage || !url || url === 'notilus://speed-dial') {
@@ -18,10 +28,10 @@ export function ContentArea({ url, onNavigate, isDesktopMode, viewportRef }: Con
   if (isDesktopMode) {
     return (
       <div className="flex-1 relative">
-        <div
-          ref={viewportRef}
-          data-testid="electron-viewport"
-          className="absolute inset-0 bg-black"
+        <DesktopWebviewLayer
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onCreateTab={onCreateTab}
         />
       </div>
     );

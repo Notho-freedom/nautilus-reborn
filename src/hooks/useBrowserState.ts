@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { BrowserSnapshot, TabDescriptor, ViewportBounds } from '../../shared/browser-contract';
+import type { BrowserSnapshot, TabDescriptor } from '../../shared/browser-contract';
 import { addHistoryItem } from '@/lib/history';
 import {
   desktopActivateTab,
@@ -12,7 +12,6 @@ import {
   desktopOpenDevTools,
   desktopReload,
   desktopSetPinnedTabs,
-  desktopSetViewportBounds,
   isDesktopRuntime,
   onDesktopStateChanged,
 } from '@/lib/electronBridge';
@@ -463,11 +462,6 @@ export function useBrowserState() {
     window.location.reload();
   }, [desktopMode, activeTab]);
 
-  const setViewportBounds = useCallback((bounds: ViewportBounds) => {
-    if (!desktopMode) return;
-    void desktopSetViewportBounds(bounds);
-  }, [desktopMode]);
-
   const nextTab = useCallback(() => {
     if (!tabs.length) return;
     const idx = tabs.findIndex(t => t.id === activeTabId);
@@ -536,7 +530,6 @@ export function useBrowserState() {
     goForward,
     reload,
     openNativeDevTools,
-    setViewportBounds,
     toggleSidebar,
     toggleAiPanel,
     toggleDevTools,

@@ -15,13 +15,6 @@ export interface BrowserSnapshot {
   activeTabId: string | null;
 }
 
-export interface ViewportBounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export interface WindowState {
   isMaximized: boolean;
 }
@@ -74,6 +67,24 @@ export interface TabActionRequest {
 
 export interface SetPinnedTabsRequest {
   tabIds: string[];
+}
+
+export interface TabWebContentsBindRequest {
+  tabId: string;
+  webContentsId: number;
+}
+
+export interface TabWebContentsUnbindRequest {
+  tabId: string;
+}
+
+export interface TabRuntimeUpdateRequest {
+  tabId: string;
+  url: string;
+  title: string;
+  isLoading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
 }
 
 export interface DownloadActionRequest {
@@ -159,8 +170,10 @@ export interface BrowserDesktopApi {
   goForward: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   reload: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   openDevTools: (payload: TabActionRequest) => Promise<void>;
-  setViewportBounds: (payload: ViewportBounds) => Promise<void>;
   setPinnedTabs: (payload: SetPinnedTabsRequest) => Promise<void>;
+  bindTabWebContents: (payload: TabWebContentsBindRequest) => Promise<void>;
+  unbindTabWebContents: (payload: TabWebContentsUnbindRequest) => Promise<void>;
+  updateTabRuntime: (payload: TabRuntimeUpdateRequest) => Promise<BrowserSnapshot>;
   onStateChanged: (listener: (snapshot: BrowserSnapshot) => void) => () => void;
   minimizeWindow: () => Promise<void>;
   toggleMaximizeWindow: () => Promise<void>;
@@ -204,8 +217,10 @@ export const BrowserIpcChannels = {
   goForward: 'browser:go-forward',
   reload: 'browser:reload',
   openDevTools: 'browser:open-devtools',
-  setViewportBounds: 'browser:set-viewport-bounds',
   setPinnedTabs: 'browser:set-pinned-tabs',
+  tabBindWebContents: 'browser:tab-bind-webcontents',
+  tabUnbindWebContents: 'browser:tab-unbind-webcontents',
+  tabRuntimeUpdate: 'browser:tab-runtime-update',
   stateChanged: 'browser:state-changed',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',
