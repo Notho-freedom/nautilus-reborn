@@ -8,10 +8,12 @@ import type {
   ViewportBounds,
 } from '../../../shared/browser-contract';
 import { BrowserIpcChannels } from '../../../shared/browser-contract';
+import type { ViewportLayoutPayload } from '../../../shared/viewport-contract';
 import { TabManager } from '../tab-manager';
 
 interface RegisterBrowserIpcOptions {
   tabManager: TabManager;
+  onSetViewportLayout: (payload: ViewportLayoutPayload) => void;
   debug: boolean;
 }
 
@@ -26,9 +28,14 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.reload);
   ipcMain.removeHandler(BrowserIpcChannels.openDevTools);
   ipcMain.removeHandler(BrowserIpcChannels.setViewportBounds);
+  ipcMain.removeHandler(BrowserIpcChannels.setViewportLayout);
 }
 
-export function registerBrowserIpc({ tabManager, debug }: RegisterBrowserIpcOptions) {
+export function registerBrowserIpc({
+  tabManager,
+  onSetViewportLayout,
+  debug,
+}: RegisterBrowserIpcOptions) {
   const log = (channel: string, payload?: unknown) => {
     if (!debug) return;
     const serialized = payload ? JSON.stringify(payload) : '';
@@ -86,7 +93,20 @@ export function registerBrowserIpc({ tabManager, debug }: RegisterBrowserIpcOpti
     BrowserIpcChannels.setViewportBounds,
     (_event, payload: ViewportBounds) => {
       log(BrowserIpcChannels.setViewportBounds, payload);
-      tabManager.setViewportBounds(payload);
+      onSetViewportLayout({
+        viewport: payload,
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+        mode: 'normal',
+        source: 'chrome',
+      });
+    }
+  );
+
+  ipcMain.handle(
+    BrowserIpcChannels.setViewportLayout,
+    (_event, payload: ViewportLayoutPayload) => {
+      log(BrowserIpcChannels.setViewportLayout, payload);
+      onSetViewportLayout(payload);
     }
   );
 }

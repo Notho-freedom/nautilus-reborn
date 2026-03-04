@@ -22,7 +22,7 @@ describe('DevToolsSidebar styles', () => {
     const inactiveButton = buttons[1];
 
     expect(activeButton?.className).toContain('text-white');
-    expect(activeButton?.className).toContain('border-primary/50');
+    expect(activeButton?.className).not.toContain('border-primary');
     expect(inactiveButton?.className).toContain('text-primary');
   });
 });

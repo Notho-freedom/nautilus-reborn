@@ -2,8 +2,12 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { BrowserWindow, shell } from 'electron';
 
-interface CreateMainWindowOptions {
+interface CreateChromeWindowOptions {
   preloadPath: string;
+}
+
+interface CreateContentWindowOptions {
+  parentWindow: BrowserWindow;
 }
 
 function resolveWindowIconPath(): string | undefined {
@@ -11,8 +15,16 @@ function resolveWindowIconPath(): string | undefined {
   return existsSync(iconPath) ? iconPath : undefined;
 }
 
-export function createMainWindow({ preloadPath }: CreateMainWindowOptions): BrowserWindow {
-  const mainWindow = new BrowserWindow({
+function loadRenderer(window: BrowserWindow): void {
+  if (process.env.ELECTRON_RENDERER_URL) {
+    void window.loadURL(process.env.ELECTRON_RENDERER_URL);
+  } else {
+    void window.loadFile(join(__dirname, '../renderer/index.html'));
+  }
+}
+
+export function createChromeWindow({ preloadPath }: CreateChromeWindowOptions): BrowserWindow {
+  const chromeWindow = new BrowserWindow({
     width: 1600,
     height: 980,
     minWidth: 1100,
@@ -32,20 +44,50 @@ export function createMainWindow({ preloadPath }: CreateMainWindowOptions): Brow
     },
   });
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show();
+  chromeWindow.on('ready-to-show', () => {
+    chromeWindow.show();
   });
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+  chromeWindow.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  if (process.env.ELECTRON_RENDERER_URL) {
-    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
-  } else {
-    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
-  }
+  loadRenderer(chromeWindow);
+  return chromeWindow;
+}
 
-  return mainWindow;
+export function createContentWindow({
+  parentWindow,
+}: CreateContentWindowOptions): BrowserWindow {
+  const contentWindow = new BrowserWindow({
+    width: 1200,
+    height: 700,
+    show: false,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    skipTaskbar: true,
+    autoHideMenuBar: true,
+    hasShadow: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    focusable: true,
+    parent: parentWindow,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+    },
+  });
+
+  contentWindow.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  void contentWindow.loadURL('about:blank');
+  return contentWindow;
 }

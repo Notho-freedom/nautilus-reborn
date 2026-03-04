@@ -1,3 +1,5 @@
+import type { RuntimeMode, ViewportLayoutPayload } from './viewport-contract';
+
 export type TabKind = 'internal' | 'external';
 
 export interface TabDescriptor {
@@ -156,12 +158,15 @@ export interface BrowserDesktopApi {
   reload: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   openDevTools: (payload: TabActionRequest) => Promise<void>;
   setViewportBounds: (payload: ViewportBounds) => Promise<void>;
+  setViewportLayout: (payload: ViewportLayoutPayload) => Promise<void>;
   onStateChanged: (listener: (snapshot: BrowserSnapshot) => void) => () => void;
   minimizeWindow: () => Promise<void>;
   toggleMaximizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
   getWindowState: () => Promise<WindowState>;
   onWindowStateChanged: (listener: (state: WindowState) => void) => () => void;
+  getRuntimeMode: () => Promise<RuntimeMode>;
+  onRuntimeModeChanged: (listener: (mode: RuntimeMode) => void) => () => void;
   getDownloads: () => Promise<DownloadsSnapshot>;
   pauseDownload: (payload: DownloadActionRequest) => Promise<DownloadsSnapshot>;
   resumeDownload: (payload: DownloadActionRequest) => Promise<DownloadsSnapshot>;
@@ -200,12 +205,15 @@ export const BrowserIpcChannels = {
   reload: 'browser:reload',
   openDevTools: 'browser:open-devtools',
   setViewportBounds: 'browser:set-viewport-bounds',
+  setViewportLayout: 'browser:set-viewport-layout',
   stateChanged: 'browser:state-changed',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',
   windowClose: 'window:close',
   windowGetState: 'window:get-state',
   windowStateChanged: 'window:state-changed',
+  windowGetRuntimeMode: 'window:get-runtime-mode',
+  windowRuntimeModeChanged: 'window:runtime-mode-changed',
   downloadsGetState: 'downloads:get-state',
   downloadsPause: 'downloads:pause',
   downloadsResume: 'downloads:resume',

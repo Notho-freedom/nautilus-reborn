@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useViewportOcclusion } from '@/hooks/useViewportOcclusion';
 import { TopChromeBar } from './TopChromeBar';
 import { NavigationBar } from './NavigationBar';
 import { DevToolsSidebar } from './DevToolsSidebar';
@@ -77,31 +78,11 @@ export function BrowserShell() {
 
   useKeyboardShortcuts(shortcuts);
 
-  useEffect(() => {
-    if (!browser.isDesktopMode) return;
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-
-    const updateBounds = () => {
-      const rect = viewport.getBoundingClientRect();
-      browser.setViewportBounds({
-        x: Math.round(rect.left),
-        y: Math.round(rect.top),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-      });
-    };
-
-    updateBounds();
-    const observer = new ResizeObserver(updateBounds);
-    observer.observe(viewport);
-    window.addEventListener('resize', updateBounds);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', updateBounds);
-    };
-  }, [browser]);
+  useViewportOcclusion({
+    enabled: browser.isDesktopMode,
+    viewportRef,
+    onLayoutChange: browser.setViewportLayout,
+  });
 
   const handleSidebarToggle = (panel?: string) => {
     if (panel === 'devtools-panel') {
@@ -244,7 +225,10 @@ export function BrowserShell() {
           activeWebServiceUrl={activeWebService?.url ?? null}
         />
         {browser.sidebarOpen && (
-          <div className="absolute left-11 top-0 bottom-0 z-40">
+          <div
+            data-occluding-overlay="true"
+            className="absolute left-11 top-0 bottom-0 z-40"
+          >
             <SidebarPanel
               panel={browser.sidebarPanel}
               stats={stats}

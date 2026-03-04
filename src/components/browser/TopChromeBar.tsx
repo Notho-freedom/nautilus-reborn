@@ -519,8 +519,14 @@ export function TopChromeBar({
 
       {contextMenu && (
         <>
-          <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)} />
           <div
+            data-occluding-overlay="true"
+            data-occlusion-mode="blocking"
+            className="fixed inset-0 z-50"
+            onClick={() => setContextMenu(null)}
+          />
+          <div
+            data-occluding-overlay="true"
             className="fixed z-50 glass rounded-lg border border-border py-1 min-w-[190px] shadow-lg"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >

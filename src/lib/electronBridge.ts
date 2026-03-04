@@ -18,6 +18,7 @@ import type {
   ViewportBounds,
   WindowState,
 } from '../../shared/browser-contract';
+import type { RuntimeMode, ViewportLayoutPayload } from '../../shared/viewport-contract';
 
 export function getDesktopBridge(): BrowserDesktopApi | null {
   if (typeof window === 'undefined') return null;
@@ -104,6 +105,14 @@ export async function desktopSetViewportBounds(bounds: ViewportBounds): Promise<
   await bridge.setViewportBounds(bounds);
 }
 
+export async function desktopSetViewportLayout(
+  payload: ViewportLayoutPayload
+): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.setViewportLayout(payload);
+}
+
 export function onDesktopStateChanged(
   listener: (snapshot: BrowserSnapshot) => void
 ): () => void {
@@ -142,6 +151,20 @@ export function onDesktopWindowStateChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onWindowStateChanged(listener);
+}
+
+export async function desktopGetRuntimeMode(): Promise<RuntimeMode | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.getRuntimeMode();
+}
+
+export function onDesktopRuntimeModeChanged(
+  listener: (mode: RuntimeMode) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onRuntimeModeChanged(listener);
 }
 
 export async function desktopGetDownloads(): Promise<DownloadsSnapshot | null> {
