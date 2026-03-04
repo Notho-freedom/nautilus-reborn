@@ -39,7 +39,7 @@ describe('TopChromeBar search dialog', () => {
       </TooltipProvider>
     );
 
-    fireEvent.click(screen.getByTitle('Search tabs'));
+    fireEvent.click(screen.getByRole('button', { name: 'Search tabs' }));
     await waitFor(() => {
       expect(screen.getByTestId('tab-search-dialog')).toBeInTheDocument();
     });

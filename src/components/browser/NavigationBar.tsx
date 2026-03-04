@@ -15,6 +15,7 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
+  Settings,
   Star,
   User,
 } from 'lucide-react';
@@ -43,11 +44,25 @@ interface NavigationBarProps {
   onToggleAdBlock: () => void;
   onOpenExtensions?: () => void;
   onOpenDownloads?: () => void;
+  onOpenSettings?: () => void;
   onToggleAI: () => void;
   onOverlayBlockingChange?: (isBlocking: boolean) => void;
+  useNativeTitleMode?: boolean;
 }
 
-function ButtonTooltip({ label, children }: { label: string; children: ReactNode }) {
+function ActionHint({
+  label,
+  useNativeTitleMode,
+  children,
+}: {
+  label: string;
+  useNativeTitleMode: boolean;
+  children: ReactNode;
+}) {
+  if (useNativeTitleMode) {
+    return <>{children}</>;
+  }
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -79,8 +94,10 @@ export function NavigationBar({
   onToggleAdBlock,
   onOpenExtensions,
   onOpenDownloads,
+  onOpenSettings,
   onToggleAI,
   onOverlayBlockingChange,
+  useNativeTitleMode = false,
 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -136,21 +153,22 @@ export function NavigationBar({
     label: string;
     disabled?: boolean;
   }) => (
-    <ButtonTooltip label={label}>
+    <ActionHint label={label} useNativeTitleMode={useNativeTitleMode}>
       <button
         onClick={onClick}
-        title={label}
+        aria-label={label}
+        title={useNativeTitleMode ? label : undefined}
         disabled={disabled}
         className={cn(
           'h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-fast',
           disabled
             ? 'text-muted-foreground/40 cursor-not-allowed'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'
         )}
       >
         {children}
       </button>
-    </ButtonTooltip>
+    </ActionHint>
   );
 
   const UrlActionButton = ({
@@ -168,24 +186,25 @@ export function NavigationBar({
     active?: boolean;
     activeColor?: string;
   }) => (
-    <ButtonTooltip label={label}>
+    <ActionHint label={label} useNativeTitleMode={useNativeTitleMode}>
       <button
         type="button"
         onClick={onClick}
-        title={label}
+        aria-label={label}
+        title={useNativeTitleMode ? label : undefined}
         disabled={disabled}
         className={cn(
           'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast',
           disabled
             ? 'text-muted-foreground/40 cursor-not-allowed'
             : active
-              ? `${activeColor ?? 'text-primary'} hover:bg-muted/60`
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              ? `${activeColor ?? 'text-primary'} hover:bg-primary/10`
+              : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'
         )}
       >
         {children}
       </button>
-    </ButtonTooltip>
+    </ActionHint>
   );
 
   return (
@@ -253,18 +272,19 @@ export function NavigationBar({
           </UrlActionButton>
 
           <Popover open={snapshotOpen} onOpenChange={setSnapshotOpen}>
-            <ButtonTooltip label="Snapshot">
+            <ActionHint label="Snapshot" useNativeTitleMode={useNativeTitleMode}>
               <PopoverTrigger
-                title="Snapshot"
+                aria-label="Snapshot"
+                title={useNativeTitleMode ? 'Snapshot' : undefined}
                 className={cn(
-                  'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                  'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast text-muted-foreground hover:text-foreground hover:bg-primary/10',
                   snapshotBusy ? 'opacity-60 cursor-not-allowed' : ''
                 )}
                 disabled={snapshotBusy}
               >
                 {snapshotBusy ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
               </PopoverTrigger>
-            </ButtonTooltip>
+            </ActionHint>
             <PopoverContent align="end" sideOffset={8} className="w-52 p-2 glass border-border">
               <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5 px-1">
                 Snapshot
@@ -319,17 +339,21 @@ export function NavigationBar({
       <NavButton label="Downloads" onClick={onOpenDownloads}>
         <Download size={15} />
       </NavButton>
-      <ButtonTooltip label="AI assistant">
+      <ActionHint label="AI assistant" useNativeTitleMode={useNativeTitleMode}>
         <button
           onClick={onToggleAI}
-          title="AI Assistant"
-          className="h-8 w-8 flex items-center justify-center rounded-md bg-muted/60 text-foreground hover:bg-muted transition-colors duration-fast"
+          aria-label="AI assistant"
+          title={useNativeTitleMode ? 'AI assistant' : undefined}
+          className="h-8 w-8 flex items-center justify-center rounded-md bg-muted/60 text-foreground hover:bg-primary/10 transition-colors duration-fast"
         >
           <Sparkles size={14} />
         </button>
-      </ButtonTooltip>
+      </ActionHint>
       <NavButton label="Profile">
         <User size={15} />
+      </NavButton>
+      <NavButton label="Settings" onClick={onOpenSettings}>
+        <Settings size={15} />
       </NavButton>
     </div>
   );

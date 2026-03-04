@@ -83,7 +83,7 @@ export function DevToolsSidebar({
 
   return (
     <div className="flex h-full shrink-0">
-      <div className="flex flex-col items-center w-11 bg-sidebar border-r border-sidebar-border py-2 gap-0.5 overflow-y-auto scrollbar-thin">
+      <div className="flex flex-col items-center w-11 bg-sidebar border-r border-sidebar-border py-2 gap-0.5 overflow-y-auto no-scrollbar">
         {SIDEBAR_ITEMS.map((item, i) => {
           if ('type' in item && item.type === 'separator') {
             return <div key={`sep-${i}`} className="w-6 h-px bg-sidebar-border my-1" />;

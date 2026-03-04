@@ -1,5 +1,5 @@
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, Loader2, Minus, Pin, Plus, Search, Square, X, XCircle } from 'lucide-react';
+import { Copy, LayoutGrid, Loader2, Minus, Pin, Plus, Search, Square, X, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BrowserTab, RecentlyClosedTab } from '@/hooks/useBrowserState';
 import { computeTabWidth, getTabDisplayMode, getTabIconSize } from '@/lib/tabLayout';
@@ -34,6 +34,7 @@ interface TopChromeBarProps {
   onReopenClosedTab: (id: string) => void;
   onClearClosedTabs: () => void;
   onOverlayBlockingChange?: (isBlocking: boolean) => void;
+  useNativeTitleMode?: boolean;
 }
 
 function getFaviconUrl(url: string): string | null {
@@ -46,30 +47,47 @@ function getFaviconUrl(url: string): string | null {
 }
 
 function TabIcon({ tab, size }: { tab: BrowserTab; size: number }) {
+  const [faviconError, setFaviconError] = useState(false);
   const faviconUrl = getFaviconUrl(tab.url);
   if (tab.isLoading) {
     return <Loader2 size={size} className="text-primary animate-spin shrink-0" />;
   }
-  if (faviconUrl) {
+  if (faviconUrl && !faviconError) {
     return (
       <img
         src={faviconUrl}
         alt=""
         className="rounded-sm shrink-0"
         style={{ width: size, height: size }}
-        onError={event => {
-          (event.target as HTMLImageElement).style.display = 'none';
-        }}
+        onError={() => setFaviconError(true)}
       />
     );
   }
   return (
-    <div
-      className="rounded notilus-gradient flex items-center justify-center shrink-0"
-      style={{ width: size, height: size }}
-    >
-      <span className="text-[6px] font-display font-bold text-primary-foreground">N</span>
-    </div>
+    <LayoutGrid size={size} className="text-muted-foreground shrink-0" />
+  );
+}
+
+function ActionHint({
+  label,
+  useNativeTitleMode,
+  children,
+}: {
+  label: string;
+  useNativeTitleMode: boolean;
+  children: ReactNode;
+}) {
+  if (useNativeTitleMode) {
+    return <>{children}</>;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="bottom" className="glass text-xs font-body">
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -85,6 +103,7 @@ export function TopChromeBar({
   onReopenClosedTab,
   onClearClosedTabs,
   onOverlayBlockingChange,
+  useNativeTitleMode = false,
 }: TopChromeBarProps) {
   const desktopMode = isDesktopRuntime();
   const [isMaximized, setIsMaximized] = useState(false);
@@ -216,24 +235,20 @@ export function TopChromeBar({
     children: ReactNode;
     className?: string;
   }) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          style={noDragStyle}
-          onClick={onClick}
-          title={label}
-          className={cn(
-            'h-8 w-9 flex items-center justify-center transition-colors duration-fast text-primary',
-            className
-          )}
-        >
-          {children}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="glass text-xs font-body">
-        {label}
-      </TooltipContent>
-    </Tooltip>
+    <ActionHint label={label} useNativeTitleMode={useNativeTitleMode}>
+      <button
+        style={noDragStyle}
+        onClick={onClick}
+        aria-label={label}
+        title={useNativeTitleMode ? label : undefined}
+        className={cn(
+          'h-8 w-9 flex items-center justify-center transition-colors duration-fast text-primary',
+          className
+        )}
+      >
+        {children}
+      </button>
+    </ActionHint>
   );
 
   return (
@@ -251,7 +266,7 @@ export function TopChromeBar({
           <img
             src="/notilus-logo.png"
             alt="Notilus"
-            className="w-[15px] h-[15px] object-contain"
+            className="w-[22px] h-[22px] object-contain"
             style={noDragStyle}
           />
         </div>
@@ -260,26 +275,21 @@ export function TopChromeBar({
           {pinnedTabs.map(tab => {
             const isActive = tab.id === activeTabId;
             return (
-              <Tooltip key={tab.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    data-testid={`pinned-tab-${tab.id}`}
-                    style={noDragStyle}
-                    onClick={() => onSelectTab(tab.id)}
-                    title={tab.title}
-                    className={cn(
-                      'h-8 w-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0 text-muted-foreground hover:text-foreground',
-                      isActive ? 'text-white scale-[1.05]' : ''
-                    )}
-                  >
-                    <TabIcon tab={tab} size={15} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="glass text-xs font-body">
-                  <div className="text-foreground">{tab.title}</div>
-                  <div className="text-muted-foreground">{extractDisplayDomain(tab.url)}</div>
-                </TooltipContent>
-              </Tooltip>
+              <ActionHint key={tab.id} label={`${tab.title} - ${extractDisplayDomain(tab.url)}`} useNativeTitleMode={useNativeTitleMode}>
+                <button
+                  data-testid={`pinned-tab-${tab.id}`}
+                  style={noDragStyle}
+                  onClick={() => onSelectTab(tab.id)}
+                  aria-label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}
+                  title={useNativeTitleMode ? `${tab.title} - ${extractDisplayDomain(tab.url)}` : undefined}
+                  className={cn(
+                    'h-8 w-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0 text-muted-foreground hover:text-foreground',
+                    isActive ? 'text-white scale-[1.05]' : ''
+                  )}
+                >
+                  <TabIcon tab={tab} size={15} />
+                </button>
+              </ActionHint>
             );
           })}
         </div>
@@ -309,7 +319,8 @@ export function TopChromeBar({
                         'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-fast min-w-0',
                         isActive
                           ? 'bg-card border border-border text-foreground'
-                          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                          : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
+                        displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : ''
                       )}
                     >
                       {isActive && (
@@ -317,7 +328,9 @@ export function TopChromeBar({
                       )}
 
                       <TabIcon tab={tab} size={iconSize} />
-                      <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
+                      {displayMode !== 'icon-only' && (
+                        <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
+                      )}
 
                       {showClose && (
                         <span
@@ -325,7 +338,7 @@ export function TopChromeBar({
                             event.stopPropagation();
                             onCloseTab(tab.id);
                           }}
-                          className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-muted rounded-sm p-0.5 transition-opacity duration-fast opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-primary/10 rounded-sm p-0.5 transition-opacity duration-fast opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                         >
                           <X size={10} />
                         </span>
@@ -369,21 +382,17 @@ export function TopChromeBar({
               );
             })}
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  style={noDragStyle}
-                  onClick={onAddTab}
-                  title="New tab"
-                  className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-fast shrink-0"
-                >
-                  <Plus size={14} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="glass text-xs font-body">
-                New tab
-              </TooltipContent>
-            </Tooltip>
+            <ActionHint label="New tab" useNativeTitleMode={useNativeTitleMode}>
+              <button
+                style={noDragStyle}
+                onClick={onAddTab}
+                aria-label="New tab"
+                title={useNativeTitleMode ? 'New tab' : undefined}
+                className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-fast shrink-0"
+              >
+                <Plus size={14} />
+              </button>
+            </ActionHint>
           </div>
         </div>
 
