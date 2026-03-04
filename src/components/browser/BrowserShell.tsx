@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { TitleBar } from './TitleBar';
-import { TabBar } from './TabBar';
+import { TopChromeBar } from './TopChromeBar';
 import { NavigationBar } from './NavigationBar';
 import { DevToolsSidebar } from './DevToolsSidebar';
 import { SidebarPanel } from './SidebarPanel';
@@ -12,12 +11,16 @@ import { AIAssistant } from './AIAssistant';
 import { StatusBar } from './StatusBar';
 import { DevToolsPanel } from './DevToolsPanel';
 import type { WebServiceItem } from './DevToolsSidebar';
-import { initializeSettings } from '@/lib/settings';
+import { getSettings, initializeSettings, subscribeToSettingsUpdates, updateSettings } from '@/lib/settings';
 import {
   isBookmarked,
   subscribeToBookmarksUpdates,
   toggleBookmark,
 } from '@/lib/bookmarks';
+import { addFlouPage } from '@/lib/flou';
+import { studioCaptureFullPage, studioCaptureViewport } from '@/lib/studio';
+import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 
 export function BrowserShell() {
   const browser = useBrowserState();
@@ -25,9 +28,19 @@ export function BrowserShell() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
+  const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
 
   useEffect(() => {
     initializeSettings();
+  }, []);
+
+  useEffect(() => {
+    const refreshSettingsState = () => {
+      setAdBlockEnabled(getSettings().adBlock);
+    };
+
+    refreshSettingsState();
+    return subscribeToSettingsUpdates(refreshSettingsState);
   }, []);
 
   useEffect(() => {
@@ -113,10 +126,70 @@ export function BrowserShell() {
     browser.setSidebarPanel(null);
   };
 
+  const showCaptureToast = (filePath: string) => {
+    toast({
+      title: 'Capture saved',
+      description: filePath,
+      action: (
+        <ToastAction
+          altText="Copy path"
+          onClick={() => {
+            if (!navigator.clipboard) return;
+            void navigator.clipboard.writeText(filePath);
+          }}
+        >
+          Copy path
+        </ToastAction>
+      ),
+    });
+  };
+
+  const handleSnapshotVisible = async () => {
+    const capture = await studioCaptureViewport();
+    if (!capture) {
+      toast({
+        title: 'Capture unavailable',
+        description: 'Snapshot is available in desktop mode only.',
+      });
+      return;
+    }
+    showCaptureToast(capture.filePath);
+  };
+
+  const handleSnapshotFullPage = async () => {
+    const capture = await studioCaptureFullPage();
+    if (!capture) {
+      toast({
+        title: 'Capture unavailable',
+        description: 'Full-page snapshot is available in desktop mode only.',
+      });
+      return;
+    }
+    showCaptureToast(capture.filePath);
+  };
+
+  const handleSendToFlou = () => {
+    if (!browser.activeTab) return;
+    addFlouPage({
+      title: browser.activeTab.title,
+      url: browser.activeTab.url,
+    });
+    browser.setSidebarPanel('flou');
+    browser.setSidebarOpen(true);
+    toast({
+      title: 'Added to flou',
+      description: browser.activeTab.title,
+    });
+  };
+
+  const handleToggleAdBlock = () => {
+    const next = updateSettings(current => ({ adBlock: !current.adBlock }));
+    setAdBlockEnabled(next.adBlock);
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
-      <TitleBar />
-      <TabBar
+      <TopChromeBar
         tabs={browser.tabs}
         activeTabId={browser.activeTabId}
         onSelectTab={browser.setActiveTabId}
@@ -126,6 +199,7 @@ export function BrowserShell() {
           const tab = browser.tabs.find(t => t.id === id);
           if (tab) browser.addTab(tab.url, tab.title);
         }}
+        onTogglePinTab={browser.togglePinTab}
       />
       <NavigationBar
         url={browser.activeTab?.url || ''}
@@ -143,10 +217,19 @@ export function BrowserShell() {
           const nextState = toggleBookmark(browser.activeTab.url, browser.activeTab.title);
           setActiveTabBookmarked(nextState);
         }}
+        onTogglePin={() => {
+          if (!browser.activeTabId) return;
+          browser.togglePinTab(browser.activeTabId);
+        }}
+        isPinned={browser.isPinned}
+        onSnapshotVisible={handleSnapshotVisible}
+        onSnapshotFullPage={handleSnapshotFullPage}
+        onSendToFlou={handleSendToFlou}
+        adBlockEnabled={adBlockEnabled}
+        onToggleAdBlock={handleToggleAdBlock}
         onOpenDownloads={() => browser.toggleSidebar('downloads')}
         onOpenExtensions={() => browser.toggleSidebar('extensions')}
         onToggleAI={browser.toggleAiPanel}
-        adsBlocked={browser.adsBlocked}
       />
 
       <div className="flex flex-1 overflow-hidden">
