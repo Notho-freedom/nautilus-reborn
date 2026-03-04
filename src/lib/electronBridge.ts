@@ -18,7 +18,7 @@ import type {
   ViewportBounds,
   WindowState,
 } from '../../shared/browser-contract';
-import type { RuntimeMode, ViewportLayoutPayload } from '../../shared/viewport-contract';
+import type { ExternalOverlayEvent, ExternalOverlayState } from '../../shared/overlay-contract';
 
 export function getDesktopBridge(): BrowserDesktopApi | null {
   if (typeof window === 'undefined') return null;
@@ -105,12 +105,18 @@ export async function desktopSetViewportBounds(bounds: ViewportBounds): Promise<
   await bridge.setViewportBounds(bounds);
 }
 
-export async function desktopSetViewportLayout(
-  payload: ViewportLayoutPayload
+export async function desktopSetOverlayState(
+  payload: ExternalOverlayState
 ): Promise<void> {
   const bridge = getDesktopBridge();
   if (!bridge) return;
-  await bridge.setViewportLayout(payload);
+  await bridge.setOverlayState(payload);
+}
+
+export async function desktopClearOverlay(): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.clearOverlay();
 }
 
 export function onDesktopStateChanged(
@@ -119,6 +125,14 @@ export function onDesktopStateChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onStateChanged(listener);
+}
+
+export function onDesktopOverlayEvent(
+  listener: (event: ExternalOverlayEvent) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onOverlayEvent(listener);
 }
 
 export async function desktopMinimizeWindow(): Promise<void> {
@@ -151,20 +165,6 @@ export function onDesktopWindowStateChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onWindowStateChanged(listener);
-}
-
-export async function desktopGetRuntimeMode(): Promise<RuntimeMode | null> {
-  const bridge = getDesktopBridge();
-  if (!bridge) return null;
-  return bridge.getRuntimeMode();
-}
-
-export function onDesktopRuntimeModeChanged(
-  listener: (mode: RuntimeMode) => void
-): () => void {
-  const bridge = getDesktopBridge();
-  if (!bridge) return () => {};
-  return bridge.onRuntimeModeChanged(listener);
 }
 
 export async function desktopGetDownloads(): Promise<DownloadsSnapshot | null> {

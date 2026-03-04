@@ -10,26 +10,31 @@ import { registerWindowIpc } from './ipc/window-ipc';
 import { DownloadManager } from './download-manager';
 import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
+import { OverlayRouter } from './overlay-router';
 import { StudioManager } from './studio-manager';
 import { TabManager } from './tab-manager';
-import { ViewportLayoutManager } from './viewport-layout-manager';
-import { WindowStackManager } from './window-stack-manager';
+import { createMainWindow } from './window-manager';
 
 const DEBUG_IPC = process.env.NOTILUS_DEBUG_IPC === '1';
 const INITIAL_URL = 'notilus://speed-dial';
 
 let mainWindow: BrowserWindow | null = null;
-let windowStack: WindowStackManager | null = null;
-let viewportLayoutManager: ViewportLayoutManager | null = null;
 let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
 let studioManager: StudioManager | null = null;
+let overlayRouter: OverlayRouter | null = null;
 
 function resolvePreloadPath(): string {
   const mjsPath = join(__dirname, '../preload/index.mjs');
   if (existsSync(mjsPath)) return mjsPath;
   return join(__dirname, '../preload/index.js');
+}
+
+function resolveTabOverlayPreloadPath(): string {
+  const mjsPath = join(__dirname, '../preload/tab-overlay.mjs');
+  if (existsSync(mjsPath)) return mjsPath;
+  return join(__dirname, '../preload/tab-overlay.js');
 }
 
 function broadcastState() {
@@ -39,32 +44,29 @@ function broadcastState() {
 
 function createDesktopWindow() {
   const preloadPath = resolvePreloadPath();
-  windowStack = new WindowStackManager({ preloadPath, debug: DEBUG_IPC });
-  mainWindow = windowStack.getChromeWindow();
-
-  const runtimeMode = windowStack.getRuntimeMode();
-  const contentWindow = windowStack.getContentWindow();
-  const hostWindow = runtimeMode === 'dual-window' && contentWindow ? contentWindow : mainWindow;
+  const tabOverlayPreloadPath = resolveTabOverlayPreloadPath();
+  mainWindow = createMainWindow({ preloadPath });
 
   const networkLayer = new NetworkLayer(session.defaultSession, DEBUG_IPC);
   networkLayer.setup();
 
   tabManager = new TabManager({
-    hostWindow,
-    preloadPath,
+    window: mainWindow,
+    tabOverlayPreloadPath,
     debug: DEBUG_IPC,
     onStateChanged: snapshot => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send(BrowserIpcChannels.stateChanged, snapshot);
-      viewportLayoutManager?.reapply();
+      overlayRouter?.onTabStateChanged();
     },
   });
 
-  viewportLayoutManager = new ViewportLayoutManager({
-    windowStack,
+  overlayRouter = new OverlayRouter({
+    mainWindow,
     tabManager,
     debug: DEBUG_IPC,
   });
+  overlayRouter.setup();
 
   downloadManager = new DownloadManager(
     session.defaultSession,
@@ -78,19 +80,16 @@ function createDesktopWindow() {
 
   registerBrowserIpc({
     tabManager,
-    onSetViewportLayout: payload => {
-      viewportLayoutManager?.setLayout(payload);
+    onOverlaySetState: payload => {
+      overlayRouter?.setState(payload);
+    },
+    onOverlayClear: () => {
+      overlayRouter?.clear();
     },
     debug: DEBUG_IPC,
   });
   registerDownloadIpc({ downloadManager, debug: DEBUG_IPC });
-  registerWindowIpc({
-    window: mainWindow,
-    debug: DEBUG_IPC,
-    getRuntimeMode: () => windowStack?.getRuntimeMode() ?? 'single-window-fallback',
-    onRuntimeModeChanged: listener =>
-      windowStack?.onRuntimeModeChanged(listener) ?? (() => {}),
-  });
+  registerWindowIpc(mainWindow, DEBUG_IPC);
   gitManager = new GitManager(DEBUG_IPC);
   registerGitIpc({
     gitManager,
@@ -116,10 +115,6 @@ function createDesktopWindow() {
       mainWindow.webContents.send(BrowserIpcChannels.windowStateChanged, {
         isMaximized: mainWindow.isMaximized(),
       });
-      mainWindow.webContents.send(
-        BrowserIpcChannels.windowRuntimeModeChanged,
-        windowStack?.getRuntimeMode() ?? 'single-window-fallback'
-      );
     }
     if (gitManager && mainWindow && !mainWindow.isDestroyed()) {
       void gitManager.refresh().then(snapshot => {
@@ -130,10 +125,8 @@ function createDesktopWindow() {
   });
 
   mainWindow.on('closed', () => {
-    viewportLayoutManager?.dispose();
-    viewportLayoutManager = null;
-    windowStack?.destroy();
-    windowStack = null;
+    overlayRouter?.dispose();
+    overlayRouter = null;
     mainWindow = null;
     tabManager = null;
     downloadManager = null;

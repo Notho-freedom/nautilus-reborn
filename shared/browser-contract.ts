@@ -1,4 +1,4 @@
-import type { RuntimeMode, ViewportLayoutPayload } from './viewport-contract';
+import type { ExternalOverlayEvent, ExternalOverlayState } from './overlay-contract';
 
 export type TabKind = 'internal' | 'external';
 
@@ -158,15 +158,15 @@ export interface BrowserDesktopApi {
   reload: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   openDevTools: (payload: TabActionRequest) => Promise<void>;
   setViewportBounds: (payload: ViewportBounds) => Promise<void>;
-  setViewportLayout: (payload: ViewportLayoutPayload) => Promise<void>;
+  setOverlayState: (payload: ExternalOverlayState) => Promise<void>;
+  clearOverlay: () => Promise<void>;
   onStateChanged: (listener: (snapshot: BrowserSnapshot) => void) => () => void;
+  onOverlayEvent: (listener: (event: ExternalOverlayEvent) => void) => () => void;
   minimizeWindow: () => Promise<void>;
   toggleMaximizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
   getWindowState: () => Promise<WindowState>;
   onWindowStateChanged: (listener: (state: WindowState) => void) => () => void;
-  getRuntimeMode: () => Promise<RuntimeMode>;
-  onRuntimeModeChanged: (listener: (mode: RuntimeMode) => void) => () => void;
   getDownloads: () => Promise<DownloadsSnapshot>;
   pauseDownload: (payload: DownloadActionRequest) => Promise<DownloadsSnapshot>;
   resumeDownload: (payload: DownloadActionRequest) => Promise<DownloadsSnapshot>;
@@ -205,15 +205,16 @@ export const BrowserIpcChannels = {
   reload: 'browser:reload',
   openDevTools: 'browser:open-devtools',
   setViewportBounds: 'browser:set-viewport-bounds',
-  setViewportLayout: 'browser:set-viewport-layout',
+  overlaySetState: 'overlay:set-state',
+  overlayClear: 'overlay:clear',
+  overlayRender: 'overlay:render',
+  overlayEvent: 'overlay:event',
   stateChanged: 'browser:state-changed',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',
   windowClose: 'window:close',
   windowGetState: 'window:get-state',
   windowStateChanged: 'window:state-changed',
-  windowGetRuntimeMode: 'window:get-runtime-mode',
-  windowRuntimeModeChanged: 'window:runtime-mode-changed',
   downloadsGetState: 'downloads:get-state',
   downloadsPause: 'downloads:pause',
   downloadsResume: 'downloads:resume',

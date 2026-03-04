@@ -21,8 +21,14 @@ export default defineConfig(({ mode }) => ({
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {
-      lib: {
-        entry: resolve(__dirname, './electron/preload/index.ts'),
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, './electron/preload/index.ts'),
+          'tab-overlay': resolve(__dirname, './electron/preload/tab-overlay.ts'),
+        },
+        output: {
+          entryFileNames: '[name].mjs',
+        },
       },
     },
   },

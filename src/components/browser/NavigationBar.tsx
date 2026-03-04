@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Camera,
   ChevronLeft,
@@ -19,10 +19,13 @@ import {
   User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useExternalOverlayBridge } from '@/hooks/useExternalOverlayBridge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface NavigationBarProps {
+  isExternalOverlayMode?: boolean;
+  activeTabId?: string;
   url: string;
   onNavigate: (url: string) => void;
   onHome: () => void;
@@ -58,6 +61,8 @@ function ButtonTooltip({ label, children }: { label: string; children: React.Rea
 }
 
 export function NavigationBar({
+  isExternalOverlayMode = false,
+  activeTabId,
   url,
   onNavigate,
   onHome,
@@ -85,6 +90,9 @@ export function NavigationBar({
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const [snapshotBusy, setSnapshotBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const snapshotButtonRef = useRef<HTMLButtonElement>(null);
+  const externalSnapshotMode = isExternalOverlayMode;
+  const snapshotOverlayId = 'nav-snapshot-menu';
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
@@ -111,6 +119,47 @@ export function NavigationBar({
     } finally {
       setSnapshotBusy(false);
     }
+  };
+
+  const overlayBridge = useExternalOverlayBridge({
+    enabled: externalSnapshotMode,
+    tabId: activeTabId ?? null,
+    onEvent: event => {
+      if (event.overlayId !== snapshotOverlayId) return;
+      if (event.action === 'capture-visible') {
+        void handleSnapshot('visible');
+        setSnapshotOpen(false);
+      } else if (event.action === 'capture-full') {
+        void handleSnapshot('full');
+        setSnapshotOpen(false);
+      } else if (event.action === 'close') {
+        setSnapshotOpen(false);
+      }
+    },
+  });
+
+  const publishSnapshotOverlay = () => {
+    const viewport = document.querySelector<HTMLElement>('[data-testid="electron-viewport"]');
+    const viewportRect = viewport?.getBoundingClientRect() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+    const rect = snapshotButtonRef.current?.getBoundingClientRect();
+    const anchorX = Math.max(8, Math.floor((rect?.left ?? viewportRect.left + 12) - viewportRect.left));
+    const anchorY = Math.max(8, Math.floor((rect?.top ?? viewportRect.top + 8) - viewportRect.top));
+    overlayBridge.setState({
+      blocking: true,
+      overlays: [
+        {
+          id: snapshotOverlayId,
+          kind: 'menu',
+          source: 'navigation',
+          anchor: { x: anchorX, y: anchorY, width: rect?.width ?? 24, height: rect?.height ?? 24 },
+          width: 220,
+          items: [
+            { id: 'capture-visible', label: 'Capture visible area' },
+            { id: 'capture-full', label: 'Capture full page' },
+          ],
+        },
+      ],
+    });
   };
 
   const NavButton = ({
@@ -176,6 +225,18 @@ export function NavigationBar({
     </ButtonTooltip>
   );
 
+  useEffect(() => {
+    if (!externalSnapshotMode) {
+      overlayBridge.clear();
+      return;
+    }
+    if (snapshotOpen) {
+      publishSnapshotOverlay();
+      return;
+    }
+    overlayBridge.clear();
+  }, [externalSnapshotMode, snapshotOpen]);
+
   return (
     <div className="flex items-center h-10 bg-background border-b border-border px-2 gap-1 shrink-0">
       <NavButton label="Back" onClick={onBack} disabled={!canGoBack}>
@@ -240,10 +301,13 @@ export function NavigationBar({
             <Pin size={13} fill={isPinned ? 'currentColor' : 'none'} />
           </UrlActionButton>
 
-          <Popover open={snapshotOpen} onOpenChange={setSnapshotOpen}>
+          {externalSnapshotMode ? (
             <ButtonTooltip label="Snapshot">
-              <PopoverTrigger
+              <button
+                ref={snapshotButtonRef}
+                type="button"
                 title="Snapshot"
+                onClick={() => setSnapshotOpen(prev => !prev)}
                 className={cn(
                   'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast text-muted-foreground hover:text-foreground hover:bg-muted/60',
                   snapshotBusy ? 'opacity-60 cursor-not-allowed' : ''
@@ -251,34 +315,50 @@ export function NavigationBar({
                 disabled={snapshotBusy}
               >
                 {snapshotBusy ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
-              </PopoverTrigger>
+              </button>
             </ButtonTooltip>
-            <PopoverContent align="end" sideOffset={8} className="w-52 p-2 glass border-border">
-              <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5 px-1">
-                Snapshot
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSnapshot('visible');
-                }}
-                disabled={snapshotBusy}
-                className="w-full h-8 px-2 rounded-md text-xs font-body text-foreground hover:bg-muted/60 transition-colors duration-fast text-left"
-              >
-                Capture visible area
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSnapshot('full');
-                }}
-                disabled={snapshotBusy}
-                className="w-full h-8 px-2 rounded-md text-xs font-body text-foreground hover:bg-muted/60 transition-colors duration-fast text-left"
-              >
-                Capture full page
-              </button>
-            </PopoverContent>
-          </Popover>
+          ) : (
+            <Popover open={snapshotOpen} onOpenChange={setSnapshotOpen}>
+              <ButtonTooltip label="Snapshot">
+                <PopoverTrigger
+                  ref={snapshotButtonRef}
+                  title="Snapshot"
+                  className={cn(
+                    'h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-colors duration-fast text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                    snapshotBusy ? 'opacity-60 cursor-not-allowed' : ''
+                  )}
+                  disabled={snapshotBusy}
+                >
+                  {snapshotBusy ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                </PopoverTrigger>
+              </ButtonTooltip>
+              <PopoverContent align="end" sideOffset={8} className="w-52 p-2 glass border-border">
+                <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5 px-1">
+                  Snapshot
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleSnapshot('visible');
+                  }}
+                  disabled={snapshotBusy}
+                  className="w-full h-8 px-2 rounded-md text-xs font-body text-foreground hover:bg-muted/60 transition-colors duration-fast text-left"
+                >
+                  Capture visible area
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleSnapshot('full');
+                  }}
+                  disabled={snapshotBusy}
+                  className="w-full h-8 px-2 rounded-md text-xs font-body text-foreground hover:bg-muted/60 transition-colors duration-fast text-left"
+                >
+                  Capture full page
+                </button>
+              </PopoverContent>
+            </Popover>
+          )}
 
           <UrlActionButton
             label={adBlockEnabled ? 'Disable ad block' : 'Enable ad block'}

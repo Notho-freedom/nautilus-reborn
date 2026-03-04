@@ -24,6 +24,7 @@ interface SidebarPanelProps {
   panel: string | null;
   stats: SystemStats;
   webService: WebServiceItem | null;
+  onWidthChange?: (width: number) => void;
   onOpenWebServiceInTab: (url: string, label: string) => void;
   onClosePanel: () => void;
   onNavigate: (url: string) => void;
@@ -77,6 +78,7 @@ export function SidebarPanel({
   panel,
   stats,
   webService,
+  onWidthChange,
   onOpenWebServiceInTab,
   onClosePanel,
   onNavigate,
@@ -89,6 +91,15 @@ export function SidebarPanel({
   useEffect(() => {
     window.localStorage.setItem(PANEL_WIDTH_KEY, String(width));
   }, [width]);
+
+  useEffect(() => {
+    if (!panel) {
+      onWidthChange?.(0);
+      return;
+    }
+    const effectiveWidth = panel === 'web-service' ? Math.max(width, 360) : width;
+    onWidthChange?.(effectiveWidth);
+  }, [panel, width, onWidthChange]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
