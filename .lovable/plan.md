@@ -1,192 +1,143 @@
+# Plan : Corrections UX Notilus
 
+## 1. Persistance des onglets (localStorage)
 
-# Plan : Notilus Browser — UI complète avec toutes les fonctionnalités
+**Fichier** : `src/hooks/useBrowserState.ts`
 
-L'objectif est d'enrichir massivement l'interface actuelle en ajoutant toutes les sections de la sidebar documentées, les panneaux manquants, les DevTools en bas, le système de favoris/historique/téléchargements, les services web intégrés, les raccourcis clavier, et des améliorations visuelles. Le logo existant (le "N" avec gradient rose) sera réutilisé partout.
+- Sauvegarder `localTabs` et `localActiveTabId` dans `localStorage` (`notilus_tabs` / `notilus_active_tab`)
+- Au montage, restaurer depuis localStorage au lieu de partir avec un seul onglet par défaut
+- Écrire dans localStorage à chaque changement de `localTabs` et `localActiveTabId` (via `useEffect`)
+- Ne persister que les données sérialisables (id, title, url, kind) — pas isLoading etc.
 
----
+## 2. Onglets : bouton fermer n'occupe pas d'espace réservé
 
-## 1. Sidebar complète avec toutes les sections
+**Fichier** : `src/components/browser/TopChromeBar.tsx`
 
-**Fichier** : `DevToolsSidebar.tsx` — Ajouter toutes les icônes documentées :
-- Accueil, Favoris, Historique, Téléchargements, Widgets, AI, Paramètres, Terminal, DevTools (F12), Mosaïque, Documentation, Studio, Lighthouse, GitHub
-- **Séparateur** puis **Services Web** en bas : YouTube Music, YouTube, ChatGPT, DeepSeek, WhatsApp, Telegram (ces liens ouvrent l'URL dans un onglet)
+- Le bouton close doit être en `position: absolute` à droite de l'onglet, pas dans le flux
+- Le titre (`<span>`) occupe tout l'espace disponible après l'icône
+- Le close apparaît uniquement au hover (`opacity-0 group-hover:opacity-100`) avec un fond semi-transparent pour ne pas masquer le texte
+- En mode `icon-only`, pas de close du tout (déjà le cas)
 
-**Fichier** : `SidebarPanel.tsx` — Router vers les nouveaux panneaux
+**Fichier** : `src/components/browser/TopChromeBar.tsx` (hover card)
 
----
+- Supprimer le message "No tabs from this domain" — si `sameDomainTabs` est vide, ne pas afficher la section liste du tout (garder juste le titre + URL)
 
-## 2. Nouveaux panneaux de sidebar
+## 3. Barre d'adresse : icônes sans couleur sauf si actives
 
-### `BookmarksPanel.tsx`
-- Liste de favoris avec recherche, tags, icônes de sites
-- Bouton "Ajouter aux favoris" (Ctrl+D)
-- Données mockées
+**Fichier** : `src/components/browser/NavigationBar.tsx`
 
-### `HistoryPanel.tsx`
-- Liste chronologique des pages visitées (mockées)
-- Recherche, filtres par date
-- Bouton effacer l'historique
+- Le composant `UrlActionButton` : quand `active` est false, utiliser `text-muted-foreground` (déjà le cas)
+- Quand `active` est true : utiliser `text-primary` (rose/secondaire) pour le favori rempli, `text-green-500` pour le ad-blocker actif
+- Passer une prop `activeColor` ou conditionner directement dans les usages
 
-### `DownloadsPanel.tsx`
-- Liste de téléchargements simulés avec barres de progression
-- États : en cours, terminé, échoué
-- Actions : pause, reprendre, annuler, ouvrir dossier
+## 4. Sidebar : retirer les bordures des boutons
 
-### `WidgetsPanel.tsx`
-- Horloge, météo placeholder, citations dev, historique récent, quick actions
+**Fichier** : `src/components/browser/DevToolsSidebar.tsx`
 
-### `ExtensionsPanel.tsx`
-- Liste d'extensions mockées avec toggle activer/désactiver
-- Icônes et descriptions
+- Retirer `border border-primary/50` du style actif des boutons sidebar
+- Garder uniquement le fond `bg-primary/20` et `text-white` pour l'état actif
+- Idem pour les boutons web services
 
-### `DocumentationPanel.tsx`
-- Documentation intégrée de Notilus (raccourcis, fonctionnalités)
+## 5. Tooltips/Popovers au-dessus de tout
 
-### `MosaicPanel.tsx`
-- Sélecteur de layouts prédéfinis (colonnes, grille, sidebar, dev, productivité, focus)
-- Preview visuel des layouts
+**Fichier** : `src/index.css`
 
----
+- Ajouter des règles CSS pour forcer les portails Radix (tooltips, popovers, hover cards) à un z-index très élevé (z-[9999])
+- Cibler `[data-radix-popper-content-wrapper]` avec `z-index: 9999 !important`
 
-## 3. DevTools en bas (comme Chrome)
+## 6. Panneaux latéraux en overlay + redimensionnables
 
-### `DevToolsPanel.tsx` — Panneau en bas du shell
-- **6 onglets** : Console, Network, Elements, Performance, Application, Sources
-- Redimensionnable (drag de la bordure supérieure)
-- Boutons : Clear, Dock position, Close
-- Toggle via F12 ou bouton sidebar
+**Fichier** : `src/components/browser/BrowserShell.tsx`
 
-### Sous-composants :
-- `DevConsole.tsx` : Logs colorés par niveau (log/info/warn/error/debug), filtres, recherche, input JS simulé
-- `DevNetwork.tsx` : Tableau de requêtes mockées (method, URL, status, duration, size), filtres par méthode/status
-- `DevElements.tsx` : Arbre DOM simulé avec indentation, styles CSS à droite
-- `DevPerformance.tsx` : Métriques FCP/LCP/TTI/TBT/CLS avec jauges
-- `DevApplication.tsx` : Onglets LocalStorage/SessionStorage/Cookies avec données mockées
-- `DevSources.tsx` : Liste des scripts/stylesheets chargés
+- Le `SidebarPanel` ne doit plus pousser le contenu : le placer en `position: absolute` (ou `fixed`) par-dessus la zone de contenu, aligné à gauche après la sidebar d'icônes
+- Ajouter un handle de resize (bordure droite draggable)
+- Persister la largeur dans localStorage (`notilus_panel_width`)
 
----
+**Fichier** : `src/components/browser/SidebarPanel.tsx`
 
-## 4. Paramètres complets
+- Créer un composant wrapper réutilisable `SidebarPanelShell` avec :
+  - Header avec titre, bouton fermer, bouton options (dropdown)
+  - Zone de recherche optionnelle (prop `searchable`)
+  - Zone de filtres optionnelle (prop `filters`)
+  - Slot pour le contenu enfant
+  - Handle de resize à droite
+- Tous les panneaux existants (Bookmarks, History, Downloads, etc.) utiliseront ce shell au lieu de dupliquer leur propre header
 
-### `SettingsPanel.tsx` — Refonte complète
-- **Apparence** : Sélecteur de thème (Dark-Red, Dark-Blue, Cyberpunk, Matrix, Dracula), couleur d'accent, transparence, intensité du flou
-- **Page d'accueil** : Style de page d'accueil (8 styles), widgets à afficher, message de bienvenue
-- **Onglets** : Restauration au démarrage, comportement nouvel onglet
-- **Terminal** : Choix du terminal, taille de police
-- **DevTools** : Position (bas/droite), hauteur
-- **Confidentialité** : Ad blocker toggle, tracker protection, sauvegarde historique, cookies
-- **AI Assistant** : Modèle, configuration
-- **Général** : Moteur de recherche, page d'accueil
-- **À propos** : Version, crédits avec logo Notilus
+## 7. Composant `SidebarPanelShell` réutilisable
 
----
+**Nouveau fichier** : `src/components/browser/SidebarPanelShell.tsx`
 
-## 5. Speed Dial amélioré
+```text
+┌─────────────────────────────┐
+│ [icon] TITRE      [⋮] [✕]  │  ← header fixe
+├─────────────────────────────┤
+│ 🔍 Recherche...             │  ← optionnel (searchable)
+├─────────────────────────────┤
+│ [Filtre1] [Filtre2] [All]   │  ← optionnel (filters)
+├─────────────────────────────┤
+│                             │
+│   Contenu (children)        │
+│                             │
+└─────────────────────────────┤ ← handle resize
+```
 
-### `SpeedDial.tsx` — Refonte
-- Logo Notilus animé (réutiliser le "N" gradient existant)
-- Horloge + date stylisée
-- Message de bienvenue personnalisé
-- Barre de recherche avec glassmorphism
-- Grille de favoris avec favicons réels (via Google Favicon Service)
-- Section "Historique récent" (3-4 derniers sites)
-- Citation dev inspirante rotative
-- Quick actions (nouveau terminal, nouvel onglet privé, ouvrir DevTools)
+Props :
 
----
+- `title: string`
+- `icon?: LucideIcon`
+- `searchable?: boolean` + `searchValue / onSearchChange`
+- `filters?: { label: string; value: string }[]` + `activeFilter / onFilterChange`
+- `onClose: () => void`
+- `menuItems?: { label: string; onClick: () => void }[]` (bouton options ⋮)
+- `children: ReactNode`
 
-## 6. Navigation améliorée
+Chaque panneau sera refactoré pour utiliser `<SidebarPanelShell>` au lieu de son propre header.
 
-### `NavigationBar.tsx` — Améliorations
-- Indicateur de chargement animé
-- Bouton favoris (étoile) dans la barre d'adresse
-- Indicateur HTTPS/sécurité amélioré (cadenas vert)
-- Compteur ad-blocker (nombre de pubs bloquées)
+## 8. Fix build errors
 
-### `TabBar.tsx` — Améliorations
-- Favicon par onglet (via Google Favicon Service URL)
-- Indicateur de chargement (spinner)
-- Menu contextuel (clic droit) : Dupliquer, Épingler, Fermer les autres
-- Onglet privé avec icône cadenas
-- Indicateur visuel de couleur pour onglet actif plus prononcé
+**Fichier** : `src/components/browser/TopChromeBar.tsx`
+
+- Les 5 erreurs `WebkitAppRegion` : caster les styles en `React.CSSProperties` (comme fait dans TitleBar)
+
+**Fichier** : `src/test/tabLayout.test.ts`
+
+- Ligne 11 : remplacer `min` par `minWidth` et `max` par `maxWidth` dans les options
+
+## 9. Clés Supabase dans .env
+
+Le fichier `.env` est auto-généré et contient déjà `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`. Aucune modification manuelle nécessaire — le fichier ne doit pas être édité.  
+  
+NB: ASSURE TOI BIEN QUE LES OVERLAYS PASSENT BIEN AU DESSUS DE WEBCONTENTVIEW (PRIORITE MAX), JE NE PARLE PAS DE IFRAME
 
 ---
 
-## 7. Raccourcis clavier
+## Fichiers à créer
 
-### `useKeyboardShortcuts.ts` — Nouveau hook
-- `Ctrl+T` : Nouvel onglet
-- `Ctrl+W` : Fermer l'onglet
-- `Ctrl+Tab` / `Ctrl+Shift+Tab` : Onglet suivant/précédent
-- `Ctrl+L` : Focus barre d'adresse
-- `Ctrl+D` : Ajouter aux favoris
-- `F12` / `Ctrl+Shift+I` : Toggle DevTools
-- `Ctrl+Shift+M` : Toggle Mosaïque
-- `Ctrl+,` : Paramètres
-- `Ctrl+H` : Historique
-- `Ctrl+J` : Téléchargements
-- `F5` / `Ctrl+R` : Recharger
+- `src/components/browser/SidebarPanelShell.tsx`
 
----
+## Fichiers à modifier
 
-## 8. BrowserShell + State mis à jour
-
-### `useBrowserState.ts` — Enrichir
-- Ajouter état DevTools (ouvert/fermé, hauteur, onglet actif)
-- Ajouter historique de navigation (mock data)
-- Ajouter favoris (mock data)
-- Ajouter téléchargements (mock data)
-- Ajouter compteur ad-blocker
-
-### `BrowserShell.tsx` — Layout mis à jour
-- Intégrer le `DevToolsPanel` en bas (entre content area et status bar)
-- Intégrer le hook keyboard shortcuts
-- Passer les données nécessaires aux nouveaux panneaux
-
----
-
-## 9. StatusBar enrichie
-
-- Indicateur sécurité HTTPS
-- Compteur pubs bloquées
-- Indicateur mode privé
-- Bouton zoom +/-
-
----
-
-## 10. Services Web dans la sidebar
-
-Les services (YouTube, ChatGPT, WhatsApp, etc.) sont des boutons dans la sidebar qui ouvrent simplement l'URL correspondante dans un nouvel onglet via `navigateTo`.
-
----
-
-## Fichiers à créer (~15 nouveaux)
-- `src/components/browser/BookmarksPanel.tsx`
-- `src/components/browser/HistoryPanel.tsx`
-- `src/components/browser/DownloadsPanel.tsx`
-- `src/components/browser/WidgetsPanel.tsx`
-- `src/components/browser/ExtensionsPanel.tsx`
-- `src/components/browser/DocumentationPanel.tsx`
-- `src/components/browser/MosaicPanel.tsx`
-- `src/components/browser/DevToolsPanel.tsx`
-- `src/components/browser/devtools/DevConsole.tsx`
-- `src/components/browser/devtools/DevNetwork.tsx`
-- `src/components/browser/devtools/DevElements.tsx`
-- `src/components/browser/devtools/DevPerformance.tsx`
-- `src/components/browser/devtools/DevApplication.tsx`
-- `src/components/browser/devtools/DevSources.tsx`
-- `src/hooks/useKeyboardShortcuts.ts`
-
-## Fichiers à modifier (~8)
-- `src/components/browser/DevToolsSidebar.tsx`
-- `src/components/browser/SidebarPanel.tsx`
-- `src/components/browser/BrowserShell.tsx`
-- `src/components/browser/SpeedDial.tsx`
-- `src/components/browser/NavigationBar.tsx`
-- `src/components/browser/TabBar.tsx`
-- `src/components/browser/StatusBar.tsx`
-- `src/components/browser/SettingsPanel.tsx`
-- `src/hooks/useBrowserState.ts`
-- `src/index.css` (animations supplémentaires)
-
+- `src/hooks/useBrowserState.ts` (persistance tabs)
+- `src/components/browser/TopChromeBar.tsx` (close button layout, hover card, TS fix)
+- `src/components/browser/NavigationBar.tsx` (couleurs actives)
+- `src/components/browser/DevToolsSidebar.tsx` (retirer bordures)
+- `src/components/browser/SidebarPanel.tsx` (overlay + resize)
+- `src/components/browser/BrowserShell.tsx` (layout overlay)
+- `src/components/browser/BookmarksPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/HistoryPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/DownloadsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/WidgetsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/ExtensionsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/DocumentationPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/MosaicPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/SystemMonitor.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/TerminalPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/LighthousePanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/GitPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/ApiDocsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/SettingsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/StudioPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/UpdatesPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/GitHubReposPanel.tsx` (utiliser SidebarPanelShell)
+- `src/index.css` (z-index tooltips)
+- `src/test/tabLayout.test.ts` (fix TS error)
