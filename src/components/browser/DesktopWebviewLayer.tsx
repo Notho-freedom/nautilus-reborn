@@ -80,7 +80,8 @@ export function DesktopWebviewLayer({
     [tabs]
   );
 
-  const webviewRefs = useRef(new Map<string, HTMLElement>());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const webviewRefs = useRef(new Map<string, any>());
   const listenersCleanupRef = useRef(new Map<string, () => void>());
   const requestedUrlRef = useRef(new Map<string, string>());
   const runtimeSignatureRef = useRef(new Map<string, string>());
