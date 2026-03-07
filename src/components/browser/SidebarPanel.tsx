@@ -16,6 +16,8 @@ import { UpdatesPanel } from './UpdatesPanel';
 import { StudioPanel } from './StudioPanel';
 import { GitHubReposPanel } from './GitHubReposPanel';
 import { FlouPanel } from './FlouPanel';
+import { FrontendLabPanel } from './FrontendLabPanel';
+import { BackendLabPanel } from './BackendLabPanel';
 import { SystemStats } from '@/hooks/useSystemMonitor';
 import { WebServicePanel } from './WebServicePanel';
 import type { WebServiceItem } from './DevToolsSidebar';
@@ -54,6 +56,8 @@ const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
   vscode: StudioPanel,
   github: GitHubReposPanel,
   flou: FlouPanel,
+  'frontend-lab': FrontendLabPanel as React.ComponentType<GenericPanelProps>,
+  'backend-lab': BackendLabPanel as React.ComponentType<GenericPanelProps>,
 };
 
 const PANEL_WIDTH_KEY = 'notilus_panel_width';

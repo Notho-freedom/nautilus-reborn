@@ -140,8 +140,9 @@ export function HistoryPanel({ onNavigate, onClose }: HistoryPanelProps) {
         </div>
       ))}
       {filtered.length === 0 && (
-        <div className="p-6 text-center text-xs font-body text-muted-foreground">
-          {items.length === 0 ? 'No history yet' : 'No results found'}
+        <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+          <Clock size={40} className="opacity-30" />
+          <span className="text-xs font-body">{items.length === 0 ? 'No history yet' : 'No results found'}</span>
         </div>
       )}
     </SidebarPanelShell>

@@ -37,9 +37,6 @@ const SIDEBAR_ITEMS = [
   { id: 'mosaic', icon: MonitorSmartphone, label: 'Mosaic' },
   { type: 'separator' as const },
   { id: 'extensions', icon: Puzzle, label: 'Extensions' },
-  { id: 'api-docs', icon: BookOpen, label: 'API Docs' },
-  { id: 'docs', icon: FileText, label: 'Documentation' },
-  { id: 'updates', icon: RefreshCw, label: 'Updates' },
   { id: 'settings', icon: Settings, label: 'Settings' },
 ];
 

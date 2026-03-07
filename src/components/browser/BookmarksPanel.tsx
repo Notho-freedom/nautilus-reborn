@@ -191,8 +191,10 @@ export function BookmarksPanel({ onNavigate, onClose }: BookmarksPanelProps) {
         );
       })}
       {filtered.length === 0 && (
-        <div className="p-6 text-center text-xs font-body text-muted-foreground">
-          {items.length === 0 ? 'No bookmarks yet' : 'No results found'}
+        <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+          <Star size={40} className="opacity-30" />
+          <span className="text-xs font-body">{items.length === 0 ? 'No bookmarks yet' : 'No results found'}</span>
+          {items.length === 0 && <span className="text-[10px] font-body">Press Ctrl+D to add one</span>}
         </div>
       )}
     </SidebarPanelShell>
