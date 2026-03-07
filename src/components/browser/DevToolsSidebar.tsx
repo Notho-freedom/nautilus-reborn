@@ -37,7 +37,7 @@ const SIDEBAR_ITEMS = [
   { id: 'mosaic', icon: MonitorSmartphone, label: 'Mosaic' },
   { type: 'separator' as const },
   { id: 'extensions', icon: Puzzle, label: 'Extensions' },
-  { id: 'settings', icon: Settings, label: 'Settings' },
+  { id: 'settings', icon: Settings, label: 'Settings' }
 ];
 
 export interface WebServiceItem {
