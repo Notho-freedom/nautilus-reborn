@@ -30,12 +30,16 @@ interface SidebarPanelProps {
   onOpenWebServiceInTab: (url: string, label: string) => void;
   onClosePanel: () => void;
   onNavigate: (url: string) => void;
+  onOpenPanel?: (panel: string) => void;
+  onCreateTab?: (url: string, title?: string) => void;
 }
 
 type GenericPanelProps = {
   stats?: SystemStats;
   onNavigate?: (url: string) => void;
   onClose?: () => void;
+  onOpenPanel?: (panel: string) => void;
+  onCreateTab?: (url: string, title?: string) => void;
 };
 
 const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
@@ -86,6 +90,8 @@ export function SidebarPanel({
   onOpenWebServiceInTab,
   onClosePanel,
   onNavigate,
+  onOpenPanel,
+  onCreateTab,
 }: SidebarPanelProps) {
   const [width, setWidth] = useState(() => readPanelWidth());
   const isResizing = useRef(false);
@@ -167,6 +173,13 @@ export function SidebarPanel({
       {Component ? (
         panel === 'monitor' ? (
           <Component stats={stats} onClose={onClosePanel} />
+        ) : panel === 'widgets' ? (
+          <Component
+            stats={stats}
+            onClose={onClosePanel}
+            onOpenPanel={onOpenPanel}
+            onCreateTab={onCreateTab}
+          />
         ) : isBookmarksPanel || isHistoryPanel || isGitHubPanel || isFlouPanel ? (
           <Component onNavigate={onNavigate} onClose={onClosePanel} />
         ) : (

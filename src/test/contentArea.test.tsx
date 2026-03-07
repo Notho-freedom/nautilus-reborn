@@ -23,6 +23,9 @@ describe('ContentArea', () => {
         tabs={[externalTab]}
         activeTabId="tab-1"
         onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
       />
     );
 
@@ -39,6 +42,9 @@ describe('ContentArea', () => {
         tabs={[externalTab]}
         activeTabId="tab-1"
         onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
       />
     );
 
@@ -55,6 +61,9 @@ describe('ContentArea', () => {
         tabs={[externalTab]}
         activeTabId="tab-1"
         onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
       />
     );
 

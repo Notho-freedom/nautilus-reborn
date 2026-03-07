@@ -20,7 +20,9 @@ import {
   studioCaptureFullPage,
   studioCaptureViewport,
   studioClearCss,
+  studioGetViewport,
   studioGetRecording,
+  studioResetViewport,
   studioResizeToPreset,
   studioRunScript,
   studioStartRecording,
@@ -65,6 +67,7 @@ export function StudioPanel({ onClose }: StudioPanelProps = {}) {
   const [recording, setRecording] = useState(false);
   const [recordingEvents, setRecordingEvents] = useState<StudioRecordedEvent[]>([]);
   const [busy, setBusy] = useState(false);
+  const [activeViewportLabel, setActiveViewportLabel] = useState('Auto');
   const desktopMode = isDesktopRuntime();
 
   useEffect(() => {
@@ -73,6 +76,13 @@ export function StudioPanel({ onClose }: StudioPanelProps = {}) {
       if (!snapshot) return;
       setRecording(Boolean(snapshot.isRecording));
       setRecordingEvents(snapshot.events ?? []);
+    });
+    void studioGetViewport().then(viewport => {
+      if (!viewport) {
+        setActiveViewportLabel('Auto');
+        return;
+      }
+      setActiveViewportLabel(`${viewport.width}x${viewport.height}`);
     });
   }, [desktopMode]);
 
@@ -121,17 +131,44 @@ export function StudioPanel({ onClose }: StudioPanelProps = {}) {
 
         {activeTab === 'responsive' && (
           <div className="space-y-2">
-            <p className="text-[10px] font-body text-muted-foreground">Resize App Window</p>
+            <p className="text-[10px] font-body text-muted-foreground">
+              Resize active WebView viewport
+            </p>
+            <div className="text-[10px] font-body text-muted-foreground">
+              Current: <span className="text-foreground">{activeViewportLabel}</span>
+            </div>
             {STUDIO_DEVICE_PRESETS.map((preset: StudioDevicePreset) => {
               const Icon = DEVICE_ICONS[preset.icon];
               return (
-                <button key={preset.id} disabled={!desktopMode || busy} onClick={() => void runBusy(async () => studioResizeToPreset(preset))} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-notilus-surface-1 border border-border text-xs font-body text-foreground hover:bg-notilus-surface-2 transition-colors duration-fast disabled:opacity-50">
+                <button
+                  key={preset.id}
+                  disabled={!desktopMode || busy}
+                  onClick={() =>
+                    void runBusy(async () => {
+                      await studioResizeToPreset(preset);
+                      setActiveViewportLabel(`${preset.width}x${preset.height}`);
+                    })
+                  }
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-notilus-surface-1 border border-border text-xs font-body text-foreground hover:bg-notilus-surface-2 transition-colors duration-fast disabled:opacity-50"
+                >
                   <Icon size={14} className="text-muted-foreground" />
                   <span className="flex-1 text-left">{preset.name}</span>
                   <span className="text-[10px] text-muted-foreground">{preset.width}x{preset.height}</span>
                 </button>
               );
             })}
+            <button
+              disabled={!desktopMode || busy}
+              onClick={() =>
+                void runBusy(async () => {
+                  await studioResetViewport();
+                  setActiveViewportLabel('Auto');
+                })
+              }
+              className="w-full h-8 rounded-lg bg-notilus-surface-1 border border-border text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors duration-fast disabled:opacity-50"
+            >
+              Reset viewport
+            </button>
           </div>
         )}
 

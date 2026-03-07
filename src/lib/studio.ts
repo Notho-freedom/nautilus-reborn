@@ -5,7 +5,8 @@ import {
   desktopStudioCaptureViewport,
   desktopStudioClearCss,
   desktopStudioGetRecording,
-  desktopStudioResizeWindow,
+  desktopStudioGetWebviewViewport,
+  desktopStudioSetWebviewViewport,
   desktopStudioRunScript,
   desktopStudioStartRecording,
   desktopStudioStopRecording,
@@ -29,10 +30,20 @@ export const STUDIO_DEVICE_PRESETS: StudioDevicePreset[] = [
 
 export async function studioResizeToPreset(preset: StudioDevicePreset): Promise<void> {
   if (!isDesktopRuntime()) return;
-  await desktopStudioResizeWindow({
+  await desktopStudioSetWebviewViewport({
     width: preset.width,
     height: preset.height,
   });
+}
+
+export async function studioResetViewport(): Promise<void> {
+  if (!isDesktopRuntime()) return;
+  await desktopStudioSetWebviewViewport(null);
+}
+
+export async function studioGetViewport() {
+  if (!isDesktopRuntime()) return null;
+  return desktopStudioGetWebviewViewport();
 }
 
 export async function studioCaptureViewport() {

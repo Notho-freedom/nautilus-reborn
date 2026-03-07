@@ -1,5 +1,10 @@
 import { ipcMain } from 'electron';
-import type { StudioCssRequest, StudioScriptRequest, StudioViewportRequest } from '../../../shared/browser-contract';
+import type {
+  StudioCssRequest,
+  StudioScriptRequest,
+  StudioWebviewViewportRequest,
+  StudioViewportRequest,
+} from '../../../shared/browser-contract';
 import { BrowserIpcChannels } from '../../../shared/browser-contract';
 import { StudioManager } from '../studio-manager';
 
@@ -10,6 +15,8 @@ interface RegisterStudioIpcOptions {
 
 function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.studioResizeWindow);
+  ipcMain.removeHandler(BrowserIpcChannels.studioSetWebviewViewport);
+  ipcMain.removeHandler(BrowserIpcChannels.studioGetWebviewViewport);
   ipcMain.removeHandler(BrowserIpcChannels.studioCaptureViewport);
   ipcMain.removeHandler(BrowserIpcChannels.studioCaptureFullPage);
   ipcMain.removeHandler(BrowserIpcChannels.studioApplyCss);
@@ -32,6 +39,19 @@ export function registerStudioIpc({ studioManager, debug }: RegisterStudioIpcOpt
   ipcMain.handle(BrowserIpcChannels.studioResizeWindow, (_event, payload: StudioViewportRequest) => {
     log(BrowserIpcChannels.studioResizeWindow, payload);
     studioManager.resizeWindow(payload);
+  });
+
+  ipcMain.handle(
+    BrowserIpcChannels.studioSetWebviewViewport,
+    (_event, payload: StudioWebviewViewportRequest | null) => {
+      log(BrowserIpcChannels.studioSetWebviewViewport, payload ?? null);
+      studioManager.setWebviewViewport(payload);
+    }
+  );
+
+  ipcMain.handle(BrowserIpcChannels.studioGetWebviewViewport, () => {
+    log(BrowserIpcChannels.studioGetWebviewViewport);
+    return studioManager.getWebviewViewport();
   });
 
   ipcMain.handle(BrowserIpcChannels.studioCaptureViewport, async () => {

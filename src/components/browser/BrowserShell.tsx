@@ -19,8 +19,14 @@ import {
 } from '@/lib/bookmarks';
 import { addFlouPage } from '@/lib/flou';
 import { studioCaptureFullPage, studioCaptureViewport } from '@/lib/studio';
+import {
+  desktopStudioGetWebviewViewport,
+  onDesktopStudioWebviewViewportChanged,
+} from '@/lib/electronBridge';
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
+import { getGitSnapshot, subscribeToGitUpdates } from '@/lib/git';
+import { getMosaicLayout, subscribeToMosaicLayoutUpdates } from '@/lib/mosaic';
 
 export function BrowserShell() {
   const browser = useBrowserState();
@@ -32,6 +38,12 @@ export function BrowserShell() {
   const [zoom, setZoom] = useState(100);
   const [notilusDevToolsOpen, setNotilusDevToolsOpen] = useState(false);
   const [notilusDevToolsHeight, setNotilusDevToolsHeight] = useState(250);
+  const [gitBranch, setGitBranch] = useState(() => getGitSnapshot().branch);
+  const [mosaicLayout, setMosaicLayout] = useState(() => getMosaicLayout());
+  const [studioWebviewViewport, setStudioWebviewViewport] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const dockInset =
     browser.isDesktopMode && browser.isExternalActiveTab && browser.devToolsDockState.isOpen
       ? browser.devToolsDockState.width
@@ -59,6 +71,40 @@ export function BrowserShell() {
     refreshBookmarkState();
     return subscribeToBookmarksUpdates(refreshBookmarkState);
   }, [browser.activeTab?.url]);
+
+  useEffect(() => {
+    const refresh = () => {
+      const branch = getGitSnapshot().branch;
+      setGitBranch(branch && branch !== '-' ? branch : '');
+    };
+    refresh();
+    return subscribeToGitUpdates(refresh);
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => {
+      setMosaicLayout(getMosaicLayout());
+    };
+    refresh();
+    return subscribeToMosaicLayoutUpdates(refresh);
+  }, []);
+
+  useEffect(() => {
+    if (!browser.isDesktopMode) return;
+    let mounted = true;
+    void desktopStudioGetWebviewViewport().then(payload => {
+      if (!mounted) return;
+      setStudioWebviewViewport(payload);
+    });
+    const unsubscribe = onDesktopStudioWebviewViewportChanged(payload => {
+      if (!mounted) return;
+      setStudioWebviewViewport(payload);
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [browser.isDesktopMode]);
 
   const toggleDevToolsPanel = useCallback(() => {
     const externalDesktopMode = browser.isDesktopMode && browser.isExternalActiveTab;
@@ -236,6 +282,13 @@ export function BrowserShell() {
 
   const handleZoomChange = useCallback((newZoom: number) => {
     setZoom(newZoom);
+    if (browser.isDesktopMode) {
+      const activeWebview = document.querySelector(
+        'webview[data-active="true"]'
+      ) as (HTMLElement & { setZoomFactor?: (factor: number) => void }) | null;
+      activeWebview?.setZoomFactor?.(Math.max(0.25, Math.min(5, newZoom / 100)));
+      return;
+    }
     // In web mode apply CSS zoom
     if (!browser.isDesktopMode) {
       const contentEl = document.querySelector('[data-content-area]') as HTMLElement | null;
@@ -315,6 +368,8 @@ export function BrowserShell() {
               onOpenWebServiceInTab={handleOpenWebServiceInTab}
               onClosePanel={handleCloseSidebarPanel}
               onNavigate={browser.navigateTo}
+              onOpenPanel={handleOpenPanel}
+              onCreateTab={browser.addTab}
             />
           </div>
         )}
@@ -335,6 +390,9 @@ export function BrowserShell() {
               tabs={browser.tabs}
               activeTabId={browser.activeTabId}
               onCreateTab={browser.addTab}
+              zoom={zoom}
+              studioViewport={studioWebviewViewport}
+              mosaicLayout={mosaicLayout}
             />
           </div>
           {/* Notilus DevTools as overlay */}
@@ -367,6 +425,7 @@ export function BrowserShell() {
         stats={stats}
         tabCount={browser.tabs.length}
         activeTabUrl={browser.activeTab?.url || ''}
+        gitBranch={gitBranch}
         zoom={zoom}
         onZoomChange={handleZoomChange}
         onOpenPanel={handleOpenPanel}

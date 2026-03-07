@@ -54,7 +54,7 @@ const DEFAULT_SETTINGS: BrowserSettings = {
   acceptCookies: true,
   restoreTabs: true,
   homePageStyle: 'modern',
-  terminalType: 'native',
+  terminalType: 'xterm',
   terminalFontSize: 13,
   devToolsPosition: 'bottom',
   aiModel: 'llama-3.3-70b',

@@ -1,3 +1,14 @@
+import type { SystemMetricsSnapshot } from './system-contract';
+import type {
+  TerminalCloseRequest,
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalInputRequest,
+  TerminalResizeRequest,
+  TerminalSessionOpenRequest,
+  TerminalSessionOpenResponse,
+} from './terminal-contract';
+
 export type TabKind = 'internal' | 'external';
 
 export interface TabDescriptor {
@@ -142,6 +153,11 @@ export interface StudioViewportRequest {
   height: number;
 }
 
+export interface StudioWebviewViewportRequest {
+  width: number;
+  height: number;
+}
+
 export interface StudioScriptRequest {
   script: string;
 }
@@ -215,7 +231,14 @@ export interface BrowserDesktopApi {
   unstageGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
   discardGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
   onGitStateChanged: (listener: (snapshot: GitSnapshot) => void) => () => void;
+  getSystemMetrics: () => Promise<SystemMetricsSnapshot>;
+  onSystemMetricsChanged: (listener: (snapshot: SystemMetricsSnapshot) => void) => () => void;
   studioResizeWindow: (payload: StudioViewportRequest) => Promise<void>;
+  studioSetWebviewViewport: (payload: StudioWebviewViewportRequest | null) => Promise<void>;
+  studioGetWebviewViewport: () => Promise<StudioWebviewViewportRequest | null>;
+  onStudioWebviewViewportChanged: (
+    listener: (payload: StudioWebviewViewportRequest | null) => void
+  ) => () => void;
   studioCaptureViewport: () => Promise<StudioCaptureResult>;
   studioCaptureFullPage: () => Promise<StudioCaptureResult>;
   studioApplyCss: (payload: StudioCssRequest) => Promise<void>;
@@ -224,6 +247,14 @@ export interface BrowserDesktopApi {
   studioStartRecording: () => Promise<StudioRecordingSnapshot>;
   studioStopRecording: () => Promise<StudioRecordingSnapshot>;
   studioGetRecording: () => Promise<StudioRecordingSnapshot>;
+  openTerminalSession: (
+    payload: TerminalSessionOpenRequest
+  ) => Promise<TerminalSessionOpenResponse>;
+  sendTerminalInput: (payload: TerminalInputRequest) => Promise<void>;
+  resizeTerminalSession: (payload: TerminalResizeRequest) => Promise<void>;
+  closeTerminalSession: (payload: TerminalCloseRequest) => Promise<void>;
+  onTerminalData: (listener: (event: TerminalDataEvent) => void) => () => void;
+  onTerminalExit: (listener: (event: TerminalExitEvent) => void) => () => void;
 }
 
 export const BrowserIpcChannels = {
@@ -266,7 +297,12 @@ export const BrowserIpcChannels = {
   gitUnstageFile: 'git:unstage-file',
   gitDiscardFile: 'git:discard-file',
   gitStateChanged: 'git:state-changed',
+  systemGetMetrics: 'system:get-metrics',
+  systemMetricsChanged: 'system:metrics-changed',
   studioResizeWindow: 'studio:resize-window',
+  studioSetWebviewViewport: 'studio:set-webview-viewport',
+  studioGetWebviewViewport: 'studio:get-webview-viewport',
+  studioWebviewViewportChanged: 'studio:webview-viewport-changed',
   studioCaptureViewport: 'studio:capture-viewport',
   studioCaptureFullPage: 'studio:capture-fullpage',
   studioApplyCss: 'studio:apply-css',
@@ -275,4 +311,10 @@ export const BrowserIpcChannels = {
   studioStartRecording: 'studio:start-recording',
   studioStopRecording: 'studio:stop-recording',
   studioGetRecording: 'studio:get-recording',
+  terminalOpen: 'terminal:open',
+  terminalInput: 'terminal:input',
+  terminalResize: 'terminal:resize',
+  terminalClose: 'terminal:close',
+  terminalData: 'terminal:data',
+  terminalExit: 'terminal:exit',
 } as const;

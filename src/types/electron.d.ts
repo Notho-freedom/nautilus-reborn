@@ -12,6 +12,10 @@ interface ElectronWebviewElement extends HTMLElement {
   goBack: () => void;
   goForward: () => void;
   reload: () => void;
+  setZoomFactor?: (factor: number) => void;
+  getZoomFactor?: () => number;
+  insertCSS?: (css: string) => Promise<string>;
+  executeJavaScript?: <T = unknown>(code: string, userGesture?: boolean) => Promise<T>;
 }
 
 declare global {

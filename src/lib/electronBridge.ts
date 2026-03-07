@@ -15,7 +15,15 @@ import type {
   StudioCaptureResult,
   StudioRecordingSnapshot,
   StudioScriptResult,
+  StudioWebviewViewportRequest,
   StudioViewportRequest,
+  TerminalCloseRequest,
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalInputRequest,
+  TerminalResizeRequest,
+  TerminalSessionOpenRequest,
+  TerminalSessionOpenResponse,
   BrowserSnapshot,
   NavigateRequest,
   TabActionRequest,
@@ -24,6 +32,7 @@ import type {
   TabCreateRequest,
   WindowState,
 } from '../../shared/browser-contract';
+import type { SystemMetricsSnapshot } from '../../shared/system-contract';
 
 export function getDesktopBridge(): BrowserDesktopApi | null {
   if (typeof window === 'undefined') return null;
@@ -324,10 +333,46 @@ export function onDesktopGitStateChanged(
   return bridge.onGitStateChanged(listener);
 }
 
+export async function desktopGetSystemMetrics(): Promise<SystemMetricsSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.getSystemMetrics();
+}
+
+export function onDesktopSystemMetricsChanged(
+  listener: (snapshot: SystemMetricsSnapshot) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onSystemMetricsChanged(listener);
+}
+
 export async function desktopStudioResizeWindow(payload: StudioViewportRequest): Promise<void> {
   const bridge = getDesktopBridge();
   if (!bridge) return;
   await bridge.studioResizeWindow(payload);
+}
+
+export async function desktopStudioSetWebviewViewport(
+  payload: StudioWebviewViewportRequest | null
+): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.studioSetWebviewViewport(payload);
+}
+
+export async function desktopStudioGetWebviewViewport(): Promise<StudioWebviewViewportRequest | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.studioGetWebviewViewport();
+}
+
+export function onDesktopStudioWebviewViewportChanged(
+  listener: (payload: StudioWebviewViewportRequest | null) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onStudioWebviewViewportChanged(listener);
 }
 
 export async function desktopStudioCaptureViewport(): Promise<StudioCaptureResult | null> {
@@ -376,4 +421,42 @@ export async function desktopStudioGetRecording(): Promise<StudioRecordingSnapsh
   const bridge = getDesktopBridge();
   if (!bridge) return null;
   return bridge.studioGetRecording();
+}
+
+export async function desktopOpenTerminalSession(
+  payload: TerminalSessionOpenRequest
+): Promise<TerminalSessionOpenResponse | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.openTerminalSession(payload);
+}
+
+export async function desktopSendTerminalInput(payload: TerminalInputRequest): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.sendTerminalInput(payload);
+}
+
+export async function desktopResizeTerminalSession(payload: TerminalResizeRequest): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.resizeTerminalSession(payload);
+}
+
+export async function desktopCloseTerminalSession(payload: TerminalCloseRequest): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.closeTerminalSession(payload);
+}
+
+export function onDesktopTerminalData(listener: (event: TerminalDataEvent) => void): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onTerminalData(listener);
+}
+
+export function onDesktopTerminalExit(listener: (event: TerminalExitEvent) => void): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onTerminalExit(listener);
 }

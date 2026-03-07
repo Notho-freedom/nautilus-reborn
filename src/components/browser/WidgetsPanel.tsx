@@ -15,9 +15,17 @@ interface WidgetsPanelProps {
   stats?: SystemStats;
   tabCount?: number;
   onClose?: () => void;
+  onOpenPanel?: (panel: string) => void;
+  onCreateTab?: (url: string) => void;
 }
 
-export function WidgetsPanel({ stats, tabCount, onClose }: WidgetsPanelProps = {}) {
+export function WidgetsPanel({
+  stats,
+  tabCount,
+  onClose,
+  onOpenPanel,
+  onCreateTab,
+}: WidgetsPanelProps = {}) {
   const [time, setTime] = useState(new Date());
   const [quoteIdx, setQuoteIdx] = useState(0);
 
@@ -50,20 +58,24 @@ export function WidgetsPanel({ stats, tabCount, onClose }: WidgetsPanelProps = {
           <div className="flex items-center gap-2">
             <Cloud size={22} className="text-info" />
             <div>
-              <div className="text-base font-display text-foreground">--°C</div>
-              <div className="text-[11px] font-body text-muted-foreground">Weather unavailable</div>
+              <div className="text-base font-display text-foreground">
+                {stats?.networkOnline ? stats.networkQuality.toUpperCase() : 'OFFLINE'}
+              </div>
+              <div className="text-[11px] font-body text-muted-foreground">
+                Network quality monitor
+              </div>
             </div>
           </div>
         </div>
 
         <div className="glass rounded-xl p-3 space-y-2">
           <div className="text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-1">System</div>
-          {[
-            { icon: Cpu, label: 'CPU', value: stats ? `${stats.cpu}%` : '--' },
-            { icon: MemoryStick, label: 'RAM', value: stats ? `${stats.ram}%` : '--' },
-            { icon: Wifi, label: 'Net', value: stats ? `↓ ${stats.networkDown} MB/s` : '--' },
-            { icon: Layers, label: 'Tabs', value: String(tabCount ?? '--') },
-          ].map(m => (
+            {[
+              { icon: Cpu, label: 'CPU', value: stats ? `${stats.cpu}%` : '--' },
+              { icon: MemoryStick, label: 'RAM', value: stats ? `${stats.ram}%` : '--' },
+              { icon: Wifi, label: 'Net', value: stats ? `↓ ${stats.networkDown} Mbps` : '--' },
+              { icon: Layers, label: 'Tabs', value: String(tabCount ?? '--') },
+            ].map(m => (
             <div key={m.label} className="flex items-center gap-2 text-[11px] font-body">
               <m.icon size={11} className="text-muted-foreground" />
               <span className="text-muted-foreground flex-1">{m.label}</span>
@@ -84,10 +96,14 @@ export function WidgetsPanel({ stats, tabCount, onClose }: WidgetsPanelProps = {
           </div>
           <div className="grid grid-cols-2 gap-1.5">
             {[
-              { icon: Terminal, label: 'Terminal' },
-              { icon: Plus, label: 'New Tab' },
+              { icon: Terminal, label: 'Terminal', action: () => onOpenPanel?.('terminal') },
+              { icon: Plus, label: 'New Tab', action: () => onCreateTab?.('notilus://speed-dial') },
             ].map(a => (
-              <button key={a.label} className="flex items-center gap-1.5 px-2 py-2 rounded-lg bg-notilus-surface-1 border border-border text-[11px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors duration-fast">
+              <button
+                key={a.label}
+                onClick={a.action}
+                className="flex items-center gap-1.5 px-2 py-2 rounded-lg bg-notilus-surface-1 border border-border text-[11px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors duration-fast"
+              >
                 <a.icon size={11} /> {a.label}
               </button>
             ))}

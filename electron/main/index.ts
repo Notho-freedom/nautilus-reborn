@@ -6,12 +6,16 @@ import { registerBrowserIpc } from './ipc/browser-ipc';
 import { registerDownloadIpc } from './ipc/download-ipc';
 import { registerGitIpc } from './ipc/git-ipc';
 import { registerStudioIpc } from './ipc/studio-ipc';
+import { registerSystemIpc } from './ipc/system-ipc';
+import { registerTerminalIpc } from './ipc/terminal-ipc';
 import { registerWindowIpc } from './ipc/window-ipc';
 import { DownloadManager } from './download-manager';
 import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
 import { StudioManager } from './studio-manager';
+import { SystemMetricsManager } from './system-metrics-manager';
 import { TabManager } from './tab-manager';
+import { TerminalManager } from './terminal-manager';
 import { createMainWindow } from './window-manager';
 
 const DEBUG_IPC = process.env.NOTILUS_DEBUG_IPC === '1';
@@ -25,6 +29,8 @@ let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
 let studioManager: StudioManager | null = null;
+let systemMetricsManager: SystemMetricsManager | null = null;
+let terminalManager: TerminalManager | null = null;
 
 if (!SINGLE_INSTANCE_LOCK) {
   app.quit();
@@ -156,8 +162,34 @@ function createDesktopWindow() {
       mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
     },
   });
-  studioManager = new StudioManager(mainWindow, tabManager, DEBUG_IPC);
+  systemMetricsManager = new SystemMetricsManager({
+    debug: DEBUG_IPC,
+    onChanged: snapshot => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send(BrowserIpcChannels.systemMetricsChanged, snapshot);
+    },
+  });
+  registerSystemIpc({ systemMetricsManager, debug: DEBUG_IPC });
+  systemMetricsManager.start();
+
+  studioManager = new StudioManager(mainWindow, tabManager, DEBUG_IPC, payload => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send(BrowserIpcChannels.studioWebviewViewportChanged, payload);
+  });
   registerStudioIpc({ studioManager, debug: DEBUG_IPC });
+
+  terminalManager = new TerminalManager({
+    debug: DEBUG_IPC,
+    onData: payload => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send(BrowserIpcChannels.terminalData, payload);
+    },
+    onExit: payload => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send(BrowserIpcChannels.terminalExit, payload);
+    },
+  });
+  registerTerminalIpc({ terminalManager, debug: DEBUG_IPC });
   tabManager.createTab(INITIAL_URL);
 
   mainWindow.webContents.on('did-finish-load', () => {
@@ -185,6 +217,18 @@ function createDesktopWindow() {
         mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
       });
     }
+    if (systemMetricsManager && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(
+        BrowserIpcChannels.systemMetricsChanged,
+        systemMetricsManager.getSnapshot()
+      );
+    }
+    if (studioManager && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(
+        BrowserIpcChannels.studioWebviewViewportChanged,
+        studioManager.getWebviewViewport()
+      );
+    }
   });
 
   const syncDevToolsLayout = () => {
@@ -201,11 +245,15 @@ function createDesktopWindow() {
   mainWindow.on('leave-full-screen', syncDevToolsLayout);
 
   mainWindow.on('closed', () => {
+    systemMetricsManager?.stop();
+    terminalManager?.dispose();
     mainWindow = null;
     tabManager = null;
     downloadManager = null;
     gitManager = null;
     studioManager = null;
+    systemMetricsManager = null;
+    terminalManager = null;
   });
 }
 

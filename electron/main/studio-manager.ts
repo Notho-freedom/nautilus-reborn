@@ -6,6 +6,7 @@ import type {
   StudioRecordingSnapshot,
   StudioRecordedEvent,
   StudioScriptResult,
+  StudioWebviewViewportRequest,
   StudioViewportRequest,
 } from '../../shared/browser-contract';
 import { TabManager } from './tab-manager';
@@ -40,18 +41,44 @@ function formatScriptOutput(value: unknown): string {
 export class StudioManager {
   private readonly cssKeysByWebContentsId = new Map<number, string[]>();
   private readonly recordingsByWebContentsId = new Map<number, RecordingState>();
+  private webviewViewport: StudioWebviewViewportRequest | null = null;
 
   constructor(
     private readonly window: BrowserWindow,
     private readonly tabManager: TabManager,
-    private readonly debug: boolean
+    private readonly debug: boolean,
+    private readonly onWebviewViewportChanged?: (
+      payload: StudioWebviewViewportRequest | null
+    ) => void
   ) {}
 
   resizeWindow(payload: StudioViewportRequest): void {
     const width = Math.max(480, Math.floor(payload.width));
     const height = Math.max(320, Math.floor(payload.height));
-    this.window.setContentSize(width, height, true);
-    this.log('resize-window', `${width}x${height}`);
+    this.setWebviewViewport({ width, height });
+    this.log('resize-window-deprecated', `${width}x${height}`);
+  }
+
+  setWebviewViewport(payload: StudioWebviewViewportRequest | null): void {
+    if (payload) {
+      this.webviewViewport = {
+        width: Math.max(320, Math.floor(payload.width)),
+        height: Math.max(240, Math.floor(payload.height)),
+      };
+    } else {
+      this.webviewViewport = null;
+    }
+    this.onWebviewViewportChanged?.(this.getWebviewViewport());
+    this.log(
+      'set-webview-viewport',
+      this.webviewViewport
+        ? `${this.webviewViewport.width}x${this.webviewViewport.height}`
+        : 'reset'
+    );
+  }
+
+  getWebviewViewport(): StudioWebviewViewportRequest | null {
+    return this.webviewViewport ? { ...this.webviewViewport } : null;
   }
 
   async captureViewport(): Promise<StudioCaptureResult> {

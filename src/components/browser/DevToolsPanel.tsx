@@ -51,13 +51,13 @@ export function DevToolsPanel({
   };
 
   return (
-    <div className="shrink-0 border-t border-border bg-card flex flex-col" style={{ height }}>
+    <div className="shrink-0 border-t border-border/40 bg-card/95 backdrop-blur-sm flex flex-col" style={{ height }}>
       <div
         onMouseDown={handleMouseDown}
         className={cn("h-1 cursor-row-resize hover:bg-primary/30 transition-colors duration-fast", isDragging && "bg-primary/50")}
       />
 
-      <div className="flex items-center h-8 bg-card border-b border-border px-1 gap-0.5 shrink-0">
+      <div className="flex items-center h-8 bg-card/60 px-1 gap-0.5 shrink-0">
         {TABS.map(tab => (
           <button
             key={tab.id}

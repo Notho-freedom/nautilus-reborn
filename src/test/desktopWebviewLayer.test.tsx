@@ -59,6 +59,9 @@ describe('DesktopWebviewLayer', () => {
         tabs={[externalTabA, externalTabB, internalTab]}
         activeTabId={externalTabA.id}
         onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
       />
     );
 
@@ -79,6 +82,9 @@ describe('DesktopWebviewLayer', () => {
         tabs={[externalTabA]}
         activeTabId={externalTabA.id}
         onCreateTab={onCreateTab}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
       />
     );
 
@@ -108,6 +114,9 @@ describe('DesktopWebviewLayer', () => {
         tabs={[externalTabA]}
         activeTabId={externalTabA.id}
         onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
       />
     );
 
@@ -121,7 +130,14 @@ describe('DesktopWebviewLayer', () => {
   it('does not call loadURL when only active tab changes', async () => {
     const loadSpy = vi.spyOn(HTMLElement.prototype as any, 'loadURL');
     const { rerender } = render(
-      <DesktopWebviewLayer tabs={[externalTabA, externalTabB]} activeTabId={externalTabA.id} onCreateTab={() => {}} />
+      <DesktopWebviewLayer
+        tabs={[externalTabA, externalTabB]}
+        activeTabId={externalTabA.id}
+        onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
+      />
     );
 
     const first = screen.getByTestId(`desktop-webview-${externalTabA.id}`);
@@ -132,7 +148,14 @@ describe('DesktopWebviewLayer', () => {
     const baselineCalls = loadSpy.mock.calls.length;
 
     rerender(
-      <DesktopWebviewLayer tabs={[externalTabA, externalTabB]} activeTabId={externalTabB.id} onCreateTab={() => {}} />
+      <DesktopWebviewLayer
+        tabs={[externalTabA, externalTabB]}
+        activeTabId={externalTabB.id}
+        onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
+      />
     );
 
     expect(loadSpy.mock.calls.length).toBe(baselineCalls);
@@ -147,7 +170,14 @@ describe('DesktopWebviewLayer', () => {
     };
 
     const { rerender } = render(
-      <DesktopWebviewLayer tabs={[externalTabA]} activeTabId={externalTabA.id} onCreateTab={() => {}} />
+      <DesktopWebviewLayer
+        tabs={[externalTabA]}
+        activeTabId={externalTabA.id}
+        onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
+      />
     );
 
     const webview = screen.getByTestId(`desktop-webview-${externalTabA.id}`) as HTMLElement;
@@ -155,7 +185,14 @@ describe('DesktopWebviewLayer', () => {
     webview.dispatchEvent(new Event('dom-ready'));
 
     rerender(
-      <DesktopWebviewLayer tabs={[updatedTabA]} activeTabId={updatedTabA.id} onCreateTab={() => {}} />
+      <DesktopWebviewLayer
+        tabs={[updatedTabA]}
+        activeTabId={updatedTabA.id}
+        onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicLayout="single"
+      />
     );
 
     await waitFor(() => {

@@ -8,6 +8,9 @@ export interface ExtensionItem {
   enabled: boolean;
   version: string;
   homepageUrl?: string;
+  matches?: string[];
+  css?: string;
+  js?: string;
 }
 
 export const EXTENSION_ICONS: Record<string, LucideIcon> = {
@@ -31,6 +34,16 @@ const DEFAULT_EXTENSIONS: ExtensionItem[] = [
     enabled: true,
     version: '1.57.0',
     homepageUrl: 'https://ublockorigin.com/',
+    matches: ['*://*/*'],
+    css: [
+      '[id*="ad" i]',
+      '[class*="ad" i]',
+      '[class*="sponsor" i]',
+      'iframe[src*="doubleclick" i]',
+      '[data-testid*="ad" i]',
+      '.adsbygoogle',
+      '{ display: none !important; }',
+    ].join(' '),
   },
   {
     id: 'dark-reader',
@@ -40,6 +53,12 @@ const DEFAULT_EXTENSIONS: ExtensionItem[] = [
     enabled: true,
     version: '4.9.80',
     homepageUrl: 'https://darkreader.org/',
+    matches: ['*://*/*'],
+    css: [
+      'html { color-scheme: dark !important; }',
+      'img, video { filter: brightness(0.92) contrast(1.02); }',
+      'body { background-color: #0b0b0f !important; }',
+    ].join(' '),
   },
   {
     id: 'vimium',
@@ -49,6 +68,19 @@ const DEFAULT_EXTENSIONS: ExtensionItem[] = [
     enabled: false,
     version: '2.1.2',
     homepageUrl: 'https://vimium.github.io/',
+    matches: ['*://*/*'],
+    js: [
+      '(() => {',
+      '  if (window.__notilusVimiumHint) return;',
+      '  window.__notilusVimiumHint = true;',
+      '  window.addEventListener("keydown", (event) => {',
+      '    if (event.key.toLowerCase() === "f" && !event.ctrlKey && !event.metaKey && !event.altKey) {',
+      '      document.body.style.outline = "1px dashed rgba(255,45,85,0.7)";',
+      '      setTimeout(() => { document.body.style.outline = ""; }, 350);',
+      '    }',
+      '  }, { passive: true });',
+      '})();',
+    ].join('\n'),
   },
   {
     id: 'colorzilla',
@@ -57,6 +89,14 @@ const DEFAULT_EXTENSIONS: ExtensionItem[] = [
     iconKey: 'palette',
     enabled: true,
     version: '3.3',
+    matches: ['*://*/*'],
+    js: [
+      '(() => {',
+      '  if (window.__notilusColorZilla) return;',
+      '  window.__notilusColorZilla = true;',
+      '  document.documentElement.dataset.notilusColorzilla = "enabled";',
+      '})();',
+    ].join('\n'),
   },
   {
     id: 'react-devtools',
@@ -66,6 +106,7 @@ const DEFAULT_EXTENSIONS: ExtensionItem[] = [
     enabled: true,
     version: '5.0.0',
     homepageUrl: 'https://react.dev/learn/react-developer-tools',
+    matches: ['*://*/*'],
   },
   {
     id: 'wappalyzer',
@@ -75,6 +116,17 @@ const DEFAULT_EXTENSIONS: ExtensionItem[] = [
     enabled: false,
     version: '6.10.67',
     homepageUrl: 'https://www.wappalyzer.com/',
+    matches: ['*://*/*'],
+    js: [
+      '(() => {',
+      '  if (window.__notilusWappalyzerBadge) return;',
+      '  window.__notilusWappalyzerBadge = true;',
+      '  const mark = document.createElement("meta");',
+      '  mark.name = "notilus-wappalyzer";',
+      '  mark.content = navigator.userAgent;',
+      '  document.head.appendChild(mark);',
+      '})();',
+    ].join('\n'),
   },
 ];
 
@@ -92,7 +144,12 @@ function isExtensionItem(value: unknown): value is ExtensionItem {
       typeof candidate.description === 'string' &&
       typeof candidate.iconKey === 'string' &&
       typeof candidate.enabled === 'boolean' &&
-      typeof candidate.version === 'string'
+      typeof candidate.version === 'string' &&
+      (candidate.matches === undefined ||
+        (Array.isArray(candidate.matches) &&
+          candidate.matches.every(pattern => typeof pattern === 'string'))) &&
+      (candidate.css === undefined || typeof candidate.css === 'string') &&
+      (candidate.js === undefined || typeof candidate.js === 'string')
   );
 }
 

@@ -92,7 +92,36 @@ const api: BrowserDesktopApi = {
       ipcRenderer.removeListener(BrowserIpcChannels.gitStateChanged, handler);
     };
   },
+  getSystemMetrics: () => ipcRenderer.invoke(BrowserIpcChannels.systemGetMetrics),
+  onSystemMetricsChanged: listener => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      snapshot: Parameters<typeof listener>[0]
+    ) => {
+      listener(snapshot);
+    };
+    ipcRenderer.on(BrowserIpcChannels.systemMetricsChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.systemMetricsChanged, handler);
+    };
+  },
   studioResizeWindow: payload => ipcRenderer.invoke(BrowserIpcChannels.studioResizeWindow, payload),
+  studioSetWebviewViewport: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.studioSetWebviewViewport, payload),
+  studioGetWebviewViewport: () =>
+    ipcRenderer.invoke(BrowserIpcChannels.studioGetWebviewViewport),
+  onStudioWebviewViewportChanged: listener => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      payload: Parameters<typeof listener>[0]
+    ) => {
+      listener(payload);
+    };
+    ipcRenderer.on(BrowserIpcChannels.studioWebviewViewportChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.studioWebviewViewportChanged, handler);
+    };
+  },
   studioCaptureViewport: () => ipcRenderer.invoke(BrowserIpcChannels.studioCaptureViewport),
   studioCaptureFullPage: () => ipcRenderer.invoke(BrowserIpcChannels.studioCaptureFullPage),
   studioApplyCss: payload => ipcRenderer.invoke(BrowserIpcChannels.studioApplyCss, payload),
@@ -101,6 +130,29 @@ const api: BrowserDesktopApi = {
   studioStartRecording: () => ipcRenderer.invoke(BrowserIpcChannels.studioStartRecording),
   studioStopRecording: () => ipcRenderer.invoke(BrowserIpcChannels.studioStopRecording),
   studioGetRecording: () => ipcRenderer.invoke(BrowserIpcChannels.studioGetRecording),
+  openTerminalSession: payload => ipcRenderer.invoke(BrowserIpcChannels.terminalOpen, payload),
+  sendTerminalInput: payload => ipcRenderer.invoke(BrowserIpcChannels.terminalInput, payload),
+  resizeTerminalSession: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.terminalResize, payload),
+  closeTerminalSession: payload => ipcRenderer.invoke(BrowserIpcChannels.terminalClose, payload),
+  onTerminalData: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: Parameters<typeof listener>[0]) => {
+      listener(payload);
+    };
+    ipcRenderer.on(BrowserIpcChannels.terminalData, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.terminalData, handler);
+    };
+  },
+  onTerminalExit: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: Parameters<typeof listener>[0]) => {
+      listener(payload);
+    };
+    ipcRenderer.on(BrowserIpcChannels.terminalExit, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.terminalExit, handler);
+    };
+  },
 };
 
 if (process.contextIsolated) {

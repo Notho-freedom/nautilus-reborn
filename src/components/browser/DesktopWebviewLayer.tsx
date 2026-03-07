@@ -1,15 +1,24 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BrowserTab } from '@/hooks/useBrowserState';
 import {
   desktopBindTabWebContents,
   desktopUnbindTabWebContents,
   desktopUpdateTabRuntime,
 } from '@/lib/electronBridge';
+import { subscribeToExtensionsUpdates } from '@/lib/extensions';
+import {
+  buildRuntimeExtensionSignature,
+  getRuntimeExtensionsForUrl,
+} from '@/lib/extensionsRuntime';
+import type { MosaicLayoutId } from '@/lib/mosaic';
 
 interface DesktopWebviewLayerProps {
   tabs: BrowserTab[];
   activeTabId: string;
   onCreateTab: (url: string) => void;
+  zoom: number;
+  studioViewport: { width: number; height: number } | null;
+  mosaicLayout: MosaicLayoutId;
 }
 
 function deriveTitle(url: string): string {
@@ -74,19 +83,37 @@ export function DesktopWebviewLayer({
   tabs,
   activeTabId,
   onCreateTab,
+  zoom,
+  studioViewport,
+  mosaicLayout,
 }: DesktopWebviewLayerProps) {
   const externalTabs = useMemo(
     () => tabs.filter(tab => tab.kind === 'external'),
     [tabs]
   );
+  const mosaicVisibleTabIds = useMemo(() => {
+    const activeIndex = externalTabs.findIndex(tab => tab.id === activeTabId);
+    if (activeIndex < 0) return [] as string[];
+    const ordered = [
+      externalTabs[activeIndex],
+      ...externalTabs.filter((_, index) => index !== activeIndex),
+    ].filter(Boolean);
+    const count =
+      studioViewport || mosaicLayout === 'single' ? 1 : mosaicLayout === '2-col' ? 2 : 3;
+    return ordered.slice(0, count).map(tab => tab.id);
+  }, [activeTabId, externalTabs, mosaicLayout, studioViewport]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webviewRefs = useRef(new Map<string, any>());
   const listenersCleanupRef = useRef(new Map<string, () => void>());
   const requestedUrlRef = useRef(new Map<string, string>());
   const runtimeSignatureRef = useRef(new Map<string, string>());
+  const runtimeExtensionSignatureRef = useRef(new Map<string, string>());
   const domReadyTabsRef = useRef(new Set<string>());
   const initialSrcByTabId = useRef(new Map<string, string>());
+  const [extensionsRevision, setExtensionsRevision] = useState(0);
+
+  useEffect(() => subscribeToExtensionsUpdates(() => setExtensionsRevision(prev => prev + 1)), []);
 
   useEffect(() => {
     const activeTabIds = new Set(externalTabs.map(tab => tab.id));
@@ -146,6 +173,37 @@ export function DesktopWebviewLayer({
         await desktopUpdateTabRuntime(payload);
       };
 
+      const applyRuntimeExtensions = async () => {
+        if (!domReadyTabsRef.current.has(tab.id)) return;
+        let currentUrl = '';
+        try {
+          currentUrl = webview.getURL();
+        } catch {
+          return;
+        }
+        const resolvedUrl = resolveRuntimeUrl(currentUrl, tab.url);
+        if (resolvedUrl.startsWith('notilus://')) return;
+        const signature = `${normalizeComparableUrl(
+          resolvedUrl
+        )}|${buildRuntimeExtensionSignature(resolvedUrl)}`;
+        if (runtimeExtensionSignatureRef.current.get(tab.id) === signature) return;
+
+        const effects = getRuntimeExtensionsForUrl(resolvedUrl);
+        for (const effect of effects) {
+          try {
+            if (effect.css) {
+              await webview.insertCSS?.(effect.css);
+            }
+            if (effect.js) {
+              await webview.executeJavaScript?.(effect.js, true);
+            }
+          } catch {
+            // Ignore extension-specific failures.
+          }
+        }
+        runtimeExtensionSignatureRef.current.set(tab.id, signature);
+      };
+
       const handleDomReady = async () => {
         let webContentsId: number;
         try {
@@ -156,6 +214,7 @@ export function DesktopWebviewLayer({
         if (typeof webContentsId === 'number' && Number.isFinite(webContentsId)) {
           domReadyTabsRef.current.add(tab.id);
           await desktopBindTabWebContents({ tabId: tab.id, webContentsId });
+          webview.setZoomFactor?.(Math.max(0.25, Math.min(5, zoom / 100)));
           await emitRuntime();
         }
       };
@@ -170,7 +229,13 @@ export function DesktopWebviewLayer({
       const listeners: Array<[string, EventListener]> = [
         ['dom-ready', () => void handleDomReady()],
         ['did-start-loading', () => void emitRuntime()],
-        ['did-stop-loading', () => void emitRuntime()],
+        [
+          'did-stop-loading',
+          () => {
+            void emitRuntime();
+            void applyRuntimeExtensions();
+          },
+        ],
         ['did-navigate', () => void emitRuntime()],
         ['did-navigate-in-page', () => void emitRuntime()],
         ['page-title-updated', () => void emitRuntime()],
@@ -188,10 +253,11 @@ export function DesktopWebviewLayer({
           webview.removeEventListener(name, listener);
         }
         domReadyTabsRef.current.delete(tab.id);
+        runtimeExtensionSignatureRef.current.delete(tab.id);
         void desktopUnbindTabWebContents({ tabId: tab.id });
       });
     }
-  }, [externalTabs, onCreateTab]);
+  }, [externalTabs, onCreateTab, zoom]);
 
   useEffect(() => {
     return () => {
@@ -202,6 +268,7 @@ export function DesktopWebviewLayer({
       webviewRefs.current.clear();
       requestedUrlRef.current.clear();
       runtimeSignatureRef.current.clear();
+      runtimeExtensionSignatureRef.current.clear();
       domReadyTabsRef.current.clear();
       initialSrcByTabId.current.clear();
     };
@@ -234,12 +301,68 @@ export function DesktopWebviewLayer({
     }
   }, [externalTabs]);
 
+  useEffect(() => {
+    const clampedFactor = Math.max(0.25, Math.min(5, zoom / 100));
+    for (const tab of externalTabs) {
+      const webview = webviewRefs.current.get(tab.id);
+      if (!webview || !domReadyTabsRef.current.has(tab.id)) continue;
+      webview.setZoomFactor?.(clampedFactor);
+    }
+  }, [externalTabs, zoom]);
+
+  useEffect(() => {
+    if (extensionsRevision === 0) return;
+    const activeWebview = webviewRefs.current.get(activeTabId);
+    if (!activeWebview || !domReadyTabsRef.current.has(activeTabId)) return;
+    runtimeExtensionSignatureRef.current.delete(activeTabId);
+    activeWebview.reload?.();
+  }, [activeTabId, extensionsRevision]);
+
   return (
-    <div data-testid="desktop-webview-layer" className="absolute inset-0">
+    <div
+      data-testid="desktop-webview-layer"
+      className="absolute inset-0"
+      style={
+        studioViewport
+          ? {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '12px',
+            }
+          : undefined
+      }
+    >
       {externalTabs.map(tab => {
-        const isActive = tab.id === activeTabId;
-        const shouldShow = isActive;
+        const visibleIndex = mosaicVisibleTabIds.indexOf(tab.id);
+        const shouldShow = visibleIndex !== -1;
         const initialSrc = initialSrcByTabId.current.get(tab.id) ?? tab.url;
+        const isSinglePane = studioViewport || mosaicLayout === 'single';
+
+        const paneStyle: React.CSSProperties = isSinglePane
+          ? {
+              position: studioViewport ? 'relative' : 'absolute',
+              inset: studioViewport ? undefined : 0,
+              height: studioViewport ? `${studioViewport.height}px` : '100%',
+              width: studioViewport ? `${studioViewport.width}px` : '100%',
+              maxHeight: studioViewport ? '100%' : undefined,
+              maxWidth: studioViewport ? '100%' : undefined,
+            }
+          : mosaicLayout === '2-col'
+            ? {
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: '50%',
+                left: visibleIndex === 0 ? 0 : '50%',
+              }
+            : {
+                position: 'absolute',
+                left: visibleIndex === 0 ? 0 : '50%',
+                top: visibleIndex === 2 ? '50%' : 0,
+                width: visibleIndex === 0 ? '50%' : '50%',
+                height: visibleIndex === 0 ? '100%' : '50%',
+              };
 
         return (
           <webview
@@ -254,13 +377,20 @@ export function DesktopWebviewLayer({
             src={initialSrc}
             partition="persist:notilus-default"
             allowpopups={"true" as unknown as boolean}
-            className="absolute inset-0 h-full w-full bg-transparent"
+            className="bg-transparent"
             style={{
               visibility: shouldShow ? 'visible' : 'hidden',
               pointerEvents: shouldShow ? 'auto' : 'none',
+              ...paneStyle,
+              borderRadius: studioViewport ? '12px' : undefined,
+              border:
+                studioViewport || !isSinglePane
+                  ? '1px solid hsl(var(--border))'
+                  : undefined,
             }}
             data-tab-id={tab.id}
-            data-active={shouldShow ? 'true' : 'false'}
+            data-active={tab.id === activeTabId ? 'true' : 'false'}
+            data-visible={shouldShow ? 'true' : 'false'}
             data-testid={`desktop-webview-${tab.id}`}
           />
         );

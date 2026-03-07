@@ -9,8 +9,9 @@ interface SystemMonitorProps {
 }
 
 function StatBar({ label, value, icon: Icon, unit = '%' }: {
-  label: string; value: number; icon: any; unit?: string;
+  label: string; value: number | null; icon: any; unit?: string;
 }) {
+  const safeValue = typeof value === 'number' ? value : 0;
   const getColor = (v: number) => {
     if (v > 80) return 'bg-error';
     if (v > 60) return 'notilus-gradient';
@@ -24,12 +25,14 @@ function StatBar({ label, value, icon: Icon, unit = '%' }: {
           <Icon size={12} />
           <span>{label}</span>
         </div>
-        <span className="font-display text-[11px] text-foreground">{value}{unit}</span>
+        <span className="font-display text-[11px] text-foreground">
+          {value === null ? 'N/A' : `${Math.round(value)}${unit}`}
+        </span>
       </div>
       <div className="h-1.5 bg-notilus-surface-2 rounded-full overflow-hidden">
         <div
-          className={cn("h-full rounded-full transition-all duration-1000 ease-out", getColor(value))}
-          style={{ width: `${Math.min(value, 100)}%` }}
+          className={cn("h-full rounded-full transition-all duration-1000 ease-out", getColor(safeValue))}
+          style={{ width: `${Math.min(safeValue, 100)}%` }}
         />
       </div>
     </div>
@@ -43,8 +46,8 @@ export function SystemMonitor({ stats, onClose }: SystemMonitorProps) {
         <div className="space-y-3">
           <StatBar label="CPU" value={stats.cpu} icon={Cpu} />
           <StatBar label="RAM" value={stats.ram} icon={MemoryStick} />
-          <StatBar label="GPU" value={stats.gpu} icon={MonitorSpeaker} />
-          <StatBar label="GPU Temp" value={stats.gpuTemp} icon={Thermometer} unit="°C" />
+          <StatBar label="GPU" value={stats.gpu || null} icon={MonitorSpeaker} />
+          <StatBar label="GPU Temp" value={stats.gpuTemp || null} icon={Thermometer} unit="°C" />
           <StatBar label="Battery" value={stats.battery} icon={Battery} />
         </div>
         <div className="border-t border-border pt-3 space-y-2">
@@ -52,16 +55,25 @@ export function SystemMonitor({ stats, onClose }: SystemMonitorProps) {
           <div className="flex items-center justify-between text-xs font-body">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Wifi size={12} />
-              <span>Download</span>
+              <span>Download ({stats.networkQuality})</span>
             </div>
-            <span className="font-display text-[11px] text-foreground">{stats.networkDown} MB/s</span>
+            <span className="font-display text-[11px] text-foreground">{stats.networkDown} Mbps</span>
           </div>
           <div className="flex items-center justify-between text-xs font-body">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Wifi size={12} />
               <span>Upload</span>
             </div>
-            <span className="font-display text-[11px] text-foreground">{stats.networkUp} MB/s</span>
+            <span className="font-display text-[11px] text-foreground">{stats.networkUp} Mbps</span>
+          </div>
+          <div className="flex items-center justify-between text-xs font-body">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Wifi size={12} />
+              <span>Latency</span>
+            </div>
+            <span className="font-display text-[11px] text-foreground">
+              {stats.networkLatency === null ? 'N/A' : `${Math.round(stats.networkLatency)} ms`}
+            </span>
           </div>
         </div>
       </div>

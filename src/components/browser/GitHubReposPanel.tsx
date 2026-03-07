@@ -100,6 +100,13 @@ export function GitHubReposPanel({ onNavigate, onClose }: GitHubReposPanelProps)
             <button type="submit" className="w-full h-9 rounded-lg notilus-gradient text-xs font-display text-primary-foreground tracking-wider">
               Connect
             </button>
+            <button
+              type="button"
+              className="w-full h-8 rounded-lg bg-notilus-surface-1 border border-border text-[11px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+              title="OAuth flow will be available in a next release"
+            >
+              Connect with OAuth (coming soon)
+            </button>
           </form>
         </div>
       </SidebarPanelShell>

@@ -245,7 +245,9 @@ export class TabManager {
     const target = this.resolveTargetTab(request.tabId);
     const targetWebContents = this.resolveWebContents(target?.descriptor.id);
     if (!targetWebContents) return;
-    if (targetWebContents.getType() !== 'webview') {
+    const webContentsType =
+      typeof targetWebContents.getType === 'function' ? targetWebContents.getType() : 'webview';
+    if (webContentsType !== 'webview') {
       this.log('tab:open-devtools:skip-non-webview', `${target?.descriptor.id ?? 'unknown'}`);
       return;
     }
