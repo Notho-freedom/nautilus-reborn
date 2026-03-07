@@ -80,7 +80,7 @@ export function DesktopWebviewLayer({
     [tabs]
   );
 
-  const webviewRefs = useRef(new Map<string, ElectronWebviewElement>());
+  const webviewRefs = useRef(new Map<string, HTMLElement>());
   const listenersCleanupRef = useRef(new Map<string, () => void>());
   const requestedUrlRef = useRef(new Map<string, string>());
   const runtimeSignatureRef = useRef(new Map<string, string>());
@@ -252,7 +252,7 @@ export function DesktopWebviewLayer({
             }}
             src={initialSrc}
             partition="persist:notilus-default"
-            allowpopups="true"
+            allowpopups={"true" as unknown as boolean}
             className="absolute inset-0 h-full w-full bg-transparent"
             style={{
               visibility: shouldShow ? 'visible' : 'hidden',

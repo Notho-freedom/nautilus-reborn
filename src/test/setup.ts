@@ -27,7 +27,7 @@ if (!('ResizeObserver' in globalThis)) {
   });
 }
 
-const webviewPrototype = HTMLElement.prototype as Record<string, unknown>;
+const webviewPrototype = HTMLElement.prototype as unknown as Record<string, unknown>;
 
 if (typeof webviewPrototype.getWebContentsId !== 'function') {
   webviewPrototype.getWebContentsId = () => 1;

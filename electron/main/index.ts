@@ -162,13 +162,13 @@ function createDesktopWindow() {
 
   mainWindow.webContents.on('did-finish-load', () => {
     broadcastState();
-    if (tabManager && !mainWindow?.isDestroyed()) {
+    if (tabManager && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(
         BrowserIpcChannels.devToolsDockStateChanged,
         tabManager.getDevToolsDockState()
       );
     }
-    if (downloadManager && !mainWindow?.isDestroyed()) {
+    if (downloadManager && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(
         BrowserIpcChannels.downloadsStateChanged,
         downloadManager.getSnapshot()
