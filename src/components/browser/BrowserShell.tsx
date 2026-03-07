@@ -29,6 +29,9 @@ export function BrowserShell() {
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
   const [isDockResizing, setIsDockResizing] = useState(false);
+  const [zoom, setZoom] = useState(100);
+  const [notilusDevToolsOpen, setNotilusDevToolsOpen] = useState(false);
+  const [notilusDevToolsHeight, setNotilusDevToolsHeight] = useState(250);
   const dockInset =
     browser.isDesktopMode && browser.isExternalActiveTab && browser.devToolsDockState.isOpen
       ? browser.devToolsDockState.width
@@ -76,6 +79,10 @@ export function BrowserShell() {
     browser.isExternalActiveTab,
     browser.toggleDevTools,
   ]);
+
+  const toggleNotilusDevTools = useCallback(() => {
+    setNotilusDevToolsOpen(prev => !prev);
+  }, []);
 
   const shortcuts = useMemo(() => ({
     newTab: () => browser.addTab(),
@@ -223,6 +230,21 @@ export function BrowserShell() {
     setAdBlockEnabled(next.adBlock);
   };
 
+  const handleOpenPanel = useCallback((panel: string) => {
+    browser.toggleSidebar(panel);
+  }, [browser]);
+
+  const handleZoomChange = useCallback((newZoom: number) => {
+    setZoom(newZoom);
+    // In web mode apply CSS zoom
+    if (!browser.isDesktopMode) {
+      const contentEl = document.querySelector('[data-content-area]') as HTMLElement | null;
+      if (contentEl) {
+        (contentEl.style as any).zoom = `${newZoom / 100}`;
+      }
+    }
+  }, [browser.isDesktopMode]);
+
   return (
     <div
       className="flex h-screen flex-col overflow-hidden bg-background"
@@ -296,7 +318,7 @@ export function BrowserShell() {
             />
           </div>
         )}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
           {browser.isDesktopMode && browser.isExternalActiveTab && browser.devToolsDockState.isOpen && (
             <div
               onMouseDown={beginDockResize}
@@ -305,7 +327,7 @@ export function BrowserShell() {
               style={{ backgroundColor: isDockResizing ? 'hsl(var(--primary) / 0.35)' : undefined }}
             />
           )}
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex overflow-hidden" data-content-area>
             <ContentArea
               url={browser.activeTab?.url || 'notilus://speed-dial'}
               onNavigate={browser.navigateTo}
@@ -315,17 +337,41 @@ export function BrowserShell() {
               onCreateTab={browser.addTab}
             />
           </div>
-          <DevToolsPanel
-            isOpen={browser.devToolsOpen && !(browser.isDesktopMode && browser.isExternalActiveTab)}
-            onClose={toggleDevToolsPanel}
-            height={browser.devToolsHeight}
-            onHeightChange={browser.setDevToolsHeight}
-          />
+          {/* Notilus DevTools as overlay */}
+          {notilusDevToolsOpen && (
+            <div className="absolute bottom-0 left-0 right-0 z-40">
+              <DevToolsPanel
+                isOpen={true}
+                onClose={toggleNotilusDevTools}
+                height={notilusDevToolsHeight}
+                onHeightChange={setNotilusDevToolsHeight}
+              />
+            </div>
+          )}
+          {/* Native DevTools panel (non-desktop internal) — also overlay */}
+          {browser.devToolsOpen && !(browser.isDesktopMode && browser.isExternalActiveTab) && !notilusDevToolsOpen && (
+            <div className="absolute bottom-0 left-0 right-0 z-40">
+              <DevToolsPanel
+                isOpen={true}
+                onClose={toggleDevToolsPanel}
+                height={browser.devToolsHeight}
+                onHeightChange={browser.setDevToolsHeight}
+              />
+            </div>
+          )}
         </div>
         <AIAssistant isOpen={browser.aiPanelOpen} onClose={browser.toggleAiPanel} />
       </div>
 
-      <StatusBar stats={stats} tabCount={browser.tabs.length} adsBlocked={browser.adsBlocked} />
+      <StatusBar
+        stats={stats}
+        tabCount={browser.tabs.length}
+        activeTabUrl={browser.activeTab?.url || ''}
+        zoom={zoom}
+        onZoomChange={handleZoomChange}
+        onOpenPanel={handleOpenPanel}
+        onToggleNotilusDevTools={toggleNotilusDevTools}
+      />
     </div>
   );
 }

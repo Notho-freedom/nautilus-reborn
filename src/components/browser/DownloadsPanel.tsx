@@ -181,8 +181,9 @@ export function DownloadsPanel({ onClose }: DownloadsPanelProps = {}) {
         );
       })}
       {downloads.length === 0 && (
-        <div className="p-6 text-center text-xs font-body text-muted-foreground">
-          No downloads yet
+        <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+          <Download size={40} className="opacity-30" />
+          <span className="text-xs font-body">No downloads yet</span>
         </div>
       )}
     </SidebarPanelShell>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, Cloud, Quote, Zap, Terminal, Plus, LayoutGrid, Cpu, MemoryStick, Wifi, Layers } from 'lucide-react';
 import { SidebarPanelShell } from './SidebarPanelShell';
+import { SystemStats } from '@/hooks/useSystemMonitor';
 
 const DEV_QUOTES = [
   { text: "Any fool can write code that a computer can understand. Good programmers write code that humans can understand.", author: "Martin Fowler" },
@@ -11,10 +12,12 @@ const DEV_QUOTES = [
 ];
 
 interface WidgetsPanelProps {
+  stats?: SystemStats;
+  tabCount?: number;
   onClose?: () => void;
 }
 
-export function WidgetsPanel({ onClose }: WidgetsPanelProps = {}) {
+export function WidgetsPanel({ stats, tabCount, onClose }: WidgetsPanelProps = {}) {
   const [time, setTime] = useState(new Date());
   const [quoteIdx, setQuoteIdx] = useState(0);
 
@@ -47,8 +50,8 @@ export function WidgetsPanel({ onClose }: WidgetsPanelProps = {}) {
           <div className="flex items-center gap-2">
             <Cloud size={22} className="text-info" />
             <div>
-              <div className="text-base font-display text-foreground">22°C</div>
-              <div className="text-[11px] font-body text-muted-foreground">Partly Cloudy • Paris</div>
+              <div className="text-base font-display text-foreground">--°C</div>
+              <div className="text-[11px] font-body text-muted-foreground">Weather unavailable</div>
             </div>
           </div>
         </div>
@@ -56,10 +59,10 @@ export function WidgetsPanel({ onClose }: WidgetsPanelProps = {}) {
         <div className="glass rounded-xl p-3 space-y-2">
           <div className="text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-1">System</div>
           {[
-            { icon: Cpu, label: 'CPU', value: '23%' },
-            { icon: MemoryStick, label: 'RAM', value: '67%' },
-            { icon: Wifi, label: 'Net', value: '↓ 2.3 MB/s' },
-            { icon: Layers, label: 'Tabs', value: '4' },
+            { icon: Cpu, label: 'CPU', value: stats ? `${stats.cpu}%` : '--' },
+            { icon: MemoryStick, label: 'RAM', value: stats ? `${stats.ram}%` : '--' },
+            { icon: Wifi, label: 'Net', value: stats ? `↓ ${stats.networkDown} MB/s` : '--' },
+            { icon: Layers, label: 'Tabs', value: String(tabCount ?? '--') },
           ].map(m => (
             <div key={m.label} className="flex items-center gap-2 text-[11px] font-body">
               <m.icon size={11} className="text-muted-foreground" />

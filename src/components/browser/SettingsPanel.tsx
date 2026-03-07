@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
   getSettings,
@@ -62,9 +62,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
       searchPlaceholder="Search settings..."
       onClose={onClose ?? (() => {})}
     >
-      <div className="p-3 space-y-4">
+      <div className="p-3 space-y-3">
         {shouldShowSection('Appearance') && (
-          <Section title="Appearance">
+          <Card title="Appearance">
             <SettingRow label="Dark Mode" description="Enable dark theme">
               <Switch checked={settings.darkMode} onCheckedChange={checked => updateSettings({ darkMode: checked })} />
             </SettingRow>
@@ -75,10 +75,10 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
                   <button
                     key={theme.id}
                     onClick={() => updateSettings({ accentTheme: theme.id })}
-                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md border text-[10px] font-body transition-all duration-fast ${
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-body transition-all duration-fast ${
                       settings.accentTheme === theme.id
-                        ? 'border-primary/50 bg-primary/10 text-foreground'
-                        : 'border-border bg-notilus-surface-1 text-muted-foreground hover:border-border hover:bg-notilus-surface-2'
+                        ? 'bg-primary/15 text-foreground ring-1 ring-primary/30'
+                        : 'bg-notilus-surface-1 text-muted-foreground hover:bg-notilus-surface-2'
                     }`}
                   >
                     <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: theme.color }} />
@@ -87,71 +87,59 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
                 ))}
               </div>
             </div>
-          </Section>
+          </Card>
         )}
 
         {shouldShowSection('Home Page') && (
-          <Section title="Home Page">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-body text-muted-foreground">Style</label>
-              <select value={settings.homePageStyle} onChange={event => updateSettings({ homePageStyle: event.target.value as BrowserSettings['homePageStyle'] })} className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-                <option value="modern">Modern</option>
-                <option value="notilus_dev">Notilus Dev</option>
-                <option value="frontend">Frontend</option>
-                <option value="backend">Backend</option>
-                <option value="devops">DevOps</option>
-                <option value="data_science">Data Science</option>
-                <option value="minimal">Minimal</option>
-                <option value="customizable">Customizable</option>
-              </select>
-            </div>
-          </Section>
+          <Card title="Home Page">
+            <SelectRow label="Style" value={settings.homePageStyle} onChange={v => updateSettings({ homePageStyle: v as BrowserSettings['homePageStyle'] })}>
+              <option value="modern">Modern</option>
+              <option value="notilus_dev">Notilus Dev</option>
+              <option value="frontend">Frontend</option>
+              <option value="backend">Backend</option>
+              <option value="devops">DevOps</option>
+              <option value="data_science">Data Science</option>
+              <option value="minimal">Minimal</option>
+              <option value="customizable">Customizable</option>
+            </SelectRow>
+          </Card>
         )}
 
         {shouldShowSection('Tabs') && (
-          <Section title="Tabs">
+          <Card title="Tabs">
             <SettingRow label="Restore tabs" description="Restore tabs on startup">
               <Switch checked={settings.restoreTabs} onCheckedChange={checked => updateSettings({ restoreTabs: checked })} />
             </SettingRow>
-          </Section>
+          </Card>
         )}
 
         {shouldShowSection('Terminal') && (
-          <Section title="Terminal">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-body text-muted-foreground">Terminal Type</label>
-              <select value={settings.terminalType} onChange={event => updateSettings({ terminalType: event.target.value as BrowserSettings['terminalType'] })} className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-                <option value="native">Native Terminal</option>
-                <option value="xterm">XTerm.js</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-body text-muted-foreground">Font Size</label>
-              <select value={String(settings.terminalFontSize)} onChange={event => updateSettings({ terminalFontSize: Number(event.target.value) as BrowserSettings['terminalFontSize'] })} className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-                <option value="12">12px</option>
-                <option value="13">13px</option>
-                <option value="14">14px</option>
-                <option value="16">16px</option>
-              </select>
-            </div>
-          </Section>
+          <Card title="Terminal">
+            <SelectRow label="Terminal Type" value={settings.terminalType} onChange={v => updateSettings({ terminalType: v as BrowserSettings['terminalType'] })}>
+              <option value="native">Native Terminal</option>
+              <option value="xterm">XTerm.js</option>
+            </SelectRow>
+            <SelectRow label="Font Size" value={String(settings.terminalFontSize)} onChange={v => updateSettings({ terminalFontSize: Number(v) as BrowserSettings['terminalFontSize'] })}>
+              <option value="12">12px</option>
+              <option value="13">13px</option>
+              <option value="14">14px</option>
+              <option value="16">16px</option>
+            </SelectRow>
+          </Card>
         )}
 
         {shouldShowSection('DevTools') && (
-          <Section title="DevTools">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-body text-muted-foreground">Position</label>
-              <select value={settings.devToolsPosition} onChange={event => updateSettings({ devToolsPosition: event.target.value as BrowserSettings['devToolsPosition'] })} className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-                <option value="bottom">Bottom</option>
-                <option value="right">Right</option>
-                <option value="detached">Detached</option>
-              </select>
-            </div>
-          </Section>
+          <Card title="DevTools">
+            <SelectRow label="Position" value={settings.devToolsPosition} onChange={v => updateSettings({ devToolsPosition: v as BrowserSettings['devToolsPosition'] })}>
+              <option value="bottom">Bottom</option>
+              <option value="right">Right</option>
+              <option value="detached">Detached</option>
+            </SelectRow>
+          </Card>
         )}
 
         {shouldShowSection('Privacy & Security') && (
-          <Section title="Privacy & Security">
+          <Card title="Privacy & Security">
             <SettingRow label="Ad Blocker" description="Block ads and popups">
               <Switch checked={settings.adBlock} onCheckedChange={checked => updateSettings({ adBlock: checked })} />
             </SettingRow>
@@ -164,68 +152,60 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
             <SettingRow label="Accept Cookies" description="Allow website cookies">
               <Switch checked={settings.acceptCookies} onCheckedChange={checked => updateSettings({ acceptCookies: checked })} />
             </SettingRow>
-          </Section>
+          </Card>
         )}
 
         {shouldShowSection('Web Services') && (
-          <Section title="Web Services">
-            <div className="space-y-2">
-              {WEB_SERVICE_IDS.map(serviceId => (
-                <SettingRow key={serviceId} label={WEB_SERVICE_LABELS[serviceId]} description="Show in sidebar web section">
-                  <Switch
-                    checked={settings.enabledWebServices.includes(serviceId)}
-                    onCheckedChange={checked =>
-                      updateSettings(current => {
-                        const next = new Set(current.enabledWebServices);
-                        if (checked) { next.add(serviceId); } else { next.delete(serviceId); }
-                        return { enabledWebServices: next.size > 0 ? (Array.from(next) as BrowserSettings['enabledWebServices']) : [...WEB_SERVICE_IDS] };
-                      })
-                    }
-                  />
-                </SettingRow>
-              ))}
-            </div>
-          </Section>
+          <Card title="Web Services">
+            {WEB_SERVICE_IDS.map(serviceId => (
+              <SettingRow key={serviceId} label={WEB_SERVICE_LABELS[serviceId]} description="Show in sidebar">
+                <Switch
+                  checked={settings.enabledWebServices.includes(serviceId)}
+                  onCheckedChange={checked =>
+                    updateSettings(current => {
+                      const next = new Set(current.enabledWebServices);
+                      if (checked) { next.add(serviceId); } else { next.delete(serviceId); }
+                      return { enabledWebServices: next.size > 0 ? (Array.from(next) as BrowserSettings['enabledWebServices']) : [...WEB_SERVICE_IDS] };
+                    })
+                  }
+                />
+              </SettingRow>
+            ))}
+          </Card>
         )}
 
         {shouldShowSection('AI Assistant') && (
-          <Section title="AI Assistant">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-body text-muted-foreground">Model</label>
-              <select value={settings.aiModel} onChange={event => updateSettings({ aiModel: event.target.value as BrowserSettings['aiModel'] })} className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-                <option value="llama-3.3-70b">Llama 3.3 70B</option>
-                <option value="mixtral-8x7b">Mixtral 8x7B</option>
-                <option value="gemma-2-9b">Gemma 2 9B</option>
-              </select>
-            </div>
-          </Section>
+          <Card title="AI Assistant">
+            <SelectRow label="Model" value={settings.aiModel} onChange={v => updateSettings({ aiModel: v as BrowserSettings['aiModel'] })}>
+              <option value="llama-3.3-70b">Llama 3.3 70B</option>
+              <option value="mixtral-8x7b">Mixtral 8x7B</option>
+              <option value="gemma-2-9b">Gemma 2 9B</option>
+            </SelectRow>
+          </Card>
         )}
 
         {shouldShowSection('General') && (
-          <Section title="General">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-body text-muted-foreground">Search Engine</label>
-              <select value={settings.searchEngine} onChange={event => updateSettings({ searchEngine: event.target.value as BrowserSettings['searchEngine'] })} className="w-full h-8 rounded-md bg-notilus-surface-1 text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
-                <option value="duckduckgo">DuckDuckGo</option>
-                <option value="google">Google</option>
-                <option value="brave">Brave Search</option>
-              </select>
-            </div>
-          </Section>
+          <Card title="General">
+            <SelectRow label="Search Engine" value={settings.searchEngine} onChange={v => updateSettings({ searchEngine: v as BrowserSettings['searchEngine'] })}>
+              <option value="duckduckgo">DuckDuckGo</option>
+              <option value="google">Google</option>
+              <option value="brave">Brave Search</option>
+            </SelectRow>
+          </Card>
         )}
 
         {shouldShowSection('Notifications') && (
-          <Section title="Notifications">
+          <Card title="Notifications">
             <SettingRow label="Enable Notifications" description="Show browser notifications">
               <Switch checked={settings.notificationsEnabled} onCheckedChange={checked => updateSettings({ notificationsEnabled: checked })} />
             </SettingRow>
-          </Section>
+          </Card>
         )}
 
         {shouldShowSection('About') && (
-          <Section title="About">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-notilus-surface-1 border border-border">
-              <img src="/notilus-logo.png" alt="Notilus" className="w-10 h-10 rounded-lg object-contain" />
+          <Card title="About">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-notilus-surface-1">
+              <img src="/logo_n_no_bg.png" alt="Notilus" className="w-10 h-10 rounded-lg object-contain" />
               <div className="text-xs font-body text-muted-foreground space-y-0.5">
                 <p className="text-foreground font-display text-[11px] tracking-wider">NOTILUS BROWSER</p>
                 <p>Version 2.0.0-beta</p>
@@ -233,21 +213,21 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
                 <p className="text-primary">© 2026 Genesis Company</p>
               </div>
             </div>
-          </Section>
+          </Card>
         )}
 
         {!sections.some(shouldShowSection) && (
-          <div className="p-4 rounded-lg border border-border bg-notilus-surface-1 text-xs font-body text-muted-foreground">No matching settings section.</div>
+          <div className="p-4 rounded-lg bg-notilus-surface-1 text-xs font-body text-muted-foreground">No matching settings section.</div>
         )}
       </div>
     </SidebarPanelShell>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-border pt-3 space-y-2.5">
-      <h4 className="text-[10px] font-display text-muted-foreground uppercase tracking-widest">{title}</h4>
+    <div className="rounded-xl bg-notilus-surface-1/50 border border-border/50 p-3 space-y-2.5">
+      <h4 className="text-[10px] font-display text-primary uppercase tracking-widest">{title}</h4>
       {children}
     </div>
   );
@@ -261,6 +241,17 @@ function SettingRow({ label, description, children }: { label: string; descripti
         <p className="text-[10px] font-body text-muted-foreground">{description}</p>
       </div>
       {children}
+    </div>
+  );
+}
+
+function SelectRow({ label, value, onChange, children }: { label: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[11px] font-body text-muted-foreground">{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} className="w-full h-8 rounded-md bg-background text-xs font-body text-foreground px-2 border border-border outline-none focus:border-primary/50">
+        {children}
+      </select>
     </div>
   );
 }
