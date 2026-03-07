@@ -90,6 +90,7 @@ describe('TabManager webview devtools only', () => {
   it('opens devtools on the guest webcontents in detach mode', () => {
     const manager = new TabManager({
       debug: false,
+      getMainWindow: () => null,
       onStateChanged: () => {},
     });
     manager.createTab('https://example.com');
@@ -107,6 +108,7 @@ describe('TabManager webview devtools only', () => {
   it('inspect element opens devtools then inspects selected node', () => {
     const manager = new TabManager({
       debug: false,
+      getMainWindow: () => null,
       onStateChanged: () => {},
     });
     manager.createTab('https://example.com');

@@ -83,6 +83,7 @@ describe('TabManager context-menu integration', () => {
   it('adds standard context menu and opens clicked link in a new tab', () => {
     const manager = new TabManager({
       debug: false,
+      getMainWindow: () => null,
       onStateChanged: () => {},
     });
     manager.createTab('https://example.com');
@@ -126,6 +127,7 @@ describe('TabManager context-menu integration', () => {
   it('cleans up context-menu listener on unbind', () => {
     const manager = new TabManager({
       debug: false,
+      getMainWindow: () => null,
       onStateChanged: () => {},
     });
     manager.createTab('https://example.com');

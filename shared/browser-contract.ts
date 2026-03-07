@@ -91,6 +91,17 @@ export interface DevToolsCloseRequest {
   tabId?: string;
 }
 
+export interface DevToolsDockWidthRequest {
+  width: number;
+}
+
+export interface DevToolsDockState {
+  isOpen: boolean;
+  width: number;
+  minWidth: number;
+  maxWidth: number;
+}
+
 export interface DownloadActionRequest {
   downloadId: string;
 }
@@ -175,11 +186,14 @@ export interface BrowserDesktopApi {
   reload: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   openDevTools: (payload: TabActionRequest) => Promise<void>;
   closeDevTools: (payload?: DevToolsCloseRequest) => Promise<void>;
+  setDevToolsDockWidth: (payload: DevToolsDockWidthRequest) => Promise<DevToolsDockState>;
+  getDevToolsDockState: () => Promise<DevToolsDockState>;
   setPinnedTabs: (payload: SetPinnedTabsRequest) => Promise<void>;
   bindTabWebContents: (payload: TabWebContentsBindRequest) => Promise<void>;
   unbindTabWebContents: (payload: TabWebContentsUnbindRequest) => Promise<void>;
   updateTabRuntime: (payload: TabRuntimeUpdateRequest) => Promise<BrowserSnapshot>;
   onStateChanged: (listener: (snapshot: BrowserSnapshot) => void) => () => void;
+  onDevToolsDockStateChanged: (listener: (state: DevToolsDockState) => void) => () => void;
   minimizeWindow: () => Promise<void>;
   toggleMaximizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
@@ -223,11 +237,14 @@ export const BrowserIpcChannels = {
   reload: 'browser:reload',
   openDevTools: 'browser:open-devtools',
   closeDevTools: 'browser:close-devtools',
+  setDevToolsDockWidth: 'browser:set-devtools-dock-width',
+  getDevToolsDockState: 'browser:get-devtools-dock-state',
   setPinnedTabs: 'browser:set-pinned-tabs',
   tabBindWebContents: 'browser:tab-bind-webcontents',
   tabUnbindWebContents: 'browser:tab-unbind-webcontents',
   tabRuntimeUpdate: 'browser:tab-runtime-update',
   stateChanged: 'browser:state-changed',
+  devToolsDockStateChanged: 'browser:devtools-dock-state-changed',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',
   windowClose: 'window:close',

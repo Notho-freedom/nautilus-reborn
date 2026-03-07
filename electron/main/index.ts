@@ -86,6 +86,7 @@ function createDesktopWindow() {
     webPreferences.contextIsolation = true;
     webPreferences.sandbox = true;
     webPreferences.webSecurity = true;
+    webPreferences.devTools = true;
     webPreferences.partition = SHARED_WEBVIEW_PARTITION;
   });
 
@@ -99,10 +100,35 @@ function createDesktopWindow() {
 
   tabManager = new TabManager({
     debug: DEBUG_IPC,
+    getMainWindow: () => mainWindow,
     onStateChanged: snapshot => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send(BrowserIpcChannels.stateChanged, snapshot);
     },
+    onDevToolsDockStateChanged: state => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send(BrowserIpcChannels.devToolsDockStateChanged, state);
+    },
+  });
+
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const key = typeof input.key === 'string' ? input.key.toUpperCase() : '';
+    const isDevToolsShortcut =
+      key === 'F12' || ((input.control || input.meta) && input.shift && key === 'I');
+    if (!isDevToolsShortcut) return;
+
+    event.preventDefault();
+
+    if (!tabManager?.hasActiveExternalTab()) {
+      return;
+    }
+
+    const dockOpen = tabManager.getDevToolsDockState().isOpen;
+    if (dockOpen) {
+      tabManager.closeDevTools({});
+    } else {
+      tabManager.openDevTools({});
+    }
   });
 
   downloadManager = new DownloadManager(
@@ -136,6 +162,12 @@ function createDesktopWindow() {
 
   mainWindow.webContents.on('did-finish-load', () => {
     broadcastState();
+    if (tabManager && !mainWindow?.isDestroyed()) {
+      mainWindow.webContents.send(
+        BrowserIpcChannels.devToolsDockStateChanged,
+        tabManager.getDevToolsDockState()
+      );
+    }
     if (downloadManager && !mainWindow?.isDestroyed()) {
       mainWindow.webContents.send(
         BrowserIpcChannels.downloadsStateChanged,
@@ -154,6 +186,19 @@ function createDesktopWindow() {
       });
     }
   });
+
+  const syncDevToolsLayout = () => {
+    tabManager?.syncDevToolsLayout();
+  };
+
+  mainWindow.on('resize', syncDevToolsLayout);
+  mainWindow.on('move', syncDevToolsLayout);
+  mainWindow.on('maximize', syncDevToolsLayout);
+  mainWindow.on('unmaximize', syncDevToolsLayout);
+  mainWindow.on('restore', syncDevToolsLayout);
+  mainWindow.on('minimize', syncDevToolsLayout);
+  mainWindow.on('enter-full-screen', syncDevToolsLayout);
+  mainWindow.on('leave-full-screen', syncDevToolsLayout);
 
   mainWindow.on('closed', () => {
     mainWindow = null;

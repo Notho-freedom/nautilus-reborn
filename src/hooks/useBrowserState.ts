@@ -1,17 +1,20 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { BrowserSnapshot, TabDescriptor } from '../../shared/browser-contract';
+import type { BrowserSnapshot, DevToolsDockState, TabDescriptor } from '../../shared/browser-contract';
 import { addHistoryItem } from '@/lib/history';
 import {
   desktopActivateTab,
   desktopCloseDevTools,
   desktopCloseTab,
   desktopCreateTab,
+  desktopGetDevToolsDockState,
   desktopGetState,
   desktopGoBack,
   desktopGoForward,
   desktopNavigate,
+  onDesktopDevToolsDockStateChanged,
   desktopOpenDevTools,
   desktopReload,
+  desktopSetDevToolsDockWidth,
   desktopSetPinnedTabs,
   isDesktopRuntime,
   onDesktopStateChanged,
@@ -38,6 +41,7 @@ export interface BrowserState {
   aiPanelOpen: boolean;
   devToolsOpen: boolean;
   devToolsHeight: number;
+  devToolsDockState: DevToolsDockState;
   adsBlocked: number;
 }
 
@@ -46,6 +50,13 @@ const RECENTLY_CLOSED_TABS_KEY = 'notilus_recently_closed_tabs';
 const RECENTLY_CLOSED_TABS_LIMIT = 30;
 const TABS_KEY = 'notilus_tabs';
 const ACTIVE_TAB_KEY = 'notilus_active_tab';
+const DEVTOOLS_DOCK_WIDTH_KEY = 'notilus_devtools_dock_width';
+const DEFAULT_DEVTOOLS_DOCK_STATE: DevToolsDockState = {
+  isOpen: false,
+  width: 560,
+  minWidth: 360,
+  maxWidth: 920,
+};
 
 export interface RecentlyClosedTab {
   id: string;
@@ -226,6 +237,9 @@ export function useBrowserState() {
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [devToolsOpen, setDevToolsOpen] = useState(false);
   const [devToolsHeight, setDevToolsHeight] = useState(250);
+  const [devToolsDockState, setDevToolsDockState] = useState<DevToolsDockState>(
+    DEFAULT_DEVTOOLS_DOCK_STATE
+  );
   const [adsBlocked] = useState(147);
 
   const desktopMode = isDesktopRuntime();
@@ -251,6 +265,42 @@ export function useBrowserState() {
       mounted = false;
       unsubscribe();
     };
+  }, [desktopMode]);
+
+  useEffect(() => {
+    if (!desktopMode) {
+      setDevToolsDockState(DEFAULT_DEVTOOLS_DOCK_STATE);
+      return;
+    }
+
+    let mounted = true;
+    void desktopGetDevToolsDockState().then(state => {
+      if (!mounted || !state) return;
+      setDevToolsDockState(state);
+    });
+
+    const unsubscribe = onDesktopDevToolsDockStateChanged(state => {
+      if (!mounted) return;
+      setDevToolsDockState(state);
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [desktopMode]);
+
+  useEffect(() => {
+    if (!desktopMode || typeof window === 'undefined') return;
+    const raw = window.localStorage.getItem(DEVTOOLS_DOCK_WIDTH_KEY);
+    if (!raw) return;
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) return;
+
+    void desktopSetDevToolsDockWidth({ width: parsed }).then(state => {
+      if (!state) return;
+      setDevToolsDockState(state);
+    });
   }, [desktopMode]);
 
   const desktopTabs = useMemo(() => {
@@ -444,6 +494,21 @@ export function useBrowserState() {
     void desktopCloseDevTools({});
   }, [desktopMode]);
 
+  const setDevToolsDockWidth = useCallback(
+    (width: number) => {
+      if (!desktopMode) return;
+      const rounded = Math.round(width);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(DEVTOOLS_DOCK_WIDTH_KEY, String(rounded));
+      }
+      void desktopSetDevToolsDockWidth({ width: rounded }).then(state => {
+        if (!state) return;
+        setDevToolsDockState(state);
+      });
+    },
+    [desktopMode]
+  );
+
   const goBack = useCallback(() => {
     if (desktopMode) {
       void desktopGoBack({ tabId: activeTab?.id });
@@ -521,6 +586,7 @@ export function useBrowserState() {
     aiPanelOpen,
     devToolsOpen,
     devToolsHeight,
+    devToolsDockState,
     adsBlocked,
     canGoBack: Boolean(activeTab?.canGoBack),
     canGoForward: Boolean(activeTab?.canGoForward),
@@ -537,6 +603,7 @@ export function useBrowserState() {
     reload,
     openNativeDevTools,
     closeNativeDevTools,
+    setDevToolsDockWidth,
     toggleSidebar,
     toggleAiPanel,
     toggleDevTools,

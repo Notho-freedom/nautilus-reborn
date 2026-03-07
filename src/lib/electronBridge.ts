@@ -1,5 +1,7 @@
 import type {
   BrowserDesktopApi,
+  DevToolsDockState,
+  DevToolsDockWidthRequest,
   DevToolsCloseRequest,
   DownloadActionRequest,
   DownloadsSnapshot,
@@ -108,6 +110,28 @@ export async function desktopCloseDevTools(
   const bridge = getDesktopBridge();
   if (!bridge) return;
   await bridge.closeDevTools(payload);
+}
+
+export async function desktopSetDevToolsDockWidth(
+  payload: DevToolsDockWidthRequest
+): Promise<DevToolsDockState | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.setDevToolsDockWidth(payload);
+}
+
+export async function desktopGetDevToolsDockState(): Promise<DevToolsDockState | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.getDevToolsDockState();
+}
+
+export function onDesktopDevToolsDockStateChanged(
+  listener: (state: DevToolsDockState) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onDevToolsDockStateChanged(listener);
 }
 
 export async function desktopSetPinnedTabs(

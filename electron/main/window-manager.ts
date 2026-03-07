@@ -21,6 +21,7 @@ export function createMainWindow({ preloadPath }: CreateMainWindowOptions): Brow
     autoHideMenuBar: true,
     frame: false,
     titleBarStyle: 'hidden',
+    titleBarOverlay: false,
     icon: resolveWindowIconPath(),
     backgroundColor: '#09090B',
     webPreferences: {
@@ -30,6 +31,7 @@ export function createMainWindow({ preloadPath }: CreateMainWindowOptions): Brow
       sandbox: false,
       webSecurity: true,
       webviewTag: true,
+      devTools: false,
     },
   });
 

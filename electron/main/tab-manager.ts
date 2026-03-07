@@ -2,16 +2,19 @@ import {
   Menu,
   clipboard,
   webContents,
+  type BrowserWindow,
   type MenuItemConstructorOptions,
   type WebContents,
 } from 'electron';
 import type {
   BrowserSnapshot,
+  DevToolsDockState,
   NavigateRequest,
   TabActionRequest,
   TabDescriptor,
   TabRuntimeUpdateRequest,
 } from '../../shared/browser-contract';
+import { DevToolsDockManager } from './devtools-dock-manager';
 
 interface ManagedTab {
   descriptor: TabDescriptor;
@@ -20,6 +23,8 @@ interface ManagedTab {
 interface TabManagerOptions {
   onStateChanged: (snapshot: BrowserSnapshot) => void;
   debug: boolean;
+  getMainWindow: () => BrowserWindow | null;
+  onDevToolsDockStateChanged?: (state: DevToolsDockState) => void;
 }
 
 const INTERNAL_PREFIX = 'notilus://';
@@ -59,6 +64,11 @@ function normalizeRuntimeUrl(rawUrl: string, fallback: string): string {
   return trimmed;
 }
 
+function isDevToolsShortcutInput(input: Electron.Input): boolean {
+  const key = typeof input.key === 'string' ? input.key.toUpperCase() : '';
+  return key === 'F12' || ((input.control || input.meta) && input.shift && key === 'I');
+}
+
 export class TabManager {
   private readonly tabs = new Map<string, ManagedTab>();
   private readonly order: string[] = [];
@@ -70,8 +80,17 @@ export class TabManager {
     number,
     { tabId: string; cleanup: () => void }
   >();
+  private readonly devToolsDock: DevToolsDockManager;
 
-  constructor(private readonly options: TabManagerOptions) {}
+  constructor(private readonly options: TabManagerOptions) {
+    this.devToolsDock = new DevToolsDockManager({
+      debug: options.debug,
+      getMainWindow: options.getMainWindow,
+      onStateChanged: state => {
+        options.onDevToolsDockStateChanged?.(state);
+      },
+    });
+  }
 
   getSnapshot(): BrowserSnapshot {
     return {
@@ -108,6 +127,7 @@ export class TabManager {
   closeTab(tabId: string): BrowserSnapshot {
     const target = this.tabs.get(tabId);
     if (!target) return this.getSnapshot();
+    const closingActiveTab = this.activeTabId === tabId;
 
     const closingIndex = this.order.indexOf(tabId);
     this.tabs.delete(tabId);
@@ -115,6 +135,9 @@ export class TabManager {
     this.pinnedTabIds.delete(tabId);
     this.webContentsByTabId.delete(tabId);
     this.detachContextMenuForTab(tabId);
+    if (closingActiveTab) {
+      this.devToolsDock.close();
+    }
     this.log('tab:close', tabId);
 
     if (this.order.length === 0) {
@@ -222,33 +245,53 @@ export class TabManager {
     const target = this.resolveTargetTab(request.tabId);
     const targetWebContents = this.resolveWebContents(target?.descriptor.id);
     if (!targetWebContents) return;
-    targetWebContents.openDevTools({ mode: 'detach', activate: true });
+    if (targetWebContents.getType() !== 'webview') {
+      this.log('tab:open-devtools:skip-non-webview', `${target?.descriptor.id ?? 'unknown'}`);
+      return;
+    }
+    const dockAttached = this.devToolsDock.openFor(targetWebContents);
+    if (!dockAttached) {
+      this.log('tab:open-devtools:fallback', target!.descriptor.id);
+    }
+    targetWebContents.openDevTools({
+      mode: 'detach',
+      activate: true,
+    });
     this.log('tab:open-devtools', target!.descriptor.id);
   }
 
   closeDevTools(request: TabActionRequest = {}): void {
+    let closedAny = false;
     const explicitTarget = this.resolveTargetTab(request.tabId);
     const explicitWebContents = this.resolveWebContents(explicitTarget?.descriptor.id);
     if (explicitWebContents?.isDevToolsOpened()) {
       explicitWebContents.closeDevTools();
+      closedAny = true;
       this.log('tab:close-devtools', explicitTarget!.descriptor.id);
-      return;
     }
 
     const activeTarget = this.resolveTargetTab(this.activeTabId ?? undefined);
     const activeWebContents = this.resolveWebContents(activeTarget?.descriptor.id);
-    if (activeWebContents?.isDevToolsOpened()) {
+    if (activeWebContents?.isDevToolsOpened() && !closedAny) {
       activeWebContents.closeDevTools();
+      closedAny = true;
       this.log('tab:close-devtools', activeTarget!.descriptor.id);
-      return;
     }
 
     for (const tabId of this.order) {
       const targetWebContents = this.resolveWebContents(tabId);
       if (!targetWebContents?.isDevToolsOpened()) continue;
       targetWebContents.closeDevTools();
+      closedAny = true;
       this.log('tab:close-devtools', tabId);
     }
+
+    if (closedAny) {
+      this.devToolsDock.close();
+      return;
+    }
+
+    this.devToolsDock.close();
   }
 
   bindWebContents(tabId: string, webContentsId: number): void {
@@ -324,6 +367,18 @@ export class TabManager {
     this.pinnedTabIds = new Set(tabIds.filter(tabId => validIds.has(tabId)));
   }
 
+  getDevToolsDockState(): DevToolsDockState {
+    return this.devToolsDock.getState();
+  }
+
+  setDevToolsDockWidth(width: number): DevToolsDockState {
+    return this.devToolsDock.setWidth(width);
+  }
+
+  syncDevToolsLayout(): void {
+    this.devToolsDock.syncLayout();
+  }
+
   private resolveTargetTab(tabId?: string): ManagedTab | null {
     const resolvedId = tabId ?? this.activeTabId;
     if (!resolvedId) return null;
@@ -388,15 +443,27 @@ export class TabManager {
       menu.popup();
     };
 
+    const onBeforeInputEvent = (event: Electron.Event, input: Electron.Input) => {
+      if (!isDevToolsShortcutInput(input)) return;
+      event.preventDefault();
+      if (targetWebContents.isDevToolsOpened()) {
+        this.closeDevTools({ tabId });
+      } else {
+        this.openDevTools({ tabId });
+      }
+    };
+
     const onDestroyed = () => {
       this.detachContextMenuByWebContentsId(webContentsId);
     };
 
     targetWebContents.on('context-menu', onContextMenu);
+    targetWebContents.on('before-input-event', onBeforeInputEvent);
     targetWebContents.once('destroyed', onDestroyed);
 
     const cleanup = () => {
       targetWebContents.removeListener('context-menu', onContextMenu);
+      targetWebContents.removeListener('before-input-event', onBeforeInputEvent);
       targetWebContents.removeListener('destroyed', onDestroyed);
     };
 
@@ -484,7 +551,14 @@ export class TabManager {
               return;
             }
             targetWebContents.once('devtools-opened', inspect);
-            targetWebContents.openDevTools({ mode: 'detach', activate: true });
+            const dockAttached = this.devToolsDock.openFor(targetWebContents);
+            targetWebContents.openDevTools({
+              mode: 'detach',
+              activate: true,
+            });
+            if (!dockAttached) {
+              this.log('tab:inspect-devtools:fallback', tabId);
+            }
           },
         }
       );

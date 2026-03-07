@@ -28,7 +28,11 @@ export function BrowserShell() {
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
-  const [externalDevToolsOpen, setExternalDevToolsOpen] = useState(false);
+  const [isDockResizing, setIsDockResizing] = useState(false);
+  const dockInset =
+    browser.isDesktopMode && browser.isExternalActiveTab && browser.devToolsDockState.isOpen
+      ? browser.devToolsDockState.width
+      : 0;
 
   useEffect(() => {
     initializeSettings();
@@ -56,22 +60,21 @@ export function BrowserShell() {
   const toggleDevToolsPanel = useCallback(() => {
     const externalDesktopMode = browser.isDesktopMode && browser.isExternalActiveTab;
     if (externalDesktopMode) {
-      if (externalDevToolsOpen) {
+      if (browser.devToolsDockState.isOpen) {
         browser.closeNativeDevTools();
       } else {
         browser.openNativeDevTools();
       }
-      setExternalDevToolsOpen(previous => !previous);
       return;
     }
     browser.toggleDevTools();
   }, [
     browser.closeNativeDevTools,
+    browser.devToolsDockState.isOpen,
     browser.openNativeDevTools,
     browser.isDesktopMode,
     browser.isExternalActiveTab,
     browser.toggleDevTools,
-    externalDevToolsOpen,
   ]);
 
   const shortcuts = useMemo(() => ({
@@ -99,20 +102,42 @@ export function BrowserShell() {
   useKeyboardShortcuts(shortcuts);
 
   useEffect(() => {
-    if (!browser.isDesktopMode || !externalDevToolsOpen) return;
+    if (!browser.isDesktopMode || !browser.devToolsDockState.isOpen) return;
     if (!browser.isExternalActiveTab) {
       browser.closeNativeDevTools();
-      setExternalDevToolsOpen(false);
       return;
     }
     browser.openNativeDevTools();
   }, [
     browser.closeNativeDevTools,
+    browser.devToolsDockState.isOpen,
     browser.openNativeDevTools,
     browser.isDesktopMode,
     browser.isExternalActiveTab,
-    externalDevToolsOpen,
   ]);
+
+  const beginDockResize = useCallback((event: { preventDefault: () => void; clientX: number }) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = browser.devToolsDockState.width;
+    setIsDockResizing(true);
+    document.body.style.cursor = 'col-resize';
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startX - moveEvent.clientX;
+      browser.setDevToolsDockWidth(startWidth + delta);
+    };
+
+    const onMouseUp = () => {
+      setIsDockResizing(false);
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [browser]);
 
   const handleSidebarToggle = (panel?: string) => {
     if (panel === 'devtools-panel') {
@@ -199,7 +224,10 @@ export function BrowserShell() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+    <div
+      className="flex h-screen flex-col overflow-hidden bg-background"
+      style={{ width: dockInset > 0 ? `calc(100vw - ${dockInset}px)` : '100vw' }}
+    >
       <TopChromeBar
         tabs={browser.tabs}
         activeTabId={browser.activeTabId}
@@ -269,6 +297,14 @@ export function BrowserShell() {
           </div>
         )}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {browser.isDesktopMode && browser.isExternalActiveTab && browser.devToolsDockState.isOpen && (
+            <div
+              onMouseDown={beginDockResize}
+              className="absolute right-0 top-0 bottom-0 z-50 w-1 cursor-col-resize hover:bg-primary/30 transition-colors"
+              data-testid="devtools-dock-splitter"
+              style={{ backgroundColor: isDockResizing ? 'hsl(var(--primary) / 0.35)' : undefined }}
+            />
+          )}
           <div className="flex-1 flex overflow-hidden">
             <ContentArea
               url={browser.activeTab?.url || 'notilus://speed-dial'}

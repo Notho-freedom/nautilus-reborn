@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import type {
+  DevToolsDockWidthRequest,
   NavigateRequest,
   SetPinnedTabsRequest,
   TabActivateRequest,
@@ -29,6 +30,8 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.reload);
   ipcMain.removeHandler(BrowserIpcChannels.openDevTools);
   ipcMain.removeHandler(BrowserIpcChannels.closeDevTools);
+  ipcMain.removeHandler(BrowserIpcChannels.setDevToolsDockWidth);
+  ipcMain.removeHandler(BrowserIpcChannels.getDevToolsDockState);
   ipcMain.removeHandler(BrowserIpcChannels.setPinnedTabs);
   ipcMain.removeHandler(BrowserIpcChannels.tabBindWebContents);
   ipcMain.removeHandler(BrowserIpcChannels.tabUnbindWebContents);
@@ -95,6 +98,19 @@ export function registerBrowserIpc({
   ipcMain.handle(BrowserIpcChannels.closeDevTools, (_event, payload: TabActionRequest = {}) => {
     log(BrowserIpcChannels.closeDevTools, payload);
     tabManager.closeDevTools(payload);
+  });
+
+  ipcMain.handle(
+    BrowserIpcChannels.setDevToolsDockWidth,
+    (_event, payload: DevToolsDockWidthRequest) => {
+      log(BrowserIpcChannels.setDevToolsDockWidth, payload);
+      return tabManager.setDevToolsDockWidth(payload.width);
+    }
+  );
+
+  ipcMain.handle(BrowserIpcChannels.getDevToolsDockState, () => {
+    log(BrowserIpcChannels.getDevToolsDockState);
+    return tabManager.getDevToolsDockState();
   });
 
   ipcMain.handle(

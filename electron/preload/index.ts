@@ -13,6 +13,10 @@ const api: BrowserDesktopApi = {
   reload: payload => ipcRenderer.invoke(BrowserIpcChannels.reload, payload),
   openDevTools: payload => ipcRenderer.invoke(BrowserIpcChannels.openDevTools, payload),
   closeDevTools: payload => ipcRenderer.invoke(BrowserIpcChannels.closeDevTools, payload),
+  setDevToolsDockWidth: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.setDevToolsDockWidth, payload),
+  getDevToolsDockState: () =>
+    ipcRenderer.invoke(BrowserIpcChannels.getDevToolsDockState),
   setPinnedTabs: payload => ipcRenderer.invoke(BrowserIpcChannels.setPinnedTabs, payload),
   bindTabWebContents: payload =>
     ipcRenderer.invoke(BrowserIpcChannels.tabBindWebContents, payload),
@@ -27,6 +31,15 @@ const api: BrowserDesktopApi = {
     ipcRenderer.on(BrowserIpcChannels.stateChanged, handler);
     return () => {
       ipcRenderer.removeListener(BrowserIpcChannels.stateChanged, handler);
+    };
+  },
+  onDevToolsDockStateChanged: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, state: Parameters<typeof listener>[0]) => {
+      listener(state);
+    };
+    ipcRenderer.on(BrowserIpcChannels.devToolsDockStateChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.devToolsDockStateChanged, handler);
     };
   },
   minimizeWindow: () => ipcRenderer.invoke(BrowserIpcChannels.windowMinimize),

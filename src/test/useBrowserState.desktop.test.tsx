@@ -34,6 +34,18 @@ describe('useBrowserState desktop mode', () => {
       reload: vi.fn().mockResolvedValue(initialSnapshot),
       openDevTools: vi.fn().mockResolvedValue(undefined),
       closeDevTools: vi.fn().mockResolvedValue(undefined),
+      setDevToolsDockWidth: vi.fn().mockResolvedValue({
+        isOpen: false,
+        width: 560,
+        minWidth: 360,
+        maxWidth: 920,
+      }),
+      getDevToolsDockState: vi.fn().mockResolvedValue({
+        isOpen: false,
+        width: 560,
+        minWidth: 360,
+        maxWidth: 920,
+      }),
       setPinnedTabs: vi.fn().mockResolvedValue(undefined),
       bindTabWebContents: vi.fn().mockResolvedValue(undefined),
       unbindTabWebContents: vi.fn().mockResolvedValue(undefined),
@@ -151,6 +163,7 @@ describe('useBrowserState desktop mode', () => {
           stateListener = null;
         };
       }),
+      onDevToolsDockStateChanged: vi.fn(() => () => {}),
       onWindowStateChanged: vi.fn(() => () => {}),
       onDownloadsChanged: vi.fn(() => () => {}),
       onGitStateChanged: vi.fn(() => () => {}),
