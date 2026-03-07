@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Folder, Plus, Star, Tag, Trash2 } from 'lucide-react';
+import { Star, Tag, Trash2 } from 'lucide-react';
 import {
   addBookmark,
   getBookmarks,
@@ -8,6 +8,7 @@ import {
   type BookmarkItem,
 } from '@/lib/bookmarks';
 import { SidebarPanelShell } from './SidebarPanelShell';
+import { PanelEmptyState } from './PanelEmptyState';
 
 interface BookmarksPanelProps {
   onNavigate?: (url: string) => void;
@@ -103,6 +104,7 @@ export function BookmarksPanel({ onNavigate, onClose }: BookmarksPanelProps) {
         { label: 'Add bookmark', onClick: () => setShowCreate(c => !c) },
       ]}
       footer={`${filtered.length} bookmarks • Ctrl+D to add`}
+      contentClassName={filtered.length === 0 ? 'flex' : undefined}
     >
       {showCreate && (
         <form onSubmit={handleCreate} className="space-y-1.5 p-3 border-b border-border">
@@ -191,11 +193,11 @@ export function BookmarksPanel({ onNavigate, onClose }: BookmarksPanelProps) {
         );
       })}
       {filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-          <Star size={40} className="opacity-30" />
-          <span className="text-xs font-body">{items.length === 0 ? 'No bookmarks yet' : 'No results found'}</span>
-          {items.length === 0 && <span className="text-[10px] font-body">Press Ctrl+D to add one</span>}
-        </div>
+        <PanelEmptyState
+          icon={Star}
+          title={items.length === 0 ? 'No bookmarks yet' : 'No results found'}
+          hint={items.length === 0 ? 'Press Ctrl+D to add one' : undefined}
+        />
       )}
     </SidebarPanelShell>
   );

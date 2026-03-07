@@ -3,11 +3,11 @@ import {
   Cpu,
   GitBranch,
   Gauge,
+  Globe2,
   Layers,
   Lock,
   MemoryStick,
   PlugZap,
-  Search,
   Settings,
   Wifi,
   WifiOff,
@@ -37,6 +37,16 @@ interface StatusBarProps {
   onToggleNotilusDevTools: () => void;
 }
 
+function extractDisplayHost(url: string): string {
+  if (!url) return 'No active page';
+  if (url.startsWith('notilus://')) return url.replace('notilus://', '');
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 function formatMs(value: number | null): string {
   if (value === null || Number.isNaN(value)) return 'N/A';
   return `${Math.round(value)}ms`;
@@ -44,6 +54,24 @@ function formatMs(value: number | null): string {
 
 function formatMbps(value: number): string {
   return `${value.toFixed(value >= 10 ? 1 : 2)} Mbps`;
+}
+
+function NetworkSignal({ quality }: { quality: SystemStats['networkQuality'] }) {
+  const strength = quality === 'excellent' ? 4 : quality === 'good' ? 3 : quality === 'fair' ? 2 : 1;
+  return (
+    <div className="flex items-end gap-px">
+      {[1, 2, 3, 4].map(level => (
+        <span
+          key={level}
+          className={cn(
+            'w-1 rounded-sm transition-colors',
+            level <= strength ? 'bg-current opacity-100' : 'bg-current opacity-25'
+          )}
+          style={{ height: `${3 + level * 2}px` }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function StatusButton({
@@ -90,6 +118,7 @@ export function StatusBar({
     if (!stats.networkOnline) return 'Offline';
     return stats.networkQuality.charAt(0).toUpperCase() + stats.networkQuality.slice(1);
   }, [stats.networkOnline, stats.networkQuality]);
+  const activeHost = useMemo(() => extractDisplayHost(activeTabUrl), [activeTabUrl]);
 
   return (
     <div className="flex h-6 shrink-0 items-center justify-between border-t border-border bg-background px-1 select-none">
@@ -127,6 +156,7 @@ export function StatusBar({
               )}
             >
               {stats.networkOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
+              <NetworkSignal quality={stats.networkQuality} />
               <span>{networkLabel}</span>
             </div>
           </HoverCardTrigger>
@@ -207,16 +237,51 @@ export function StatusBar({
           </HoverCardContent>
         </HoverCard>
 
-        <StatusButton>
-          <Layers size={10} />
-          <span>{tabCount} tabs</span>
-        </StatusButton>
+        <HoverCard openDelay={180}>
+          <HoverCardTrigger asChild>
+            <div>
+              <StatusButton>
+                <Layers size={10} />
+                <span>{tabCount} tabs</span>
+              </StatusButton>
+            </div>
+          </HoverCardTrigger>
+          <HoverCardContent side="top" className="w-64 p-3 text-[10px]">
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-foreground">Tab session</div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Open tabs</span>
+                <span className="text-foreground">{tabCount}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">Active host</span>
+                <span className="truncate text-right text-foreground">{activeHost}</span>
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
 
         {gitBranch ? (
-          <StatusButton onClick={() => onOpenPanel('git')}>
-            <GitBranch size={10} />
-            <span className="max-w-28 truncate">{gitBranch}</span>
-          </StatusButton>
+          <HoverCard openDelay={180}>
+            <HoverCardTrigger asChild>
+              <div>
+                <StatusButton onClick={() => onOpenPanel('git')}>
+                  <GitBranch size={10} />
+                  <span className="max-w-28 truncate">{gitBranch}</span>
+                </StatusButton>
+              </div>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="w-56 p-3 text-[10px]">
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-foreground">Git workspace</div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Current branch</span>
+                  <span className="text-foreground">{gitBranch}</span>
+                </div>
+                <div className="text-muted-foreground">Open panel for status, diff and commit actions.</div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
         ) : null}
       </div>
 
@@ -224,17 +289,44 @@ export function StatusBar({
         <StatusButton onClick={() => onZoomChange(Math.max(50, zoom - 10))}>
           <ZoomOut size={10} />
         </StatusButton>
-        <StatusButton className="w-10 justify-center text-foreground">
-          <span>{zoom}%</span>
-        </StatusButton>
+        <HoverCard openDelay={180}>
+          <HoverCardTrigger asChild>
+            <div>
+              <StatusButton className="w-10 justify-center text-foreground">
+                <span>{zoom}%</span>
+              </StatusButton>
+            </div>
+          </HoverCardTrigger>
+          <HoverCardContent side="top" className="w-48 p-3 text-[10px]">
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-foreground">Page zoom</div>
+              <div className="text-muted-foreground">Applies to active WebView tab.</div>
+              <div className="text-foreground">Current: {zoom}%</div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
         <StatusButton onClick={() => onZoomChange(Math.min(300, zoom + 10))}>
           <ZoomIn size={10} />
         </StatusButton>
 
-        <StatusButton onClick={onToggleNotilusDevTools}>
-          <Wrench size={10} />
-          <span>Nautilus DevTools</span>
-        </StatusButton>
+        <HoverCard openDelay={180}>
+          <HoverCardTrigger asChild>
+            <div>
+              <StatusButton onClick={onToggleNotilusDevTools}>
+                <Wrench size={10} />
+                <span>Nautilus DevTools</span>
+              </StatusButton>
+            </div>
+          </HoverCardTrigger>
+          <HoverCardContent side="top" className="w-56 p-3 text-[10px]">
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-foreground">Nautilus Console</div>
+              <div className="text-muted-foreground">
+                Opens the Notilus debugging overlay without replacing native Chromium DevTools.
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -283,7 +375,7 @@ export function StatusBar({
         </DropdownMenu>
 
         <StatusButton onClick={() => onOpenPanel('history')}>
-          <Search size={10} />
+          <Globe2 size={10} />
           <span>History</span>
         </StatusButton>
       </div>

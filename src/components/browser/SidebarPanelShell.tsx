@@ -23,6 +23,7 @@ export interface SidebarPanelShellProps {
   menuItems?: { label: string; onClick: () => void }[];
   children: ReactNode;
   footer?: ReactNode;
+  contentClassName?: string;
 }
 
 export function SidebarPanelShell({
@@ -40,6 +41,7 @@ export function SidebarPanelShell({
   menuItems,
   children,
   footer,
+  contentClassName,
 }: SidebarPanelShellProps) {
   return (
     <div className="flex flex-col h-full">
@@ -97,7 +99,7 @@ export function SidebarPanelShell({
 
       {/* Filters */}
       {filters && filters.length > 0 && (
-        <div className="flex gap-1 p-2 border-b border-border overflow-x-auto scrollbar-thin">
+        <div className="flex gap-1 p-2 border-b border-border overflow-x-auto no-scrollbar">
           <button
             onClick={() => onFilterChange?.(null)}
             className={cn(
@@ -127,7 +129,7 @@ export function SidebarPanelShell({
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">{children}</div>
+      <div className={cn('flex-1 overflow-y-auto no-scrollbar', contentClassName)}>{children}</div>
 
       {/* Footer */}
       {footer && (

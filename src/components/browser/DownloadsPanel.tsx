@@ -26,6 +26,7 @@ import {
   subscribeToDownloadsUpdates,
 } from '@/lib/downloads';
 import { SidebarPanelShell } from './SidebarPanelShell';
+import { PanelEmptyState } from './PanelEmptyState';
 
 type DownloadIcon = 'file' | 'image' | 'archive' | 'video';
 
@@ -103,6 +104,7 @@ export function DownloadsPanel({ onClose }: DownloadsPanelProps = {}) {
         { label: 'Clear completed', onClick: () => void clearCompletedDownloads() },
       ]}
       footer={`${activeCount} active • Ctrl+J`}
+      contentClassName={downloads.length === 0 ? 'flex' : undefined}
     >
       {downloads.map(item => {
         const Icon = ICONS[getDownloadIcon(item)];
@@ -181,10 +183,7 @@ export function DownloadsPanel({ onClose }: DownloadsPanelProps = {}) {
         );
       })}
       {downloads.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-          <Download size={40} className="opacity-30" />
-          <span className="text-xs font-body">No downloads yet</span>
-        </div>
+        <PanelEmptyState icon={Download} title="No downloads yet" />
       )}
     </SidebarPanelShell>
   );

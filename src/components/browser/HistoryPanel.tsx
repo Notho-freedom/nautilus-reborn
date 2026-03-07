@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Clock, Trash2, X } from 'lucide-react';
+import { Clock, X } from 'lucide-react';
 import {
   clearHistoryItems,
   getHistoryItems,
@@ -8,6 +8,7 @@ import {
   type HistoryItem,
 } from '@/lib/history';
 import { SidebarPanelShell } from './SidebarPanelShell';
+import { PanelEmptyState } from './PanelEmptyState';
 
 function getDateLabel(visitedAt: string): string {
   const date = new Date(visitedAt);
@@ -93,6 +94,7 @@ export function HistoryPanel({ onNavigate, onClose }: HistoryPanelProps) {
         { label: 'Clear all history', onClick: clearHistoryItems },
       ]}
       footer={`${filtered.length} entries • Ctrl+H`}
+      contentClassName={filtered.length === 0 ? 'flex' : undefined}
     >
       {Object.entries(grouped).map(([date, entries]) => (
         <div key={date}>
@@ -140,10 +142,10 @@ export function HistoryPanel({ onNavigate, onClose }: HistoryPanelProps) {
         </div>
       ))}
       {filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-          <Clock size={40} className="opacity-30" />
-          <span className="text-xs font-body">{items.length === 0 ? 'No history yet' : 'No results found'}</span>
-        </div>
+        <PanelEmptyState
+          icon={Clock}
+          title={items.length === 0 ? 'No history yet' : 'No results found'}
+        />
       )}
     </SidebarPanelShell>
   );
