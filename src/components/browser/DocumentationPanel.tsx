@@ -1,4 +1,4 @@
-import { BookOpen, Keyboard, Zap, Info } from 'lucide-react';
+import { BookOpen, Keyboard, Zap, Info, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { SidebarPanelShell } from './SidebarPanelShell';
 
@@ -28,7 +28,7 @@ const FEATURES = [
   'Studio (Responsive, Screenshot, Live Edit, Recorder, Mockup)',
   'Git status & branch management',
   'GitHub repos browser',
-  'API documentation browser',
+  'Frontend & Backend Labs',
   'Extension management',
   'Mosaic split-view layouts',
   'Web services quick access',
@@ -39,6 +39,20 @@ const FEATURES = [
 
 interface DocumentationPanelProps {
   onClose?: () => void;
+}
+
+function CollapsibleSection({ title, icon, children, defaultOpen = false }: { title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5 w-full text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-1.5 hover:text-foreground transition-colors">
+        {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+        {icon}
+        <span>{title}</span>
+      </button>
+      {open && <div className="ml-4">{children}</div>}
+    </div>
+  );
 }
 
 export function DocumentationPanel({ onClose }: DocumentationPanelProps = {}) {
@@ -59,15 +73,10 @@ export function DocumentationPanel({ onClose }: DocumentationPanelProps = {}) {
       onClose={onClose ?? (() => {})}
     >
       <div className="p-3 space-y-4">
-        <div>
-          <div className="flex items-center gap-1.5 text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-2">
-            <Info size={10} /> About Notilus
-          </div>
+        <CollapsibleSection title="About Notilus" icon={<Info size={10} />} defaultOpen>
           <div className="glass rounded-xl p-3">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg notilus-gradient flex items-center justify-center animate-glow-breathe">
-                <span className="text-[10px] font-display font-bold text-primary-foreground">N</span>
-              </div>
+              <img src="/logo_n_no_bg.png" alt="Notilus" className="w-8 h-8 rounded-lg object-contain" />
               <div>
                 <div className="text-xs font-display text-foreground tracking-wider">NOTILUS</div>
                 <div className="text-[10px] font-body text-muted-foreground">v2.0.0 Beta</div>
@@ -77,12 +86,17 @@ export function DocumentationPanel({ onClose }: DocumentationPanelProps = {}) {
               A dev-first futuristic browser with integrated tools, AI assistant, and customizable workspace.
             </p>
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <div>
-          <div className="flex items-center gap-1.5 text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-2">
-            <Keyboard size={10} /> Shortcuts
+        <CollapsibleSection title="Getting Started" icon={<BookOpen size={10} />}>
+          <div className="space-y-1.5 text-[11px] font-body text-muted-foreground">
+            <p>Welcome to Notilus — a browser built for developers.</p>
+            <p>Use the sidebar to access tools like Git, Terminal, System Monitor, and Dev Labs.</p>
+            <p>The bottom bar gives quick access to Frontend/Backend labs and Notilus DevTools.</p>
           </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Shortcuts" icon={<Keyboard size={10} />} defaultOpen>
           <div className="space-y-0.5">
             {filteredShortcuts.map(s => (
               <div key={s.keys} className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted/30 transition-colors duration-fast">
@@ -91,12 +105,9 @@ export function DocumentationPanel({ onClose }: DocumentationPanelProps = {}) {
               </div>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <div>
-          <div className="flex items-center gap-1.5 text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-2">
-            <Zap size={10} /> Features
-          </div>
+        <CollapsibleSection title="Features" icon={<Zap size={10} />}>
           <div className="space-y-1">
             {FEATURES.map(f => (
               <div key={f} className="flex items-start gap-1.5 px-2">
@@ -105,7 +116,15 @@ export function DocumentationPanel({ onClose }: DocumentationPanelProps = {}) {
               </div>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Architecture" icon={<Info size={10} />}>
+          <div className="space-y-1.5 text-[11px] font-body text-muted-foreground">
+            <p>Built with <span className="text-foreground">React 18</span> + <span className="text-foreground">TypeScript</span> + <span className="text-foreground">Vite</span></p>
+            <p>Desktop mode: <span className="text-foreground">Electron</span> with WebContentsView</p>
+            <p>UI: <span className="text-foreground">Tailwind CSS</span> + <span className="text-foreground">Radix UI</span></p>
+          </div>
+        </CollapsibleSection>
       </div>
     </SidebarPanelShell>
   );

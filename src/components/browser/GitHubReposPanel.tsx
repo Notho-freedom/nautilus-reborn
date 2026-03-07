@@ -7,7 +7,6 @@ import {
   Globe,
   Loader2,
   Lock,
-  RefreshCw,
   Star,
 } from 'lucide-react';
 import {
@@ -33,6 +32,8 @@ export function GitHubReposPanel({ onNavigate, onClose }: GitHubReposPanelProps)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState(() => getGitHubConnectionConfig());
+
+  const isConnected = Boolean(connection.token || connection.username);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -67,6 +68,44 @@ export function GitHubReposPanel({ onNavigate, onClose }: GitHubReposPanelProps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Show centered connect screen when not connected
+  if (!isConnected) {
+    return (
+      <SidebarPanelShell
+        title="GitHub"
+        icon={Github}
+        onClose={onClose ?? (() => {})}
+      >
+        <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
+          <Github size={56} className="text-muted-foreground/40" />
+          <div className="text-center space-y-1.5">
+            <h3 className="text-sm font-display text-foreground">Connect GitHub</h3>
+            <p className="text-[11px] font-body text-muted-foreground leading-relaxed">
+              Link your GitHub account to browse repositories, track issues, and manage your code directly from Notilus.
+            </p>
+          </div>
+          <form onSubmit={handleSaveConnection} className="w-full space-y-2">
+            <input
+              value={connection.username}
+              onChange={e => setConnection(c => ({ ...c, username: e.target.value }))}
+              placeholder="GitHub username"
+              className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+            />
+            <input
+              value={connection.token}
+              onChange={e => setConnection(c => ({ ...c, token: e.target.value }))}
+              placeholder="Personal access token (optional)"
+              className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+            />
+            <button type="submit" className="w-full h-9 rounded-lg notilus-gradient text-xs font-display text-primary-foreground tracking-wider">
+              Connect
+            </button>
+          </form>
+        </div>
+      </SidebarPanelShell>
+    );
+  }
+
   return (
     <SidebarPanelShell
       title="GitHub"
@@ -81,17 +120,13 @@ export function GitHubReposPanel({ onNavigate, onClose }: GitHubReposPanelProps)
       ]}
     >
       <div className="p-3 space-y-3">
-        <form onSubmit={handleSaveConnection} className="space-y-1.5">
-          <input value={connection.username} onChange={event => setConnection(current => ({ ...current, username: event.target.value }))} placeholder="GitHub username (public repos)" className="w-full h-8 rounded-lg bg-notilus-surface-1 border border-border px-2 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none" />
-          <div className="grid grid-cols-[1fr_auto] gap-1.5">
-            <input value={connection.token} onChange={event => setConnection(current => ({ ...current, token: event.target.value }))} placeholder="Personal access token" className="h-8 rounded-lg bg-notilus-surface-1 border border-border px-2 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none" />
-            <button type="submit" className="h-8 px-2 rounded-md notilus-gradient text-[10px] font-body text-primary-foreground">Connect</button>
-          </div>
-        </form>
-
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowPrivate(c => !c)} className={`flex items-center gap-1 px-2 h-6 rounded-md text-[10px] font-body transition-colors duration-fast ${showPrivate ? 'bg-primary/15 text-primary' : 'bg-notilus-surface-1 text-muted-foreground'}`} title="Show private repos requires token"><Lock size={9} /> Private</button>
-          <button onClick={() => setSortBy(c => (c === 'updated' ? 'stars' : c === 'stars' ? 'name' : 'updated'))} className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors duration-fast"><ArrowUpDown size={9} /> {sortBy}</button>
+          <button onClick={() => setShowPrivate(c => !c)} className={`flex items-center gap-1 px-2 h-6 rounded-md text-[10px] font-body transition-colors duration-fast ${showPrivate ? 'bg-primary/15 text-primary' : 'bg-notilus-surface-1 text-muted-foreground'}`}>
+            <Lock size={9} /> Private
+          </button>
+          <button onClick={() => setSortBy(c => (c === 'updated' ? 'stars' : c === 'stars' ? 'name' : 'updated'))} className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors duration-fast">
+            <ArrowUpDown size={9} /> {sortBy}
+          </button>
         </div>
 
         {error && <div className="text-[10px] font-body text-error bg-error/10 border border-error/30 rounded-md p-2">{error}</div>}
@@ -115,8 +150,17 @@ export function GitHubReposPanel({ onNavigate, onClose }: GitHubReposPanelProps)
           ))}
         </div>
 
+        {isLoading && (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 size={16} className="animate-spin text-primary" />
+          </div>
+        )}
+
         {!isLoading && filtered.length === 0 && (
-          <div className="p-4 text-center text-xs font-body text-muted-foreground">{repos.length === 0 ? 'Connect GitHub to load repositories.' : 'No repositories found.'}</div>
+          <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+            <Github size={32} className="opacity-30" />
+            <span className="text-xs font-body">{repos.length === 0 ? 'No repositories loaded' : 'No repositories found'}</span>
+          </div>
         )}
       </div>
     </SidebarPanelShell>
