@@ -237,7 +237,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
             showModernWallpaper
               ? (searchFocused
                 ? 'bg-notilus-surface-1 border-primary/50'
-                : 'bg-notilus-surface-1/90 border-border/50 hover:bg-notilus-surface-1')
+                : 'bg-notilus-surface-1/90 border-transparent hover:bg-notilus-surface-1')
               : (searchFocused
                 ? 'bg-notilus-surface-1 border-primary/50'
                 : 'bg-transparent border-transparent hover:bg-primary/10')
