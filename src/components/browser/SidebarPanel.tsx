@@ -32,10 +32,8 @@ interface SidebarPanelProps {
   onNavigate: (url: string) => void;
   onOpenPanel?: (panel: string) => void;
   onCreateTab?: (url: string, title?: string) => void;
-  isAuthenticated?: boolean;
   githubToken?: string;
   githubUsername?: string;
-  onSignIn?: () => void;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
 }
 
@@ -45,10 +43,8 @@ type GenericPanelProps = {
   onClose?: () => void;
   onOpenPanel?: (panel: string) => void;
   onCreateTab?: (url: string, title?: string) => void;
-  isAuthenticated?: boolean;
   githubToken?: string;
   githubUsername?: string;
-  onSignIn?: () => void;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
 };
 
@@ -62,7 +58,6 @@ const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
   bookmarks: BookmarksPanel,
   history: HistoryPanel,
   downloads: DownloadsPanel,
-  // widgets removed from sidebar
   extensions: ExtensionsPanel,
   docs: DocumentationPanel,
   mosaic: MosaicPanel,
@@ -102,10 +97,8 @@ export function SidebarPanel({
   onNavigate,
   onOpenPanel,
   onCreateTab,
-  isAuthenticated,
   githubToken,
   githubUsername,
-  onSignIn,
   onSaveGitHubCredentials,
 }: SidebarPanelProps) {
   const [width, setWidth] = useState(() => readPanelWidth());
@@ -189,7 +182,7 @@ export function SidebarPanel({
         panel === 'monitor' ? (
           <Component stats={stats} onClose={onClosePanel} />
         ) : isGitHubPanel ? (
-          <Component onNavigate={onNavigate} onClose={onClosePanel} isAuthenticated={isAuthenticated} githubToken={githubToken} githubUsername={githubUsername} onSignIn={onSignIn} onSaveGitHubCredentials={onSaveGitHubCredentials} />
+          <Component onNavigate={onNavigate} onClose={onClosePanel} githubToken={githubToken} githubUsername={githubUsername} onSaveGitHubCredentials={onSaveGitHubCredentials} />
         ) : isBookmarksPanel || isHistoryPanel || isFlouPanel ? (
           <Component onNavigate={onNavigate} onClose={onClosePanel} />
         ) : (
