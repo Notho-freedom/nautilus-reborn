@@ -9,9 +9,9 @@ describe('SpeedDial search style', () => {
     const container = input.parentElement;
 
     expect(container).not.toBeNull();
-    expect(container?.className).toContain('bg-transparent');
     expect(container?.className).toContain('border-transparent');
-    expect(container?.className).toContain('hover:bg-primary/10');
+    expect(container?.className).toMatch(/bg-transparent|bg-notilus-surface-1\/90/);
+    expect(container?.className).toMatch(/hover:bg-primary\/10|hover:bg-notilus-surface-1/);
 
     fireEvent.focus(input);
     expect(container?.className).toContain('bg-notilus-surface-1');

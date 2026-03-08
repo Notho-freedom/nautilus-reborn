@@ -18,6 +18,11 @@ import type {
   StudioScriptResult,
   StudioWebviewViewportRequest,
   StudioViewportRequest,
+  ImportPreviewRequest,
+  ImportPreviewResult,
+  ImportProfilesResult,
+  ImportRunRequest,
+  ImportRunResult,
 } from '../../shared/browser-contract';
 import type {
   TerminalCloseRequest,
@@ -336,6 +341,28 @@ export function onDesktopGitStateChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onGitStateChanged(listener);
+}
+
+export async function desktopListImportProfiles(): Promise<ImportProfilesResult | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.listImportProfiles();
+}
+
+export async function desktopPreviewImport(
+  payload: ImportPreviewRequest
+): Promise<ImportPreviewResult | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.previewImport(payload);
+}
+
+export async function desktopRunImport(
+  payload: ImportRunRequest
+): Promise<ImportRunResult | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.runImport(payload);
 }
 
 export async function desktopGetBackendLabState(): Promise<BackendLabSidecarState | null> {

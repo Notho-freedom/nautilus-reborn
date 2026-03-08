@@ -15,6 +15,7 @@ import {
   Bell,
   Info,
   Globe,
+  Download,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -29,6 +30,8 @@ import {
 import { SidebarPanelShell } from './SidebarPanelShell';
 import { PanelEmptyState } from './PanelEmptyState';
 import { cn } from '@/lib/utils';
+import { BrowserImportDialog } from './BrowserImportDialog';
+import { isBrowserImportSupported } from '@/lib/browserImport';
 
 const THEMES = [
   { id: 'red', name: 'Rouge Notilus', color: '#FF2D55' },
@@ -80,7 +83,9 @@ interface SettingsPanelProps {
 export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
   const [settings, setSettings] = useState<BrowserSettings>(() => getSettings());
   const [activeSection, setActiveSection] = useState<SectionId>('appearance');
+  const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const desktopImportSupported = isBrowserImportSupported();
 
   useEffect(() => {
     setSettings(getSettings());
@@ -249,6 +254,27 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
                 onCheckedChange={checked => updateSettings({ acceptCookies: checked })}
               />
             </SettingRow>
+            <SettingRow
+              label="Import browser data"
+              description="Merge history and favorites from installed browsers"
+            >
+              <button
+                type="button"
+                onClick={() => setImportDialogOpen(true)}
+                disabled={!desktopImportSupported}
+                className={cn(
+                  'h-7 rounded-md border px-2 text-[10px] font-body transition-colors',
+                  desktopImportSupported
+                    ? 'border-secondary/45 text-foreground hover:bg-muted/40'
+                    : 'border-border/40 text-muted-foreground cursor-not-allowed'
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Download size={11} />
+                  Import
+                </span>
+              </button>
+            </SettingRow>
           </Section>
 
           {/* Web Services */}
@@ -327,6 +353,10 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
           </Section>
         </div>
       </div>
+      <BrowserImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setImportDialogOpen}
+      />
     </SidebarPanelShell>
   );
 }

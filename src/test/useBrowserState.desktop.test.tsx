@@ -167,6 +167,22 @@ describe('useBrowserState desktop mode', () => {
       onWindowStateChanged: vi.fn(() => () => {}),
       onDownloadsChanged: vi.fn(() => () => {}),
       onGitStateChanged: vi.fn(() => () => {}),
+      listImportProfiles: vi.fn().mockResolvedValue({
+        profiles: [],
+        warnings: [],
+      }),
+      previewImport: vi.fn().mockResolvedValue({
+        profile: null,
+        counts: { history: 0, bookmarks: 0 },
+        warnings: [],
+      }),
+      runImport: vi.fn().mockResolvedValue({
+        profile: null,
+        history: [],
+        bookmarks: [],
+        counts: { history: 0, bookmarks: 0 },
+        warnings: [],
+      }),
       getBackendLabState: vi.fn().mockResolvedValue({
         isRunning: false, isStarting: false, isStopping: false, error: null,
         backendPath: null, healthUrl: '', port: 0, logs: [],

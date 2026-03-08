@@ -148,6 +148,68 @@ export interface GitFileRequest {
   path: string;
 }
 
+export type ImportBrowser = 'chrome' | 'edge' | 'brave' | 'firefox';
+
+export type ImportDataset = 'history' | 'bookmarks';
+
+export interface ExternalBrowserProfile {
+  id: string;
+  browser: ImportBrowser;
+  name: string;
+  profilePath: string;
+  isDefault: boolean;
+  availableDatasets: ImportDataset[];
+}
+
+export interface ImportedHistoryEntry {
+  url: string;
+  title: string;
+  visitedAt: string;
+  sourceBrowser: ImportBrowser;
+  sourceProfileId: string;
+}
+
+export interface ImportedBookmarkEntry {
+  url: string;
+  title: string;
+  folder: string;
+  tags: string[];
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  sourceBrowser: ImportBrowser;
+  sourceProfileId: string;
+}
+
+export interface ImportProfilesResult {
+  profiles: ExternalBrowserProfile[];
+  warnings: string[];
+}
+
+export interface ImportPreviewRequest {
+  profileId: string;
+  datasets: ImportDataset[];
+}
+
+export interface ImportPreviewResult {
+  profile: ExternalBrowserProfile | null;
+  counts: Record<ImportDataset, number>;
+  warnings: string[];
+}
+
+export interface ImportRunRequest {
+  profileId: string;
+  datasets: ImportDataset[];
+}
+
+export interface ImportRunResult {
+  profile: ExternalBrowserProfile | null;
+  history: ImportedHistoryEntry[];
+  bookmarks: ImportedBookmarkEntry[];
+  counts: Record<ImportDataset, number>;
+  warnings: string[];
+}
+
 export interface BackendLabSidecarState {
   isRunning: boolean;
   isStarting: boolean;
@@ -244,6 +306,9 @@ export interface BrowserDesktopApi {
   unstageGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
   discardGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
   onGitStateChanged: (listener: (snapshot: GitSnapshot) => void) => () => void;
+  listImportProfiles: () => Promise<ImportProfilesResult>;
+  previewImport: (payload: ImportPreviewRequest) => Promise<ImportPreviewResult>;
+  runImport: (payload: ImportRunRequest) => Promise<ImportRunResult>;
   getBackendLabState: () => Promise<BackendLabSidecarState>;
   startBackendLab: () => Promise<BackendLabSidecarState>;
   stopBackendLab: () => Promise<BackendLabSidecarState>;
@@ -317,6 +382,9 @@ export const BrowserIpcChannels = {
   gitUnstageFile: 'git:unstage-file',
   gitDiscardFile: 'git:discard-file',
   gitStateChanged: 'git:state-changed',
+  importListProfiles: 'import:list-profiles',
+  importPreview: 'import:preview',
+  importRun: 'import:run',
   backendLabGetState: 'backend-lab:get-state',
   backendLabStart: 'backend-lab:start',
   backendLabStop: 'backend-lab:stop',

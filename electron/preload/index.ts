@@ -92,6 +92,9 @@ const api: BrowserDesktopApi = {
       ipcRenderer.removeListener(BrowserIpcChannels.gitStateChanged, handler);
     };
   },
+  listImportProfiles: () => ipcRenderer.invoke(BrowserIpcChannels.importListProfiles),
+  previewImport: payload => ipcRenderer.invoke(BrowserIpcChannels.importPreview, payload),
+  runImport: payload => ipcRenderer.invoke(BrowserIpcChannels.importRun, payload),
   getBackendLabState: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabGetState),
   startBackendLab: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabStart),
   stopBackendLab: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabStop),

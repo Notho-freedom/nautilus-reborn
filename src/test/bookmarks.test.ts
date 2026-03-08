@@ -4,6 +4,7 @@ import {
   clearBookmarks,
   getBookmarks,
   isBookmarked,
+  mergeImportedBookmarks,
   searchBookmarks,
   toggleBookmark,
 } from '@/lib/bookmarks';
@@ -40,5 +41,48 @@ describe('bookmarks storage', () => {
     const byTag = searchBookmarks('lang');
     expect(byFolder).toHaveLength(1);
     expect(byTag).toHaveLength(1);
+  });
+
+  it('merges imported bookmarks by URL and unions tags', () => {
+    addBookmark({
+      title: 'GitHub',
+      url: 'https://github.com',
+      folder: 'Dev',
+      tags: ['code'],
+    });
+
+    const result = mergeImportedBookmarks([
+      {
+        url: 'https://github.com',
+        title: 'GitHub Updated',
+        folder: 'Imported',
+        tags: ['work'],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-03T00:00:00.000Z',
+        sourceBrowser: 'chrome',
+        sourceProfileId: 'chrome:default',
+      },
+      {
+        url: 'https://react.dev',
+        title: 'React',
+        folder: 'Docs',
+        tags: ['framework'],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        sourceBrowser: 'firefox',
+        sourceProfileId: 'firefox:default',
+      },
+    ]);
+
+    expect(result.inserted).toBe(1);
+    expect(result.updated).toBe(1);
+
+    const bookmarks = getBookmarks();
+    const github = bookmarks.find(item => item.url === 'https://github.com/');
+    const react = bookmarks.find(item => item.url === 'https://react.dev/');
+
+    expect(github).toBeDefined();
+    expect(github?.tags).toEqual(expect.arrayContaining(['code', 'work']));
+    expect(react?.folder).toBe('Docs');
   });
 });

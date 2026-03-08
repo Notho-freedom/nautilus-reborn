@@ -1,3 +1,5 @@
+import type { ImportedBookmarkEntry } from '../../shared/browser-contract';
+
 export interface BookmarkItem {
   id: string;
   title: string;
@@ -19,6 +21,12 @@ export interface CreateBookmarkInput {
 
 const BOOKMARKS_KEY = 'notilus_bookmarks';
 const BOOKMARKS_UPDATED_EVENT = 'notilus:bookmarks-updated';
+
+export interface BookmarkMergeResult {
+  inserted: number;
+  updated: number;
+  skipped: number;
+}
 
 function normalizeUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim();
@@ -233,4 +241,114 @@ export function subscribeToBookmarksUpdates(listener: () => void): () => void {
   return () => {
     window.removeEventListener(BOOKMARKS_UPDATED_EVENT, listener);
   };
+}
+
+function resolveTimestamp(raw: string | undefined, fallback: string): string {
+  const candidate = (raw ?? '').trim();
+  const parsed = new Date(candidate).getTime();
+  if (Number.isNaN(parsed)) return fallback;
+  return new Date(parsed).toISOString();
+}
+
+export function mergeImportedBookmarks(entries: ImportedBookmarkEntry[]): BookmarkMergeResult {
+  const result: BookmarkMergeResult = {
+    inserted: 0,
+    updated: 0,
+    skipped: 0,
+  };
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return result;
+  }
+
+  const bookmarks = readBookmarks();
+  const byUrl = new Map<string, BookmarkItem>();
+  for (const bookmark of bookmarks) {
+    byUrl.set(bookmark.url, bookmark);
+  }
+
+  let changed = false;
+
+  for (const entry of entries) {
+    const normalizedUrl = normalizeUrl(entry.url ?? '');
+    if (!normalizedUrl || normalizedUrl.startsWith('notilus://')) {
+      result.skipped += 1;
+      continue;
+    }
+
+    const nowIso = new Date().toISOString();
+    const existing = byUrl.get(normalizedUrl);
+    const incomingTags = normalizeTags(entry.tags ?? []);
+    const incomingTitle = resolveTitle(normalizedUrl, entry.title ?? '');
+    const incomingFolder = (entry.folder ?? '').trim() || 'Imported';
+    const incomingDescription = (entry.description ?? '').trim();
+    const incomingCreatedAt = resolveTimestamp(entry.createdAt, nowIso);
+    const incomingUpdatedAt = resolveTimestamp(entry.updatedAt, incomingCreatedAt);
+
+    if (!existing) {
+      byUrl.set(normalizedUrl, {
+        id: createBookmarkId(),
+        title: incomingTitle,
+        url: normalizedUrl,
+        tags: incomingTags,
+        folder: incomingFolder,
+        description: incomingDescription,
+        createdAt: incomingCreatedAt,
+        updatedAt: incomingUpdatedAt,
+      });
+      result.inserted += 1;
+      changed = true;
+      continue;
+    }
+
+    const mergedTags = normalizeTags([...(existing.tags ?? []), ...incomingTags]);
+    const nextUpdatedAt =
+      new Date(incomingUpdatedAt).getTime() > new Date(existing.updatedAt).getTime()
+        ? incomingUpdatedAt
+        : existing.updatedAt;
+    const nextTitle =
+      new Date(incomingUpdatedAt).getTime() >= new Date(existing.updatedAt).getTime()
+        ? incomingTitle
+        : existing.title;
+
+    const nextFolder =
+      existing.folder && existing.folder !== 'General'
+        ? existing.folder
+        : incomingFolder;
+
+    const nextDescription = incomingDescription || existing.description || '';
+
+    const changedEntry =
+      nextTitle !== existing.title ||
+      nextFolder !== existing.folder ||
+      nextDescription !== (existing.description ?? '') ||
+      nextUpdatedAt !== existing.updatedAt ||
+      mergedTags.join('|') !== (existing.tags ?? []).join('|');
+
+    if (!changedEntry) {
+      result.skipped += 1;
+      continue;
+    }
+
+    byUrl.set(normalizedUrl, {
+      ...existing,
+      title: nextTitle,
+      folder: nextFolder,
+      description: nextDescription,
+      tags: mergedTags,
+      createdAt: existing.createdAt || incomingCreatedAt,
+      updatedAt: nextUpdatedAt,
+    });
+    result.updated += 1;
+    changed = true;
+  }
+
+  if (changed) {
+    const merged = Array.from(byUrl.values()).sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+    writeBookmarks(merged);
+  }
+
+  return result;
 }

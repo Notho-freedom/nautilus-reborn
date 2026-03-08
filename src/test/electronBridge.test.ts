@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  desktopListImportProfiles,
+  desktopPreviewImport,
+  desktopRunImport,
   desktopGetState,
   desktopSetPinnedTabs,
   getDesktopBridge,
@@ -18,6 +21,13 @@ describe('electronBridge fallback', () => {
     delete window.notilusDesktop;
     await expect(desktopGetState()).resolves.toBeNull();
     await expect(desktopSetPinnedTabs({ tabIds: [] })).resolves.toBeUndefined();
+    await expect(desktopListImportProfiles()).resolves.toBeNull();
+    await expect(
+      desktopPreviewImport({ profileId: 'x', datasets: ['history'] })
+    ).resolves.toBeNull();
+    await expect(
+      desktopRunImport({ profileId: 'x', datasets: ['bookmarks'] })
+    ).resolves.toBeNull();
   });
 
   it('returns noop unsubscribe when desktop bridge is unavailable', () => {

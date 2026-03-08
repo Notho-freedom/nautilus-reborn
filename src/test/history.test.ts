@@ -3,6 +3,7 @@ import {
   addHistoryItem,
   clearHistoryItems,
   getHistoryItems,
+  mergeImportedHistory,
   removeHistoryItem,
 } from '@/lib/history';
 
@@ -44,5 +45,38 @@ describe('history storage', () => {
 
     removeHistoryItem(item.id);
     expect(getHistoryItems()).toHaveLength(0);
+  });
+
+  it('merges imported entries and keeps newest visit per URL', () => {
+    addHistoryItem('https://example.com', 'Local Example');
+    const initial = getHistoryItems()[0];
+    expect(initial).toBeDefined();
+
+    const merged = mergeImportedHistory([
+      {
+        url: 'https://example.com',
+        title: 'Imported Example',
+        visitedAt: '2099-01-01T10:00:00.000Z',
+        sourceBrowser: 'chrome',
+        sourceProfileId: 'chrome:default',
+      },
+      {
+        url: 'https://react.dev',
+        title: 'React',
+        visitedAt: '2026-01-02T10:00:00.000Z',
+        sourceBrowser: 'firefox',
+        sourceProfileId: 'firefox:default',
+      },
+    ]);
+
+    expect(merged.inserted).toBe(1);
+    expect(merged.updated).toBe(1);
+
+    const items = getHistoryItems();
+    expect(items).toHaveLength(2);
+    const react = items.find(item => item.url === 'https://react.dev/');
+    const example = items.find(item => item.url === 'https://example.com/');
+    expect(react?.title).toBe('React');
+    expect(example?.title).toBe('Imported Example');
   });
 });

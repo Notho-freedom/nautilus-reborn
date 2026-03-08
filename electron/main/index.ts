@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
 import { BrowserIpcChannels } from '../../shared/browser-contract';
 import { registerBrowserIpc } from './ipc/browser-ipc';
+import { registerBrowserImportIpc } from './ipc/browser-import-ipc';
 import { registerBackendLabIpc } from './ipc/backend-lab-ipc';
 import { registerDownloadIpc } from './ipc/download-ipc';
 import { registerGitIpc } from './ipc/git-ipc';
@@ -12,6 +13,7 @@ import { registerTerminalIpc } from './ipc/terminal-ipc';
 import { registerWindowIpc } from './ipc/window-ipc';
 import { DownloadManager } from './download-manager';
 import { BackendSidecarManager } from './backend-sidecar-manager';
+import { BrowserImportManager } from './browser-import-manager';
 import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
 import { StudioManager } from './studio-manager';
@@ -30,6 +32,7 @@ let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
+let browserImportManager: BrowserImportManager | null = null;
 let backendLabManager: BackendSidecarManager | null = null;
 let studioManager: StudioManager | null = null;
 let systemMetricsManager: SystemMetricsManager | null = null;
@@ -157,6 +160,7 @@ function createDesktopWindow() {
   registerDownloadIpc({ downloadManager, debug: DEBUG_IPC });
   registerWindowIpc(mainWindow, DEBUG_IPC);
   gitManager = new GitManager(DEBUG_IPC);
+  browserImportManager = new BrowserImportManager({ debug: DEBUG_IPC });
   backendLabManager = new BackendSidecarManager({
     debug: DEBUG_IPC,
     onStateChanged: state => {
@@ -171,6 +175,10 @@ function createDesktopWindow() {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
     },
+  });
+  registerBrowserImportIpc({
+    browserImportManager,
+    debug: DEBUG_IPC,
   });
   registerBackendLabIpc({
     backendLabManager,
@@ -276,6 +284,7 @@ function createDesktopWindow() {
     tabManager = null;
     downloadManager = null;
     gitManager = null;
+    browserImportManager = null;
     backendLabManager = null;
     studioManager = null;
     systemMetricsManager = null;
