@@ -18,7 +18,7 @@ const stats = {
   networkPacketLoss: 0,
   networkInterface: 'Wi-Fi',
   networkQuality: 'good' as const,
-  updatedAt: Date.now(),
+  updatedAt: new Date().toISOString(),
 };
 
 describe('SidebarPanel web service integration', () => {
