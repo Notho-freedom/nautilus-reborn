@@ -52,7 +52,7 @@ const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
   bookmarks: BookmarksPanel,
   history: HistoryPanel,
   downloads: DownloadsPanel,
-  widgets: WidgetsPanel,
+  // widgets removed from sidebar
   extensions: ExtensionsPanel,
   docs: DocumentationPanel,
   mosaic: MosaicPanel,
