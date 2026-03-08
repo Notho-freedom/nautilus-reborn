@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useAuth } from '@/hooks/useAuth';
 import { TopChromeBar } from './TopChromeBar';
 import { NavigationBar } from './NavigationBar';
 import { DevToolsSidebar } from './DevToolsSidebar';
@@ -32,6 +33,7 @@ import { useMosaicState } from '@/hooks/useMosaicState';
 export function BrowserShell() {
   const browser = useBrowserState();
   const stats = useSystemMonitor();
+  const auth = useAuth();
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
@@ -367,6 +369,12 @@ export function BrowserShell() {
         onOpenExtensions={() => browser.toggleSidebar('extensions')}
         onOpenSettings={() => browser.toggleSidebar('settings')}
         onToggleAI={browser.toggleAiPanel}
+        isAuthenticated={auth.isAuthenticated}
+        userAvatarUrl={auth.profile.avatar_url}
+        userDisplayName={auth.profile.display_name}
+        userEmail={auth.profile.email}
+        onSignIn={() => void auth.signInWithGoogle()}
+        onSignOut={() => void auth.signOut()}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -389,6 +397,11 @@ export function BrowserShell() {
               onNavigate={browser.navigateTo}
               onOpenPanel={handleOpenPanel}
               onCreateTab={browser.addTab}
+              isAuthenticated={auth.isAuthenticated}
+              githubToken={auth.profile.github_token}
+              githubUsername={auth.profile.github_username}
+              onSignIn={() => void auth.signInWithGoogle()}
+              onSaveGitHubCredentials={(token, username) => void auth.updateGitHubCredentials(token, username)}
             />
           </div>
         )}
