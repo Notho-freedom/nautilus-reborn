@@ -34,6 +34,7 @@ export function GitHubReposPanel({
   githubToken = '',
   githubUsername = '',
   onSaveGitHubCredentials,
+  onSignInWithGitHub,
 }: GitHubReposPanelProps) {
   const [search, setSearch] = useState('');
   const [showPrivate, setShowPrivate] = useState(true);
