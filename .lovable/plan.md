@@ -1,143 +1,115 @@
-# Plan : Corrections UX Notilus
 
-## 1. Persistance des onglets (localStorage)
 
-**Fichier** : `src/hooks/useBrowserState.ts`
+# Plan: Authentification Google OAuth + GitHub PAT amélioré
 
-- Sauvegarder `localTabs` et `localActiveTabId` dans `localStorage` (`notilus_tabs` / `notilus_active_tab`)
-- Au montage, restaurer depuis localStorage au lieu de partir avec un seul onglet par défaut
-- Écrire dans localStorage à chaque changement de `localTabs` et `localActiveTabId` (via `useEffect`)
-- Ne persister que les données sérialisables (id, title, url, kind) — pas isLoading etc.
+## Approche
 
-## 2. Onglets : bouton fermer n'occupe pas d'espace réservé
+Google OAuth via Lovable Cloud comme méthode principale d'authentification (bouton Profile). Pour GitHub, on garde le PAT comme option avancée (collapsed), avec le bouton Google OAuth en priorité dans le panel GitHub.
 
-**Fichier** : `src/components/browser/TopChromeBar.tsx`
+**Note technique** : GitHub OAuth n'est pas disponible sur Lovable Cloud. Seuls Google et Apple sont supportés. Le PAT reste la méthode standard pour accéder aux repos GitHub (c'est ce que VS Code et JetBrains utilisent).
 
-- Le bouton close doit être en `position: absolute` à droite de l'onglet, pas dans le flux
-- Le titre (`<span>`) occupe tout l'espace disponible après l'icône
-- Le close apparaît uniquement au hover (`opacity-0 group-hover:opacity-100`) avec un fond semi-transparent pour ne pas masquer le texte
-- En mode `icon-only`, pas de close du tout (déjà le cas)
+---
 
-**Fichier** : `src/components/browser/TopChromeBar.tsx` (hover card)
+## 1. Base de données : table `profiles`
 
-- Supprimer le message "No tabs from this domain" — si `sameDomainTabs` est vide, ne pas afficher la section liste du tout (garder juste le titre + URL)
+Migration SQL :
+```sql
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name TEXT,
+  avatar_url TEXT,
+  email TEXT,
+  github_token TEXT,
+  github_username TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 
-## 3. Barre d'adresse : icônes sans couleur sauf si actives
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-**Fichier** : `src/components/browser/NavigationBar.tsx`
+CREATE POLICY "Users can read own profile"
+  ON public.profiles FOR SELECT TO authenticated
+  USING (auth.uid() = id);
 
-- Le composant `UrlActionButton` : quand `active` est false, utiliser `text-muted-foreground` (déjà le cas)
-- Quand `active` est true : utiliser `text-primary` (rose/secondaire) pour le favori rempli, `text-green-500` pour le ad-blocker actif
-- Passer une prop `activeColor` ou conditionner directement dans les usages
+CREATE POLICY "Users can update own profile"
+  ON public.profiles FOR UPDATE TO authenticated
+  USING (auth.uid() = id);
 
-## 4. Sidebar : retirer les bordures des boutons
+CREATE POLICY "Users can insert own profile"
+  ON public.profiles FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = id);
 
-**Fichier** : `src/components/browser/DevToolsSidebar.tsx`
+-- Auto-create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, display_name, avatar_url, email)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', ''),
+    NEW.email
+  );
+  RETURN NEW;
+END;
+$$;
 
-- Retirer `border border-primary/50` du style actif des boutons sidebar
-- Garder uniquement le fond `bg-primary/20` et `text-white` pour l'état actif
-- Idem pour les boutons web services
-
-## 5. Tooltips/Popovers au-dessus de tout
-
-**Fichier** : `src/index.css`
-
-- Ajouter des règles CSS pour forcer les portails Radix (tooltips, popovers, hover cards) à un z-index très élevé (z-[9999])
-- Cibler `[data-radix-popper-content-wrapper]` avec `z-index: 9999 !important`
-
-## 6. Panneaux latéraux en overlay + redimensionnables
-
-**Fichier** : `src/components/browser/BrowserShell.tsx`
-
-- Le `SidebarPanel` ne doit plus pousser le contenu : le placer en `position: absolute` (ou `fixed`) par-dessus la zone de contenu, aligné à gauche après la sidebar d'icônes
-- Ajouter un handle de resize (bordure droite draggable)
-- Persister la largeur dans localStorage (`notilus_panel_width`)
-
-**Fichier** : `src/components/browser/SidebarPanel.tsx`
-
-- Créer un composant wrapper réutilisable `SidebarPanelShell` avec :
-  - Header avec titre, bouton fermer, bouton options (dropdown)
-  - Zone de recherche optionnelle (prop `searchable`)
-  - Zone de filtres optionnelle (prop `filters`)
-  - Slot pour le contenu enfant
-  - Handle de resize à droite
-- Tous les panneaux existants (Bookmarks, History, Downloads, etc.) utiliseront ce shell au lieu de dupliquer leur propre header
-
-## 7. Composant `SidebarPanelShell` réutilisable
-
-**Nouveau fichier** : `src/components/browser/SidebarPanelShell.tsx`
-
-```text
-┌─────────────────────────────┐
-│ [icon] TITRE      [⋮] [✕]  │  ← header fixe
-├─────────────────────────────┤
-│ 🔍 Recherche...             │  ← optionnel (searchable)
-├─────────────────────────────┤
-│ [Filtre1] [Filtre2] [All]   │  ← optionnel (filters)
-├─────────────────────────────┤
-│                             │
-│   Contenu (children)        │
-│                             │
-└─────────────────────────────┤ ← handle resize
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
-Props :
+## 2. Hook d'authentification : `src/hooks/useAuth.ts` (nouveau)
 
-- `title: string`
-- `icon?: LucideIcon`
-- `searchable?: boolean` + `searchValue / onSearchChange`
-- `filters?: { label: string; value: string }[]` + `activeFilter / onFilterChange`
-- `onClose: () => void`
-- `menuItems?: { label: string; onClick: () => void }[]` (bouton options ⋮)
-- `children: ReactNode`
+- Écoute `onAuthStateChange` + `getSession()` au montage
+- Expose : `user`, `profile`, `isAuthenticated`, `isLoading`, `signInWithGoogle`, `signOut`
+- `signInWithGoogle` utilise `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin })`
+- Charge le profil depuis `profiles` quand l'utilisateur est connecté
+- Sauvegarde/récupère le GitHub token depuis le profil
 
-Chaque panneau sera refactoré pour utiliser `<SidebarPanelShell>` au lieu de son propre header.
+## 3. Bouton Profile dans NavigationBar
 
-## 8. Fix build errors
+**`src/components/browser/NavigationBar.tsx`**
+- Ajouter props : `user`, `onProfileClick`
+- Si non connecté : icône User standard, clic → ouvre un Popover avec bouton "Sign in with Google"
+- Si connecté : affiche l'avatar de l'utilisateur (petit cercle), clic → Popover avec nom, email, bouton "Sign out"
 
-**Fichier** : `src/components/browser/TopChromeBar.tsx`
+**`src/components/browser/BrowserShell.tsx`**
+- Intégrer `useAuth` hook
+- Passer `user` et `onProfileClick` à `NavigationBar`
 
-- Les 5 erreurs `WebkitAppRegion` : caster les styles en `React.CSSProperties` (comme fait dans TitleBar)
+## 4. GitHub Panel : Google Auth en priorité, PAT collapsed
 
-**Fichier** : `src/test/tabLayout.test.ts`
+**`src/components/browser/GitHubReposPanel.tsx`**
+- Quand non connecté (pas de Supabase user) :
+  - Grande icône GitHub centrée
+  - Bouton "Sign in with Google" (primaire, gradient)
+  - Section collapsible "Advanced: Personal Access Token" avec les champs username/token actuels
+- Quand connecté via Google mais pas de GitHub token :
+  - Message "Connect your GitHub" avec champs PAT
+  - Le token est sauvegardé dans le profil Supabase
+- Quand connecté avec token GitHub :
+  - Liste des repos comme actuellement
 
-- Ligne 11 : remplacer `min` par `minWidth` et `max` par `maxWidth` dans les options
+## 5. Configure Social Auth
 
-## 9. Clés Supabase dans .env
-
-Le fichier `.env` est auto-généré et contient déjà `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`. Aucune modification manuelle nécessaire — le fichier ne doit pas être édité.  
-  
-NB: ASSURE TOI BIEN QUE LES OVERLAYS PASSENT BIEN AU DESSUS DE WEBCONTENTVIEW (PRIORITE MAX), JE NE PARLE PAS DE IFRAME
+Utiliser l'outil Configure Social Login pour générer le module `src/integrations/lovable/` avec le support Google OAuth.
 
 ---
 
 ## Fichiers à créer
-
-- `src/components/browser/SidebarPanelShell.tsx`
+- `src/hooks/useAuth.ts`
 
 ## Fichiers à modifier
+- `src/components/browser/NavigationBar.tsx` (props user/profile, Popover auth)
+- `src/components/browser/BrowserShell.tsx` (intégrer useAuth, passer props)
+- `src/components/browser/GitHubReposPanel.tsx` (Google auth prioritaire, PAT collapsed)
+- `src/lib/githubRepos.ts` (optionnel: supporter token depuis profil Supabase)
 
-- `src/hooks/useBrowserState.ts` (persistance tabs)
-- `src/components/browser/TopChromeBar.tsx` (close button layout, hover card, TS fix)
-- `src/components/browser/NavigationBar.tsx` (couleurs actives)
-- `src/components/browser/DevToolsSidebar.tsx` (retirer bordures)
-- `src/components/browser/SidebarPanel.tsx` (overlay + resize)
-- `src/components/browser/BrowserShell.tsx` (layout overlay)
-- `src/components/browser/BookmarksPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/HistoryPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/DownloadsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/WidgetsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/ExtensionsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/DocumentationPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/MosaicPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/SystemMonitor.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/TerminalPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/LighthousePanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/GitPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/ApiDocsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/SettingsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/StudioPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/UpdatesPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/GitHubReposPanel.tsx` (utiliser SidebarPanelShell)
-- `src/index.css` (z-index tooltips)
-- `src/test/tabLayout.test.ts` (fix TS error)
+## Outils à utiliser
+- Configure Social Login (Google)
+- Database migration (profiles table)
+
