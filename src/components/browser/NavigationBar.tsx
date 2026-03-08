@@ -94,6 +94,12 @@ export function NavigationBar({
   onOpenDownloads,
   onOpenSettings,
   onToggleAI,
+  userAvatarUrl,
+  userDisplayName,
+  userEmail,
+  isAuthenticated = false,
+  onSignIn,
+  onSignOut,
 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
