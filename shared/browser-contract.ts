@@ -148,6 +148,19 @@ export interface GitFileRequest {
   path: string;
 }
 
+export interface BackendLabSidecarState {
+  isRunning: boolean;
+  isStarting: boolean;
+  isStopping: boolean;
+  error: string | null;
+  backendPath: string | null;
+  healthUrl: string;
+  port: number;
+  logs: string[];
+  lastHealthyAt: string | null;
+  restartAttempts: number;
+}
+
 export interface StudioViewportRequest {
   width: number;
   height: number;
@@ -231,6 +244,13 @@ export interface BrowserDesktopApi {
   unstageGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
   discardGitFile: (payload: GitFileRequest) => Promise<GitSnapshot>;
   onGitStateChanged: (listener: (snapshot: GitSnapshot) => void) => () => void;
+  getBackendLabState: () => Promise<BackendLabSidecarState>;
+  startBackendLab: () => Promise<BackendLabSidecarState>;
+  stopBackendLab: () => Promise<BackendLabSidecarState>;
+  restartBackendLab: () => Promise<BackendLabSidecarState>;
+  onBackendLabStateChanged: (
+    listener: (snapshot: BackendLabSidecarState) => void
+  ) => () => void;
   getSystemMetrics: () => Promise<SystemMetricsSnapshot>;
   onSystemMetricsChanged: (listener: (snapshot: SystemMetricsSnapshot) => void) => () => void;
   studioResizeWindow: (payload: StudioViewportRequest) => Promise<void>;
@@ -297,6 +317,11 @@ export const BrowserIpcChannels = {
   gitUnstageFile: 'git:unstage-file',
   gitDiscardFile: 'git:discard-file',
   gitStateChanged: 'git:state-changed',
+  backendLabGetState: 'backend-lab:get-state',
+  backendLabStart: 'backend-lab:start',
+  backendLabStop: 'backend-lab:stop',
+  backendLabRestart: 'backend-lab:restart',
+  backendLabStateChanged: 'backend-lab:state-changed',
   systemGetMetrics: 'system:get-metrics',
   systemMetricsChanged: 'system:metrics-changed',
   studioResizeWindow: 'studio:resize-window',

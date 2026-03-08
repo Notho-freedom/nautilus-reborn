@@ -94,12 +94,15 @@ export function NavigationBar({
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const [snapshotBusy, setSnapshotBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const submitIntentRef = useRef(false);
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (!submitIntentRef.current) return;
+    submitIntentRef.current = false;
     if (!inputValue.trim()) return;
     const finalUrl = inputValue.includes('://') ? inputValue : `https://${inputValue}`;
     onNavigate(finalUrl);
@@ -228,11 +231,22 @@ export function NavigationBar({
             onFocus={() => {
               setFocused(true);
               setInputValue(url);
+              submitIntentRef.current = false;
               window.requestAnimationFrame(() => {
                 inputRef.current?.select();
               });
             }}
-            onBlur={() => setFocused(false)}
+            onBlur={() => {
+              submitIntentRef.current = false;
+              setFocused(false);
+            }}
+            onKeyDown={event => {
+              if (event.key === 'Enter' && !event.isComposing) {
+                submitIntentRef.current = true;
+                return;
+              }
+              submitIntentRef.current = false;
+            }}
             placeholder={url}
             className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none selection:bg-primary selection:text-primary-foreground"
           />

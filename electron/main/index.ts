@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
 import { BrowserIpcChannels } from '../../shared/browser-contract';
 import { registerBrowserIpc } from './ipc/browser-ipc';
+import { registerBackendLabIpc } from './ipc/backend-lab-ipc';
 import { registerDownloadIpc } from './ipc/download-ipc';
 import { registerGitIpc } from './ipc/git-ipc';
 import { registerStudioIpc } from './ipc/studio-ipc';
@@ -10,6 +11,7 @@ import { registerSystemIpc } from './ipc/system-ipc';
 import { registerTerminalIpc } from './ipc/terminal-ipc';
 import { registerWindowIpc } from './ipc/window-ipc';
 import { DownloadManager } from './download-manager';
+import { BackendSidecarManager } from './backend-sidecar-manager';
 import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
 import { StudioManager } from './studio-manager';
@@ -28,6 +30,7 @@ let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
+let backendLabManager: BackendSidecarManager | null = null;
 let studioManager: StudioManager | null = null;
 let systemMetricsManager: SystemMetricsManager | null = null;
 let terminalManager: TerminalManager | null = null;
@@ -154,12 +157,27 @@ function createDesktopWindow() {
   registerDownloadIpc({ downloadManager, debug: DEBUG_IPC });
   registerWindowIpc(mainWindow, DEBUG_IPC);
   gitManager = new GitManager(DEBUG_IPC);
+  backendLabManager = new BackendSidecarManager({
+    debug: DEBUG_IPC,
+    onStateChanged: state => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send(BrowserIpcChannels.backendLabStateChanged, state);
+    },
+  });
   registerGitIpc({
     gitManager,
     debug: DEBUG_IPC,
     onStateChanged: snapshot => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
+    },
+  });
+  registerBackendLabIpc({
+    backendLabManager,
+    debug: DEBUG_IPC,
+    onStateChanged: state => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send(BrowserIpcChannels.backendLabStateChanged, state);
     },
   });
   systemMetricsManager = new SystemMetricsManager({
@@ -217,6 +235,12 @@ function createDesktopWindow() {
         mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
       });
     }
+    if (backendLabManager && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(
+        BrowserIpcChannels.backendLabStateChanged,
+        backendLabManager.getState()
+      );
+    }
     if (systemMetricsManager && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(
         BrowserIpcChannels.systemMetricsChanged,
@@ -246,11 +270,13 @@ function createDesktopWindow() {
 
   mainWindow.on('closed', () => {
     systemMetricsManager?.stop();
+    backendLabManager?.dispose();
     terminalManager?.dispose();
     mainWindow = null;
     tabManager = null;
     downloadManager = null;
     gitManager = null;
+    backendLabManager = null;
     studioManager = null;
     systemMetricsManager = null;
     terminalManager = null;

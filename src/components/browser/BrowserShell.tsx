@@ -10,6 +10,7 @@ import { ContentArea } from './ContentArea';
 import { AIAssistant } from './AIAssistant';
 import { StatusBar } from './StatusBar';
 import { DevToolsPanel } from './DevToolsPanel';
+import { NotilusMiniDevToolsPanel } from './NotilusMiniDevToolsPanel';
 import type { WebServiceItem } from './DevToolsSidebar';
 import { getSettings, initializeSettings, subscribeToSettingsUpdates, updateSettings } from '@/lib/settings';
 import {
@@ -37,6 +38,8 @@ export function BrowserShell() {
   const [isDockResizing, setIsDockResizing] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [notilusDevToolsOpen, setNotilusDevToolsOpen] = useState(false);
+  const [notilusMiniDevToolsOpen, setNotilusMiniDevToolsOpen] = useState(false);
+  const [notilusDevToolsDetached, setNotilusDevToolsDetached] = useState(false);
   const [notilusDevToolsHeight, setNotilusDevToolsHeight] = useState(250);
   const [gitBranch, setGitBranch] = useState(() => getGitSnapshot().branch);
   const [mosaicLayout, setMosaicLayout] = useState(() => getMosaicLayout());
@@ -126,8 +129,32 @@ export function BrowserShell() {
     browser.toggleDevTools,
   ]);
 
+  const closeNotilusDevTools = useCallback(() => {
+    setNotilusDevToolsOpen(false);
+  }, []);
+
+  const closeMiniDevTools = useCallback(() => {
+    setNotilusMiniDevToolsOpen(false);
+  }, []);
+
   const toggleNotilusDevTools = useCallback(() => {
+    if (notilusDevToolsDetached) {
+      setNotilusMiniDevToolsOpen(prev => !prev);
+      return;
+    }
     setNotilusDevToolsOpen(prev => !prev);
+  }, [notilusDevToolsDetached]);
+
+  const handleDetachNotilusDevTools = useCallback(() => {
+    setNotilusDevToolsDetached(true);
+    setNotilusDevToolsOpen(false);
+    setNotilusMiniDevToolsOpen(true);
+  }, []);
+
+  const handleAttachNotilusDevTools = useCallback(() => {
+    setNotilusDevToolsDetached(false);
+    setNotilusMiniDevToolsOpen(false);
+    setNotilusDevToolsOpen(true);
   }, []);
 
   const shortcuts = useMemo(() => ({
@@ -396,13 +423,17 @@ export function BrowserShell() {
             />
           </div>
           {/* Notilus DevTools as overlay */}
-          {notilusDevToolsOpen && (
+          {notilusDevToolsOpen && !notilusDevToolsDetached && (
             <div className="absolute bottom-0 left-0 right-0 z-40">
               <DevToolsPanel
                 isOpen={true}
-                onClose={toggleNotilusDevTools}
+                onClose={closeNotilusDevTools}
                 height={notilusDevToolsHeight}
                 onHeightChange={setNotilusDevToolsHeight}
+                onDetach={handleDetachNotilusDevTools}
+                onAttach={handleAttachNotilusDevTools}
+                isDetached={notilusDevToolsDetached}
+                onOpenSettings={() => browser.toggleSidebar('settings')}
               />
             </div>
           )}
@@ -414,9 +445,16 @@ export function BrowserShell() {
                 onClose={toggleDevToolsPanel}
                 height={browser.devToolsHeight}
                 onHeightChange={browser.setDevToolsHeight}
+                onOpenSettings={() => browser.toggleSidebar('settings')}
               />
             </div>
           )}
+          <NotilusMiniDevToolsPanel
+            isOpen={notilusMiniDevToolsOpen}
+            onClose={closeMiniDevTools}
+            onExpand={handleAttachNotilusDevTools}
+            onOpenNative={toggleDevToolsPanel}
+          />
         </div>
         <AIAssistant isOpen={browser.aiPanelOpen} onClose={browser.toggleAiPanel} />
       </div>

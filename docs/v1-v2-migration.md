@@ -59,3 +59,38 @@ Ce document sert de base opérationnelle pour intégrer les fonctionnalités V1 
 ## Règle de travail
 
 Les commits doivent être faits depuis `nautilus-reborn` uniquement.
+
+## Checklist Sprint 1 - Parité DevTools / Backend Lab (V1 -> V2)
+
+### DevTools Nautilus
+
+- [x] Ordre des tabs strict V1: `Elements`, `Console`, `Network`, `Resources`, `Performance`, `Application`, `Backend Lab`
+- [x] Header DevTools: clear all, settings, inspect mode, responsive mode, detach/dock, close
+- [x] Raccourcis: `F12`, `Ctrl+Shift+I`, `Ctrl+Shift+C/J/E/R/P/A/B`
+- [x] Resize vertical du panel docké
+- [x] Mode inspect avec panneau latéral (box model + computed styles)
+- [x] Presets responsive (desktop/tablet/mobile + reset)
+- [x] Mini panel flottant (Console/Network), draggable, collapse/expand
+- [x] Transition detach: panel principal -> mini panel
+- [x] Données runtime réelles (console/network/elements/resources/perf/application), aucun mock
+
+### Backend Lab
+
+- [x] Sidecar backend local desktop (`127.0.0.1:8000`) avec start/stop/restart + healthcheck
+- [x] Intégration IPC backend sidecar (`backend-lab:*`) + events d’état
+- [x] Panel Backend Lab tabbed strict V1:
+  - [x] `Overview`
+  - [x] `Servers`
+  - [x] `Routes`
+  - [x] `Tests API`
+  - [x] `Security`
+  - [x] `Performance`
+  - [x] `Capture`
+  - [x] `Console`
+- [x] Endpoints branchés: scan serveurs, discovery routes, quick test/tests, security scan, load test, captures replay/clear, analytics, console logs + websocket
+- [x] États loading/empty/error alignés V1
+
+### Recherche (hotfix transversal)
+
+- [ ] Jamais de navigation automatique pendant la saisie (global + GitHub)
+- [ ] Navigation uniquement sur action explicite (`Enter` / clic résultat / clic bouton)

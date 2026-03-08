@@ -433,6 +433,11 @@ export function TopChromeBar({
               ref={searchInputRef}
               value={searchQuery}
               onChange={event => setSearchQuery(event.target.value)}
+              onKeyDown={event => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                event.stopPropagation();
+              }}
               placeholder="Search by title or domain..."
               className="w-full h-9 rounded-md bg-notilus-surface-1 border border-border px-3 text-sm font-body text-foreground outline-none focus:border-primary/50"
             />

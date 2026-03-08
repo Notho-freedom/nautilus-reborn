@@ -1,28 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { NetworkRequest } from '@/types/devtools';
 
-interface NetworkRequest {
-  id: string;
-  method: string;
-  url: string;
-  status: number;
-  type: string;
-  size: string;
-  duration: string;
+interface DevNetworkProps {
+  requests: NetworkRequest[];
+  onClear: () => void;
 }
-
-const MOCK_REQUESTS: NetworkRequest[] = [
-  { id: '1', method: 'GET', url: '/api/users', status: 200, type: 'fetch', size: '4.2 KB', duration: '45ms' },
-  { id: '2', method: 'GET', url: '/assets/logo.svg', status: 200, type: 'img', size: '1.1 KB', duration: '12ms' },
-  { id: '3', method: 'POST', url: '/api/auth/login', status: 200, type: 'fetch', size: '256 B', duration: '234ms' },
-  { id: '4', method: 'GET', url: '/api/dashboard/stats', status: 200, type: 'fetch', size: '8.7 KB', duration: '89ms' },
-  { id: '5', method: 'GET', url: '/styles/main.css', status: 200, type: 'css', size: '32 KB', duration: '8ms' },
-  { id: '6', method: 'GET', url: '/api/notifications', status: 304, type: 'fetch', size: '0 B', duration: '23ms' },
-  { id: '7', method: 'PUT', url: '/api/users/preferences', status: 200, type: 'fetch', size: '128 B', duration: '156ms' },
-  { id: '8', method: 'GET', url: '/api/missing-endpoint', status: 404, type: 'fetch', size: '64 B', duration: '12ms' },
-  { id: '9', method: 'GET', url: '/api/server-error', status: 500, type: 'fetch', size: '128 B', duration: '2.1s' },
-  { id: '10', method: 'GET', url: '/ws/live-updates', status: 101, type: 'ws', size: '—', duration: 'ongoing' },
-];
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-green-400',
@@ -30,55 +14,122 @@ const METHOD_COLORS: Record<string, string> = {
   PUT: 'text-yellow-400',
   DELETE: 'text-red-400',
   PATCH: 'text-purple-400',
+  HEAD: 'text-cyan-400',
+  OPTIONS: 'text-orange-400',
+  CONNECT: 'text-fuchsia-400',
+  TRACE: 'text-pink-400',
+  OTHER: 'text-foreground',
 };
 
-export function DevNetwork() {
-  const [filter, setFilter] = useState<string | null>(null);
+function formatBytes(value?: number): string {
+  if (value == null || Number.isNaN(value)) return '-';
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+}
 
-  const types = [...new Set(MOCK_REQUESTS.map(r => r.type))];
-  const filtered = filter ? MOCK_REQUESTS.filter(r => r.type === filter) : MOCK_REQUESTS;
+function formatDuration(value?: number): string {
+  if (value == null || Number.isNaN(value)) return '-';
+  if (value < 1000) return `${Math.round(value)}ms`;
+  return `${(value / 1000).toFixed(2)}s`;
+}
 
-  const statusColor = (s: number) => {
-    if (s < 300) return 'text-green-400';
-    if (s < 400) return 'text-blue-400';
-    if (s < 500) return 'text-yellow-400';
-    return 'text-red-400';
-  };
+function statusColor(status?: number): string {
+  if (status == null) return 'text-muted-foreground';
+  if (status < 300) return 'text-green-400';
+  if (status < 400) return 'text-blue-400';
+  if (status < 500) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
+export function DevNetwork({ requests, onClear }: DevNetworkProps) {
+  const [filterType, setFilterType] = useState<string | null>(null);
+
+  const types = useMemo(() => {
+    const values = requests.map(request => {
+      if (request.mimeType?.includes('json')) return 'fetch';
+      if (request.mimeType?.includes('javascript')) return 'js';
+      if (request.mimeType?.includes('css')) return 'css';
+      if (request.mimeType?.includes('image')) return 'img';
+      return request.mimeType?.split('/')[0] ?? 'other';
+    });
+    return Array.from(new Set(values));
+  }, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    if (!filterType) return requests;
+    return requests.filter(request => {
+      if (filterType === 'fetch') return request.mimeType?.includes('json');
+      if (filterType === 'js') return request.mimeType?.includes('javascript');
+      if (filterType === 'css') return request.mimeType?.includes('css');
+      if (filterType === 'img') return request.mimeType?.includes('image');
+      return (request.mimeType?.split('/')[0] ?? 'other') === filterType;
+    });
+  }, [filterType, requests]);
 
   return (
-    <div className="flex flex-col h-full text-[11px] font-mono">
-      {/* Filters */}
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-border bg-card/50 shrink-0">
+    <div className="flex h-full flex-col text-[11px] font-mono">
+      <div className="flex items-center gap-1 border-b border-border/35 bg-card/50 px-2 py-1 shrink-0">
         <button
-          onClick={() => setFilter(null)}
-          className={cn("px-1.5 py-0.5 rounded text-[10px]", !filter ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground')}
-        >All</button>
-        {types.map(t => (
+          type="button"
+          onClick={onClear}
+          className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+          title="Clear requests"
+        >
+          <Trash2 size={12} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterType(null)}
+          className={cn(
+            'rounded px-1.5 py-0.5 text-[10px]',
+            !filterType ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          All
+        </button>
+        {types.map(type => (
           <button
-            key={t}
-            onClick={() => setFilter(filter === t ? null : t)}
-            className={cn("px-1.5 py-0.5 rounded text-[10px] capitalize", filter === t ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground')}
-          >{t}</button>
+            key={type}
+            type="button"
+            onClick={() => setFilterType(current => (current === type ? null : type))}
+            className={cn(
+              'rounded px-1.5 py-0.5 text-[10px] capitalize',
+              filterType === type
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {type}
+          </button>
         ))}
         <div className="flex-1" />
-        <span className="text-[10px] text-muted-foreground">{filtered.length} requests</span>
+        <span className="text-[10px] text-muted-foreground">{filteredRequests.length} requests</span>
       </div>
 
-      {/* Header */}
-      <div className="grid grid-cols-[50px_50px_1fr_60px_60px_60px] gap-1 px-2 py-1 bg-secondary/30 text-[9px] text-muted-foreground uppercase tracking-wider shrink-0 border-b border-border">
-        <span>Status</span><span>Method</span><span>URL</span><span>Type</span><span>Size</span><span>Time</span>
+      <div className="grid shrink-0 grid-cols-[54px_56px_1fr_70px_70px_70px] gap-1 border-b border-border/35 bg-secondary/30 px-2 py-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+        <span>Status</span>
+        <span>Method</span>
+        <span>URL</span>
+        <span>Type</span>
+        <span>Size</span>
+        <span>Time</span>
       </div>
 
-      {/* Rows */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {filtered.map(r => (
-          <div key={r.id} className="grid grid-cols-[50px_50px_1fr_60px_60px_60px] gap-1 px-2 py-1 border-b border-border/30 hover:bg-muted/20 transition-colors cursor-pointer">
-            <span className={statusColor(r.status)}>{r.status}</span>
-            <span className={METHOD_COLORS[r.method] || 'text-foreground'}>{r.method}</span>
-            <span className="text-foreground truncate">{r.url}</span>
-            <span className="text-muted-foreground">{r.type}</span>
-            <span className="text-muted-foreground">{r.size}</span>
-            <span className={cn("text-muted-foreground", r.duration.includes('s') && !r.duration.includes('ms') ? 'text-yellow-400' : '')}>{r.duration}</span>
+        {filteredRequests.map(request => (
+          <div
+            key={`${request.id}-${request.status}-${request.statusCode}`}
+            className="grid cursor-pointer grid-cols-[54px_56px_1fr_70px_70px_70px] gap-1 border-b border-border/30 px-2 py-1 transition-colors hover:bg-muted/20"
+          >
+            <span className={statusColor(request.statusCode)}>{request.statusCode ?? '-'}</span>
+            <span className={METHOD_COLORS[request.method] ?? 'text-foreground'}>{request.method}</span>
+            <span className="truncate text-foreground">{request.url}</span>
+            <span className="truncate text-muted-foreground">{request.mimeType ?? '-'}</span>
+            <span className="text-muted-foreground">{formatBytes(request.responseSize)}</span>
+            <span className={cn('text-muted-foreground', (request.duration ?? 0) >= 1000 ? 'text-yellow-400' : '')}>
+              {formatDuration(request.duration)}
+            </span>
           </div>
         ))}
       </div>

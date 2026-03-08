@@ -1,61 +1,65 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { StorageItem } from '@/types/devtools';
 
-type StorageTab = 'localStorage' | 'sessionStorage' | 'cookies';
+type StorageTab = 'localStorage' | 'sessionStorage' | 'cookie';
 
-const MOCK_DATA: Record<StorageTab, { key: string; value: string }[]> = {
-  localStorage: [
-    { key: 'notilus-theme', value: 'dark-red' },
-    { key: 'notilus-sidebar', value: '{"open":true,"panel":"monitor"}' },
-    { key: 'notilus-bookmarks', value: '[{"title":"GitHub","url":"https://github.com"}]' },
-    { key: 'notilus-settings', value: '{"adBlocker":true,"searchEngine":"duckduckgo"}' },
-    { key: 'notilus-ai-history', value: '[{"role":"user","content":"Hello"}]' },
-  ],
-  sessionStorage: [
-    { key: 'notilus-active-tab', value: 'tab-1' },
-    { key: 'notilus-scroll-pos', value: '{"x":0,"y":342}' },
-    { key: 'notilus-devtools-height', value: '300' },
-  ],
-  cookies: [
-    { key: 'session_id', value: 'abc123def456' },
-    { key: 'csrf_token', value: 'xyz789_secure' },
-    { key: 'preferred_lang', value: 'en' },
-    { key: '_ga', value: 'GA1.1.123456789' },
-  ],
-};
+interface DevApplicationProps {
+  storage: Record<StorageTab, StorageItem[]>;
+  onRefresh: () => void;
+}
 
-export function DevApplication() {
-  const [tab, setTab] = useState<StorageTab>('localStorage');
-  const tabs: StorageTab[] = ['localStorage', 'sessionStorage', 'cookies'];
+export function DevApplication({ storage, onRefresh }: DevApplicationProps) {
+  const [activeTab, setActiveTab] = useState<StorageTab>('localStorage');
+
+  const tabs: StorageTab[] = ['localStorage', 'sessionStorage', 'cookie'];
+
+  const entries = useMemo(() => storage[activeTab] ?? [], [activeTab, storage]);
 
   return (
-    <div className="flex flex-col h-full text-[11px] font-mono">
-      {/* Tabs */}
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-border bg-card/50 shrink-0">
-        {tabs.map(t => (
+    <div className="flex h-full flex-col text-[11px] font-mono">
+      <div className="flex items-center gap-1 border-b border-border/35 bg-card/50 px-2 py-1 shrink-0">
+        {tabs.map(tab => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn("px-2 py-0.5 rounded text-[10px] transition-colors", tab === t ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground')}
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              'rounded px-2 py-0.5 text-[10px] transition-colors',
+              activeTab === tab
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
           >
-            {t}
+            {tab}
           </button>
         ))}
         <div className="flex-1" />
-        <span className="text-[10px] text-muted-foreground">{MOCK_DATA[tab].length} entries</span>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+        >
+          <RefreshCw size={11} />
+          Refresh
+        </button>
+        <span className="text-[10px] text-muted-foreground">{entries.length} entries</span>
       </div>
 
-      {/* Header */}
-      <div className="grid grid-cols-[1fr_2fr] gap-2 px-3 py-1 bg-secondary/30 text-[9px] text-muted-foreground uppercase tracking-wider border-b border-border shrink-0">
-        <span>Key</span><span>Value</span>
+      <div className="grid shrink-0 grid-cols-[1fr_2fr] gap-2 border-b border-border/35 bg-secondary/30 px-3 py-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+        <span>Key</span>
+        <span>Value</span>
       </div>
 
-      {/* Data */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {MOCK_DATA[tab].map((entry, i) => (
-          <div key={i} className="grid grid-cols-[1fr_2fr] gap-2 px-3 py-1.5 border-b border-border/30 hover:bg-muted/20 transition-colors cursor-pointer">
-            <span className="text-purple-400 truncate">{entry.key}</span>
-            <span className="text-foreground truncate">{entry.value}</span>
+        {entries.map((entry, index) => (
+          <div
+            key={`${entry.key}-${index}`}
+            className="grid cursor-pointer grid-cols-[1fr_2fr] gap-2 border-b border-border/30 px-3 py-1.5 transition-colors hover:bg-muted/20"
+          >
+            <span className="truncate text-purple-400">{entry.key}</span>
+            <span className="truncate text-foreground">{entry.value}</span>
           </div>
         ))}
       </div>

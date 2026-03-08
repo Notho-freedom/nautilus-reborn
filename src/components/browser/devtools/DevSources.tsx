@@ -1,54 +1,111 @@
-import { FileText, FileCode, Image, File } from 'lucide-react';
+import { FileText, FileCode, Image, File, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { SourceFile } from '@/types/devtools';
 
-interface SourceFile {
-  name: string;
-  path: string;
-  type: 'js' | 'css' | 'img' | 'other';
-  size: string;
+interface DevSourcesProps {
+  sources: SourceFile[];
+  onRefresh: () => void;
 }
 
-const MOCK_SOURCES: SourceFile[] = [
-  { name: 'index.html', path: '/', type: 'other', size: '1.2 KB' },
-  { name: 'main.tsx', path: '/src/', type: 'js', size: '845 B' },
-  { name: 'App.tsx', path: '/src/', type: 'js', size: '2.1 KB' },
-  { name: 'BrowserShell.tsx', path: '/src/components/browser/', type: 'js', size: '3.4 KB' },
-  { name: 'SpeedDial.tsx', path: '/src/components/browser/', type: 'js', size: '4.2 KB' },
-  { name: 'index.css', path: '/src/', type: 'css', size: '3.8 KB' },
-  { name: 'utils.ts', path: '/src/lib/', type: 'js', size: '256 B' },
-  { name: 'useBrowserState.ts', path: '/src/hooks/', type: 'js', size: '2.8 KB' },
-  { name: 'favicon.ico', path: '/public/', type: 'img', size: '4.1 KB' },
-  { name: 'logo.svg', path: '/public/', type: 'img', size: '1.1 KB' },
-  { name: 'vite.config.ts', path: '/', type: 'js', size: '512 B' },
-  { name: 'tailwind.config.ts', path: '/', type: 'js', size: '1.8 KB' },
-];
+const TYPE_ICONS = {
+  js: FileCode,
+  css: FileText,
+  img: Image,
+  other: File,
+};
 
-const TYPE_ICONS = { js: FileCode, css: FileText, img: Image, other: File };
-const TYPE_COLORS = { js: 'text-yellow-400', css: 'text-blue-400', img: 'text-green-400', other: 'text-muted-foreground' };
+const TYPE_COLORS = {
+  js: 'text-yellow-400',
+  css: 'text-blue-400',
+  img: 'text-green-400',
+  other: 'text-muted-foreground',
+};
 
-export function DevSources() {
-  const grouped = MOCK_SOURCES.reduce((acc, s) => {
-    (acc[s.path] = acc[s.path] || []).push(s);
+function detectType(source: SourceFile): keyof typeof TYPE_ICONS {
+  const url = source.url.toLowerCase();
+  const mime = (source.mimeType ?? '').toLowerCase();
+  if (mime.includes('javascript') || url.endsWith('.js') || url.endsWith('.mjs') || url.endsWith('.ts')) {
+    return 'js';
+  }
+  if (mime.includes('css') || url.endsWith('.css')) {
+    return 'css';
+  }
+  if (mime.startsWith('image/') || /\.(png|jpg|jpeg|svg|webp|gif|ico)$/.test(url)) {
+    return 'img';
+  }
+  return 'other';
+}
+
+function formatSize(size?: number | null): string {
+  if (size == null || Number.isNaN(size)) return '-';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function fileNameFromUrl(url: string): string {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    return parts.length > 0 ? parts[parts.length - 1] : parsed.hostname;
+  } catch {
+    const parts = url.split('/').filter(Boolean);
+    return parts.length > 0 ? parts[parts.length - 1] : url;
+  }
+}
+
+function pathFromUrl(url: string): string {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const pathname = parsed.pathname || '/';
+    const index = pathname.lastIndexOf('/');
+    return index > 0 ? pathname.slice(0, index + 1) : '/';
+  } catch {
+    const index = url.lastIndexOf('/');
+    return index > 0 ? url.slice(0, index + 1) : '/';
+  }
+}
+
+export function DevSources({ sources, onRefresh }: DevSourcesProps) {
+  const grouped = sources.reduce<Record<string, SourceFile[]>>((acc, source) => {
+    const path = pathFromUrl(source.url);
+    if (!acc[path]) {
+      acc[path] = [];
+    }
+    acc[path].push(source);
     return acc;
-  }, {} as Record<string, SourceFile[]>);
+  }, {});
 
   return (
-    <div className="flex flex-col h-full text-[11px] font-mono">
-      <div className="flex items-center gap-2 px-2 py-1 border-b border-border bg-card/50 shrink-0">
-        <span className="text-[10px] text-muted-foreground">{MOCK_SOURCES.length} files loaded</span>
+    <div className="flex h-full flex-col text-[11px] font-mono">
+      <div className="flex items-center justify-between border-b border-border/35 bg-card/50 px-2 py-1 shrink-0">
+        <span className="text-[10px] text-muted-foreground">{sources.length} files loaded</span>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+        >
+          <RefreshCw size={11} />
+          Refresh
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {Object.entries(grouped).map(([path, files]) => (
           <div key={path}>
-            <div className="px-2 py-1 bg-secondary/30 text-[9px] text-muted-foreground sticky top-0">{path}</div>
-            {files.map(f => {
-              const Icon = TYPE_ICONS[f.type];
+            <div className="sticky top-0 bg-secondary/30 px-2 py-1 text-[9px] text-muted-foreground">{path}</div>
+            {files.map(source => {
+              const type = detectType(source);
+              const Icon = TYPE_ICONS[type];
+              const fileName = fileNameFromUrl(source.url);
               return (
-                <div key={f.name} className="flex items-center gap-2 px-3 py-1 hover:bg-muted/20 transition-colors cursor-pointer">
-                  <Icon size={12} className={cn(TYPE_COLORS[f.type])} />
-                  <span className="text-foreground flex-1">{f.name}</span>
-                  <span className="text-muted-foreground text-[9px]">{f.size}</span>
+                <div
+                  key={source.id}
+                  className="flex cursor-pointer items-center gap-2 px-3 py-1 transition-colors hover:bg-muted/20"
+                >
+                  <Icon size={12} className={cn(TYPE_COLORS[type])} />
+                  <span className="flex-1 truncate text-foreground">{fileName}</span>
+                  <span className="text-[9px] text-muted-foreground">{formatSize(source.size)}</span>
                 </div>
               );
             })}

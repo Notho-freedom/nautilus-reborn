@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpDown,
   ExternalLink,
@@ -34,6 +34,12 @@ export function GitHubReposPanel({ onNavigate, onClose }: GitHubReposPanelProps)
   const [connection, setConnection] = useState(() => getGitHubConnectionConfig());
 
   const isConnected = Boolean(connection.token || connection.username);
+
+  const handleSearchInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -120,6 +126,7 @@ export function GitHubReposPanel({ onNavigate, onClose }: GitHubReposPanelProps)
       searchable
       searchValue={search}
       onSearchChange={setSearch}
+      onSearchKeyDown={handleSearchInputKeyDown}
       searchPlaceholder="Search repos..."
       onClose={onClose ?? (() => {})}
       menuItems={[
@@ -140,7 +147,7 @@ export function GitHubReposPanel({ onNavigate, onClose }: GitHubReposPanelProps)
 
         <div className="space-y-2">
           {filtered.map(repo => (
-            <button key={repo.id} onClick={() => (onNavigate ? onNavigate(repo.htmlUrl) : window.open(repo.htmlUrl, '_blank'))} className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-border space-y-1.5 hover:bg-notilus-surface-2 transition-colors duration-fast">
+            <button type="button" key={repo.id} onClick={() => (onNavigate ? onNavigate(repo.htmlUrl) : window.open(repo.htmlUrl, '_blank'))} className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-border space-y-1.5 hover:bg-notilus-surface-2 transition-colors duration-fast">
               <div className="flex items-center gap-1.5">
                 {repo.isPrivate ? <Lock size={10} className="text-warning" /> : <Globe size={10} className="text-muted-foreground" />}
                 <span className="text-xs font-body text-info font-semibold">{repo.fullName}</span>

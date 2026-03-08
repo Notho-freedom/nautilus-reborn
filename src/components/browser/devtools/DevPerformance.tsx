@@ -1,80 +1,130 @@
+import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { PerformanceMetrics } from '@/types/devtools';
 
-interface Metric {
+interface DevPerformanceProps {
+  metrics: PerformanceMetrics | null;
+  onRefresh: () => void;
+}
+
+interface MetricLine {
   name: string;
-  fullName: string;
-  value: number;
+  key: keyof PerformanceMetrics;
   unit: string;
-  target: number;
   good: number;
   poor: number;
 }
 
-const METRICS: Metric[] = [
-  { name: 'FCP', fullName: 'First Contentful Paint', value: 1.2, unit: 's', target: 1.8, good: 1.8, poor: 3.0 },
-  { name: 'LCP', fullName: 'Largest Contentful Paint', value: 2.1, unit: 's', target: 2.5, good: 2.5, poor: 4.0 },
-  { name: 'TTI', fullName: 'Time to Interactive', value: 3.4, unit: 's', target: 3.8, good: 3.8, poor: 7.3 },
-  { name: 'TBT', fullName: 'Total Blocking Time', value: 150, unit: 'ms', target: 200, good: 200, poor: 600 },
-  { name: 'CLS', fullName: 'Cumulative Layout Shift', value: 0.05, unit: '', target: 0.1, good: 0.1, poor: 0.25 },
+const METRIC_LINES: MetricLine[] = [
+  { name: 'FCP', key: 'firstContentfulPaint', unit: 'ms', good: 1800, poor: 3000 },
+  { name: 'LCP', key: 'largestContentfulPaint', unit: 'ms', good: 2500, poor: 4000 },
+  { name: 'TTI', key: 'timeToInteractive', unit: 'ms', good: 3800, poor: 7300 },
+  { name: 'TBT', key: 'totalBlockingTime', unit: 'ms', good: 200, poor: 600 },
+  { name: 'CLS', key: 'cumulativeLayoutShift', unit: '', good: 0.1, poor: 0.25 },
 ];
 
-function getColor(value: number, good: number, poor: number) {
+function valueColor(value: number | undefined, good: number, poor: number): string {
+  if (value == null || Number.isNaN(value)) return 'text-muted-foreground';
   if (value <= good) return 'text-green-400';
   if (value <= poor) return 'text-yellow-400';
   return 'text-red-400';
 }
 
-function getBarColor(value: number, good: number, poor: number) {
+function barColor(value: number | undefined, good: number, poor: number): string {
+  if (value == null || Number.isNaN(value)) return 'bg-muted';
   if (value <= good) return 'bg-green-500';
   if (value <= poor) return 'bg-yellow-500';
   return 'bg-red-500';
 }
 
-export function DevPerformance() {
-  return (
-    <div className="flex flex-col h-full text-[11px] font-mono p-3 overflow-y-auto scrollbar-thin">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">Core Web Vitals</div>
+function formatMetric(value: number | undefined, unit: string): string {
+  if (value == null || Number.isNaN(value)) return '-';
+  if (unit === 'ms' && value >= 1000) {
+    return `${(value / 1000).toFixed(2)}s`;
+  }
+  if (unit === '') {
+    return value.toFixed(3);
+  }
+  return `${Math.round(value)}${unit}`;
+}
 
-      <div className="grid grid-cols-5 gap-3 mb-4">
-        {METRICS.map(m => {
-          const pct = Math.min(100, (m.value / m.poor) * 100);
+function toPercent(value: number | undefined, poor: number): number {
+  if (value == null || Number.isNaN(value) || poor <= 0) return 0;
+  return Math.max(0, Math.min(100, (value / poor) * 100));
+}
+
+export function DevPerformance({ metrics, onRefresh }: DevPerformanceProps) {
+  return (
+    <div className="flex h-full flex-col overflow-y-auto p-3 text-[11px] font-mono scrollbar-thin">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Core Web Vitals</div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+        >
+          <RefreshCw size={11} />
+          Refresh
+        </button>
+      </div>
+
+      <div className="grid grid-cols-5 gap-3">
+        {METRIC_LINES.map(metric => {
+          const value = metrics?.[metric.key] as number | undefined;
+          const percentage = toPercent(value, metric.poor);
           return (
-            <div key={m.name} className="glass rounded-lg p-3 text-center">
-              <div className="text-[9px] text-muted-foreground mb-1">{m.name}</div>
-              <div className={cn("text-lg font-bold", getColor(m.value, m.good, m.poor))}>
-                {m.value}{m.unit}
+            <div key={metric.name} className="rounded-lg border border-border/35 bg-card/50 p-3 text-center">
+              <div className="mb-1 text-[9px] text-muted-foreground">{metric.name}</div>
+              <div className={cn('text-lg font-bold', valueColor(value, metric.good, metric.poor))}>
+                {formatMetric(value, metric.unit)}
               </div>
-              <div className="text-[8px] text-muted-foreground mt-0.5">{m.fullName}</div>
-              <div className="mt-2 h-1 rounded-full bg-secondary overflow-hidden">
-                <div className={cn("h-full rounded-full transition-all", getBarColor(m.value, m.good, m.poor))} style={{ width: `${pct}%` }} />
-              </div>
-              <div className="flex justify-between mt-0.5 text-[8px] text-muted-foreground">
-                <span>0</span><span>{m.poor}{m.unit}</span>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={cn('h-full rounded-full transition-all', barColor(value, metric.good, metric.poor))}
+                  style={{ width: `${percentage}%` }}
+                />
               </div>
             </div>
           );
         })}
       </div>
 
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Resource Breakdown</div>
-      <div className="space-y-1.5">
-        {[
-          { label: 'JavaScript', size: '245 KB', pct: 45 },
-          { label: 'CSS', size: '32 KB', pct: 6 },
-          { label: 'Images', size: '180 KB', pct: 33 },
-          { label: 'Fonts', size: '68 KB', pct: 12 },
-          { label: 'Other', size: '20 KB', pct: 4 },
-        ].map(r => (
-          <div key={r.label}>
-            <div className="flex justify-between text-[10px] mb-0.5">
-              <span className="text-foreground">{r.label}</span>
-              <span className="text-muted-foreground">{r.size} ({r.pct}%)</span>
-            </div>
-            <div className="h-1 rounded-full bg-secondary overflow-hidden">
-              <div className="h-full rounded-full notilus-gradient" style={{ width: `${r.pct}%` }} />
-            </div>
+      <div className="mt-4 rounded-lg border border-border/35 bg-card/50 p-3">
+        <div className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">Runtime Counters</div>
+        <div className="grid grid-cols-2 gap-2 text-[10px]">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">DOM Nodes</span>
+            <span className="text-foreground">{metrics?.domNodes ?? '-'}</span>
           </div>
-        ))}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Resources</span>
+            <span className="text-foreground">{metrics?.resources ?? '-'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Heap Total</span>
+            <span className="text-foreground">
+              {metrics?.jsHeapSize != null ? `${(metrics.jsHeapSize / 1024 / 1024).toFixed(1)} MB` : '-'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Heap Used</span>
+            <span className="text-foreground">
+              {metrics?.usedJsHeapSize != null ? `${(metrics.usedJsHeapSize / 1024 / 1024).toFixed(1)} MB` : '-'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Transfer Size</span>
+            <span className="text-foreground">
+              {metrics?.transferSize != null ? `${(metrics.transferSize / 1024).toFixed(1)} KB` : '-'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Page Load</span>
+            <span className="text-foreground">
+              {metrics?.pageLoadTime != null ? `${Math.round(metrics.pageLoadTime)}ms` : '-'}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

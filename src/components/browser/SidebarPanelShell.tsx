@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type KeyboardEvent, type ReactNode } from 'react';
 import { MoreVertical, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -15,6 +15,7 @@ export interface SidebarPanelShellProps {
   searchable?: boolean;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  onSearchKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
   searchPlaceholder?: string;
   filters?: { label: string; value: string }[];
   activeFilter?: string | null;
@@ -33,6 +34,7 @@ export function SidebarPanelShell({
   searchable = false,
   searchValue = '',
   onSearchChange,
+  onSearchKeyDown,
   searchPlaceholder = 'Search...',
   filters,
   activeFilter,
@@ -90,6 +92,7 @@ export function SidebarPanelShell({
             <input
               value={searchValue}
               onChange={e => onSearchChange?.(e.target.value)}
+              onKeyDown={onSearchKeyDown}
               placeholder={searchPlaceholder}
               className="flex-1 bg-transparent text-xs font-body text-foreground placeholder:text-muted-foreground outline-none"
             />

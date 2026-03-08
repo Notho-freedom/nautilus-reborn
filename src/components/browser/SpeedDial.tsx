@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Globe, Clock, Zap, Quote, Terminal, Plus, Wrench, ShieldCheck } from 'lucide-react';
 import { getBookmarks, subscribeToBookmarksUpdates } from '@/lib/bookmarks';
 import { getHistoryItems, subscribeToHistoryUpdates } from '@/lib/history';
@@ -61,6 +61,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
   const [wallpaperStatus, setWallpaperStatus] = useState<WallpaperStatus>('idle');
   const [favorites, setFavorites] = useState(DEFAULT_FAVORITES);
   const [recent, setRecent] = useState(DEFAULT_RECENT);
+  const submitIntentRef = useRef(false);
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
@@ -139,6 +140,8 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!submitIntentRef.current) return;
+    submitIntentRef.current = false;
     if (searchQuery.trim()) {
       const encoded = encodeURIComponent(searchQuery);
       const target =
@@ -227,10 +230,29 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
+            onBlur={() => {
+              submitIntentRef.current = false;
+              setSearchFocused(false);
+            }}
+            onKeyDown={event => {
+              if (event.key === 'Enter' && !event.isComposing) {
+                submitIntentRef.current = true;
+                return;
+              }
+              submitIntentRef.current = false;
+            }}
             placeholder={searchPlaceholder}
             className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none selection:bg-primary selection:text-primary-foreground"
           />
+          <button
+            type="submit"
+            onClick={() => {
+              submitIntentRef.current = true;
+            }}
+            className="h-7 rounded-md px-2 text-[11px] text-primary transition-colors hover:bg-primary/10"
+          >
+            Search
+          </button>
         </div>
       </form>
 

@@ -92,6 +92,19 @@ const api: BrowserDesktopApi = {
       ipcRenderer.removeListener(BrowserIpcChannels.gitStateChanged, handler);
     };
   },
+  getBackendLabState: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabGetState),
+  startBackendLab: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabStart),
+  stopBackendLab: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabStop),
+  restartBackendLab: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabRestart),
+  onBackendLabStateChanged: listener => {
+    const handler = (_event: Electron.IpcRendererEvent, state: Parameters<typeof listener>[0]) => {
+      listener(state);
+    };
+    ipcRenderer.on(BrowserIpcChannels.backendLabStateChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(BrowserIpcChannels.backendLabStateChanged, handler);
+    };
+  },
   getSystemMetrics: () => ipcRenderer.invoke(BrowserIpcChannels.systemGetMetrics),
   onSystemMetricsChanged: listener => {
     const handler = (

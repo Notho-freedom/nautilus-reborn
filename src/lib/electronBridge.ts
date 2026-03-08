@@ -1,4 +1,5 @@
 import type {
+  BackendLabSidecarState,
   BrowserDesktopApi,
   DevToolsDockState,
   DevToolsDockWidthRequest,
@@ -331,6 +332,38 @@ export function onDesktopGitStateChanged(
   const bridge = getDesktopBridge();
   if (!bridge) return () => {};
   return bridge.onGitStateChanged(listener);
+}
+
+export async function desktopGetBackendLabState(): Promise<BackendLabSidecarState | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.getBackendLabState();
+}
+
+export async function desktopStartBackendLab(): Promise<BackendLabSidecarState | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.startBackendLab();
+}
+
+export async function desktopStopBackendLab(): Promise<BackendLabSidecarState | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.stopBackendLab();
+}
+
+export async function desktopRestartBackendLab(): Promise<BackendLabSidecarState | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.restartBackendLab();
+}
+
+export function onDesktopBackendLabStateChanged(
+  listener: (snapshot: BackendLabSidecarState) => void
+): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge) return () => {};
+  return bridge.onBackendLabStateChanged(listener);
 }
 
 export async function desktopGetSystemMetrics(): Promise<SystemMetricsSnapshot | null> {
