@@ -177,7 +177,115 @@ export async function fetchGitHubRepos(
   return sortRepos(filtered, options.sortBy);
 }
 
+// ── Repo contents API ──
+
+export interface GitHubContentItem {
+  name: string;
+  path: string;
+  type: 'file' | 'dir' | 'symlink' | 'submodule';
+  size: number;
+  sha: string;
+  htmlUrl: string;
+  downloadUrl: string | null;
+}
+
+interface GitHubApiContentItem {
+  name: string;
+  path: string;
+  type: 'file' | 'dir' | 'symlink' | 'submodule';
+  size: number;
+  sha: string;
+  html_url: string;
+  download_url: string | null;
+}
+
+function toContentItem(raw: GitHubApiContentItem): GitHubContentItem {
+  return {
+    name: raw.name,
+    path: raw.path,
+    type: raw.type,
+    size: raw.size,
+    sha: raw.sha,
+    htmlUrl: raw.html_url,
+    downloadUrl: raw.download_url,
+  };
+}
+
+function sortContents(items: GitHubContentItem[]): GitHubContentItem[] {
+  return [...items].sort((a, b) => {
+    if (a.type === 'dir' && b.type !== 'dir') return -1;
+    if (a.type !== 'dir' && b.type === 'dir') return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+export async function fetchRepoContents(
+  owner: string,
+  repo: string,
+  path: string,
+  token?: string
+): Promise<GitHubContentItem[]> {
+  const encodedPath = path ? encodeURIComponent(path).replace(/%2F/g, '/') : '';
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}`;
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    let details = `GitHub API ${response.status}`;
+    try {
+      const payload = (await response.json()) as { message?: string };
+      if (payload.message) details = `${details}: ${payload.message}`;
+    } catch { /* ignore */ }
+    throw new Error(details);
+  }
+
+  const payload = await response.json();
+  const items = Array.isArray(payload) ? payload : [payload];
+  return sortContents((items as GitHubApiContentItem[]).map(toContentItem));
+}
+
+export async function fetchFileContent(
+  owner: string,
+  repo: string,
+  path: string,
+  token?: string
+): Promise<string> {
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}`;
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github.v3.raw',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub API ${response.status}`);
+  }
+
+  return response.text();
+}
+
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function formatRelativeDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSeconds < 60) return 'just now';
+  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+  if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+  if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)}d ago`;
+  return `${Math.floor(diffSeconds / 604800)}w ago`;
+}
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) return '';
 
