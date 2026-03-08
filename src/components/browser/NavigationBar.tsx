@@ -46,6 +46,12 @@ interface NavigationBarProps {
   onOpenDownloads?: () => void;
   onOpenSettings?: () => void;
   onToggleAI: () => void;
+  userAvatarUrl?: string;
+  userDisplayName?: string;
+  userEmail?: string;
+  isAuthenticated?: boolean;
+  onSignIn?: () => void;
+  onSignOut?: () => void;
 }
 
 function ActionHint({
