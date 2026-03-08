@@ -369,12 +369,10 @@ export function BrowserShell() {
         onOpenExtensions={() => browser.toggleSidebar('extensions')}
         onOpenSettings={() => browser.toggleSidebar('settings')}
         onToggleAI={browser.toggleAiPanel}
-        isAuthenticated={auth.isAuthenticated}
-        userAvatarUrl={auth.profile.avatar_url}
-        userDisplayName={auth.profile.display_name}
-        userEmail={auth.profile.email}
-        onSignIn={() => void auth.signInWithGoogle()}
-        onSignOut={() => void auth.signOut()}
+        isGitHubConnected={auth.isConnected}
+        githubUsername={auth.credentials.username}
+        onOpenGitHub={() => browser.toggleSidebar('github')}
+        onDisconnectGitHub={auth.disconnect}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -397,11 +395,9 @@ export function BrowserShell() {
               onNavigate={browser.navigateTo}
               onOpenPanel={handleOpenPanel}
               onCreateTab={browser.addTab}
-              isAuthenticated={auth.isAuthenticated}
-              githubToken={auth.profile.github_token}
-              githubUsername={auth.profile.github_username}
-              onSignIn={() => void auth.signInWithGoogle()}
-              onSaveGitHubCredentials={(token, username) => void auth.updateGitHubCredentials(token, username)}
+              githubToken={auth.credentials.token}
+              githubUsername={auth.credentials.username}
+              onSaveGitHubCredentials={auth.saveCredentials}
             />
           </div>
         )}

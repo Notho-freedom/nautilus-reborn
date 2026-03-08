@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Github,
   Home,
   Languages,
   Loader2,
@@ -46,12 +47,10 @@ interface NavigationBarProps {
   onOpenDownloads?: () => void;
   onOpenSettings?: () => void;
   onToggleAI: () => void;
-  userAvatarUrl?: string;
-  userDisplayName?: string;
-  userEmail?: string;
-  isAuthenticated?: boolean;
-  onSignIn?: () => void;
-  onSignOut?: () => void;
+  isGitHubConnected?: boolean;
+  githubUsername?: string;
+  onOpenGitHub?: () => void;
+  onDisconnectGitHub?: () => void;
 }
 
 function ActionHint({
@@ -94,12 +93,10 @@ export function NavigationBar({
   onOpenDownloads,
   onOpenSettings,
   onToggleAI,
-  userAvatarUrl,
-  userDisplayName,
-  userEmail,
-  isAuthenticated = false,
-  onSignIn,
-  onSignOut,
+  isGitHubConnected = false,
+  githubUsername,
+  onOpenGitHub,
+  onDisconnectGitHub,
 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -352,46 +349,56 @@ export function NavigationBar({
         </button>
       </ActionHint>
       <Popover>
-        <ActionHint label={isAuthenticated ? userDisplayName || 'Profile' : 'Sign in'}>
+        <ActionHint label={isGitHubConnected ? `GitHub: ${githubUsername || 'connected'}` : 'Connect GitHub'}>
           <PopoverTrigger
-            aria-label="Profile"
-            className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors duration-fast overflow-hidden"
-          >
-            {isAuthenticated && userAvatarUrl ? (
-              <img src={userAvatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
-            ) : (
-              <User size={15} />
+            aria-label="GitHub"
+            className={cn(
+              'h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-fast overflow-hidden',
+              isGitHubConnected
+                ? 'text-foreground hover:bg-primary/10'
+                : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'
             )}
+          >
+            <Github size={15} />
           </PopoverTrigger>
         </ActionHint>
         <PopoverContent align="end" sideOffset={8} className="w-56 p-3 glass border-border">
-          {isAuthenticated ? (
+          {isGitHubConnected ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                {userAvatarUrl && <img src={userAvatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />}
+                <Github size={16} className="text-foreground shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs font-display text-foreground truncate">{userDisplayName || 'User'}</p>
-                  <p className="text-[10px] font-body text-muted-foreground truncate">{userEmail}</p>
+                  <p className="text-xs font-display text-foreground truncate">{githubUsername || 'Connected'}</p>
+                  <p className="text-[10px] font-body text-muted-foreground">GitHub PAT active</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={onSignOut}
-                className="w-full h-8 rounded-md bg-notilus-surface-1 border border-border text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
-              >
-                Sign out
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onOpenGitHub}
+                  className="flex-1 h-8 rounded-md bg-notilus-surface-1 border border-border text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                >
+                  Repos
+                </button>
+                <button
+                  type="button"
+                  onClick={onDisconnectGitHub}
+                  className="flex-1 h-8 rounded-md bg-notilus-surface-1 border border-border text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                >
+                  Disconnect
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-[11px] font-body text-muted-foreground">Sign in to sync your data across sessions.</p>
+              <p className="text-[11px] font-body text-muted-foreground">Connect your GitHub to browse repositories.</p>
               <button
                 type="button"
-                onClick={onSignIn}
+                onClick={onOpenGitHub}
                 className="w-full h-9 rounded-lg notilus-gradient text-xs font-display text-primary-foreground tracking-wider flex items-center justify-center gap-2"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                Sign in with Google
+                <Github size={14} />
+                Connect GitHub
               </button>
             </div>
           )}
