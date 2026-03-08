@@ -167,6 +167,41 @@ describe('useBrowserState desktop mode', () => {
       onWindowStateChanged: vi.fn(() => () => {}),
       onDownloadsChanged: vi.fn(() => () => {}),
       onGitStateChanged: vi.fn(() => () => {}),
+      getBackendLabState: vi.fn().mockResolvedValue({
+        isRunning: false, isStarting: false, isStopping: false, error: null,
+        backendPath: null, healthUrl: '', port: 0, logs: [],
+        lastHealthyAt: null, restartAttempts: 0,
+      }),
+      startBackendLab: vi.fn().mockResolvedValue({
+        isRunning: false, isStarting: false, isStopping: false, error: null,
+        backendPath: null, healthUrl: '', port: 0, logs: [],
+        lastHealthyAt: null, restartAttempts: 0,
+      }),
+      stopBackendLab: vi.fn().mockResolvedValue({
+        isRunning: false, isStarting: false, isStopping: false, error: null,
+        backendPath: null, healthUrl: '', port: 0, logs: [],
+        lastHealthyAt: null, restartAttempts: 0,
+      }),
+      restartBackendLab: vi.fn().mockResolvedValue({
+        isRunning: false, isStarting: false, isStopping: false, error: null,
+        backendPath: null, healthUrl: '', port: 0, logs: [],
+        lastHealthyAt: null, restartAttempts: 0,
+      }),
+      onBackendLabStateChanged: vi.fn(() => () => {}),
+      getSystemMetrics: vi.fn().mockResolvedValue({
+        cpu: 0, ram: 0, gpu: 0, gpuTemp: null,
+        networkUp: 0, networkDown: 0, battery: null, batteryCharging: false,
+      }),
+      onSystemMetricsChanged: vi.fn(() => () => {}),
+      studioSetWebviewViewport: vi.fn().mockResolvedValue(undefined),
+      studioGetWebviewViewport: vi.fn().mockResolvedValue(null),
+      onStudioWebviewViewportChanged: vi.fn(() => () => {}),
+      openTerminalSession: vi.fn().mockResolvedValue({ sessionId: 'test-session' }),
+      sendTerminalInput: vi.fn().mockResolvedValue(undefined),
+      resizeTerminalSession: vi.fn().mockResolvedValue(undefined),
+      closeTerminalSession: vi.fn().mockResolvedValue(undefined),
+      onTerminalData: vi.fn(() => () => {}),
+      onTerminalExit: vi.fn(() => () => {}),
     };
     window.notilusDesktop = bridge;
   });

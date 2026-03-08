@@ -42,7 +42,7 @@ function formatTimestamp(timestamp: number): string {
     minute: '2-digit',
     second: '2-digit',
     fractionalSecondDigits: 3,
-  });
+  } as Intl.DateTimeFormatOptions);
 }
 
 export function DevConsole({ logs, onExecute, onClear }: DevConsoleProps) {

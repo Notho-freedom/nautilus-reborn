@@ -41,7 +41,7 @@ type BackendLabTabId =
   | 'capture'
   | 'console';
 
-const TABS: Array<{ id: BackendLabTabId; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+const TABS: Array<{ id: BackendLabTabId; label: string; icon: React.ComponentType<any> }> = [
   { id: 'overview', label: 'Overview', icon: ChartBar },
   { id: 'servers', label: 'Servers', icon: Server },
   { id: 'routes', label: 'Routes', icon: Route },

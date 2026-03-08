@@ -235,7 +235,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
               setSearchFocused(false);
             }}
             onKeyDown={event => {
-              if (event.key === 'Enter' && !event.isComposing) {
+              if (event.key === 'Enter' && !(event.nativeEvent as KeyboardEvent).isComposing) {
                 submitIntentRef.current = true;
                 return;
               }
