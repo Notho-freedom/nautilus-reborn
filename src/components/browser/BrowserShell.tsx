@@ -373,6 +373,7 @@ export function BrowserShell() {
         githubUsername={auth.credentials.username}
         onOpenGitHub={() => browser.toggleSidebar('github')}
         onDisconnectGitHub={auth.disconnect}
+        onSignInWithGitHub={auth.signInWithGitHub}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -398,6 +399,7 @@ export function BrowserShell() {
               githubToken={auth.credentials.token}
               githubUsername={auth.credentials.username}
               onSaveGitHubCredentials={auth.saveCredentials}
+              onSignInWithGitHub={auth.signInWithGitHub}
             />
           </div>
         )}

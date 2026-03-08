@@ -51,6 +51,7 @@ interface NavigationBarProps {
   githubUsername?: string;
   onOpenGitHub?: () => void;
   onDisconnectGitHub?: () => void;
+  onSignInWithGitHub?: () => void;
 }
 
 function ActionHint({
@@ -97,6 +98,7 @@ export function NavigationBar({
   githubUsername,
   onOpenGitHub,
   onDisconnectGitHub,
+  onSignInWithGitHub,
 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -390,16 +392,22 @@ export function NavigationBar({
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <p className="text-[11px] font-body text-muted-foreground">Connect your GitHub to browse repositories.</p>
+            <div className="space-y-3">
+              <p className="text-[11px] font-body text-muted-foreground">Sign in to access your repositories and sync your profile.</p>
               <button
                 type="button"
-                onClick={onOpenGitHub}
+                onClick={onSignInWithGitHub}
                 className="w-full h-9 rounded-lg notilus-gradient text-xs font-display text-primary-foreground tracking-wider flex items-center justify-center gap-2"
               >
                 <Github size={14} />
-                Connect GitHub
+                Sign in with GitHub
               </button>
+              <div className="text-[10px] font-body text-muted-foreground text-center">
+                or{' '}
+                <button type="button" onClick={onOpenGitHub} className="text-primary hover:underline">
+                  use a Personal Access Token
+                </button>
+              </div>
             </div>
           )}
         </PopoverContent>

@@ -35,6 +35,7 @@ interface SidebarPanelProps {
   githubToken?: string;
   githubUsername?: string;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
+  onSignInWithGitHub?: () => void;
 }
 
 type GenericPanelProps = {
@@ -46,6 +47,7 @@ type GenericPanelProps = {
   githubToken?: string;
   githubUsername?: string;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
+  onSignInWithGitHub?: () => void;
 };
 
 const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
@@ -100,6 +102,7 @@ export function SidebarPanel({
   githubToken,
   githubUsername,
   onSaveGitHubCredentials,
+  onSignInWithGitHub,
 }: SidebarPanelProps) {
   const [width, setWidth] = useState(() => readPanelWidth());
   const isResizing = useRef(false);
@@ -182,7 +185,7 @@ export function SidebarPanel({
         panel === 'monitor' ? (
           <Component stats={stats} onClose={onClosePanel} />
         ) : isGitHubPanel ? (
-          <Component onNavigate={onNavigate} onClose={onClosePanel} githubToken={githubToken} githubUsername={githubUsername} onSaveGitHubCredentials={onSaveGitHubCredentials} />
+          <Component onNavigate={onNavigate} onClose={onClosePanel} githubToken={githubToken} githubUsername={githubUsername} onSaveGitHubCredentials={onSaveGitHubCredentials} onSignInWithGitHub={onSignInWithGitHub} />
         ) : isBookmarksPanel || isHistoryPanel || isFlouPanel ? (
           <Component onNavigate={onNavigate} onClose={onClosePanel} />
         ) : (
