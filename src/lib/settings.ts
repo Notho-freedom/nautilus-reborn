@@ -40,6 +40,7 @@ export interface BrowserSettings {
   searchEngine: SearchEngineId;
   notificationsEnabled: boolean;
   enabledWebServices: WebServiceId[];
+  wallpaperInterval: number;
 }
 
 const SETTINGS_KEY = 'notilus_settings';
@@ -61,6 +62,7 @@ const DEFAULT_SETTINGS: BrowserSettings = {
   searchEngine: 'duckduckgo',
   notificationsEnabled: true,
   enabledWebServices: [...WEB_SERVICE_IDS],
+  wallpaperInterval: 30,
 };
 
 const THEME_PRIMARY: Record<AccentThemeId, string> = {
@@ -117,6 +119,10 @@ function sanitizeSettings(candidate: Partial<BrowserSettings>): BrowserSettings 
   );
   if (settings.enabledWebServices.length === 0) {
     settings.enabledWebServices = [...DEFAULT_SETTINGS.enabledWebServices];
+  }
+
+  if (typeof settings.wallpaperInterval !== 'number' || settings.wallpaperInterval < 5) {
+    settings.wallpaperInterval = DEFAULT_SETTINGS.wallpaperInterval;
   }
 
   return settings;

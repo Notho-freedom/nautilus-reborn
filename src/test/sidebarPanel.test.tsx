@@ -12,6 +12,13 @@ const stats = {
   networkDown: 12.4,
   battery: 80,
   batteryCharging: true,
+  networkOnline: true,
+  networkLatency: 12,
+  networkJitter: 3,
+  networkPacketLoss: 0,
+  networkInterface: 'Wi-Fi',
+  networkQuality: 'good' as const,
+  updatedAt: new Date().toISOString(),
 };
 
 describe('SidebarPanel web service integration', () => {

@@ -3,7 +3,7 @@ import { Search, Globe, Clock, Zap, Quote, Terminal, Plus, Wrench, ShieldCheck }
 import { getBookmarks, subscribeToBookmarksUpdates } from '@/lib/bookmarks';
 import { getHistoryItems, subscribeToHistoryUpdates } from '@/lib/history';
 import { getSettings, subscribeToSettingsUpdates, type BrowserSettings } from '@/lib/settings';
-import { resolveInitialWallpaper } from '@/lib/defaultWallpapers';
+import { resolveInitialWallpaper, pickRandomDefaultWallpaper } from '@/lib/defaultWallpapers';
 
 interface SpeedDialProps {
   onNavigate: (url: string) => void;
@@ -112,6 +112,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
     return subscribeToSettingsUpdates(refreshSettings);
   }, []);
 
+  // Wallpaper init
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -130,6 +131,19 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
 
     setWallpaperUrl(resolved);
     setWallpaperStatus('loading');
+  }, [homePageStyle]);
+
+  // Wallpaper auto-rotation
+  useEffect(() => {
+    if (homePageStyle !== 'modern') return;
+    const intervalSeconds = getSettings().wallpaperInterval || 30;
+    const timer = setInterval(() => {
+      const next = pickRandomDefaultWallpaper();
+      setWallpaperUrl(next);
+      setWallpaperStatus('loading');
+      window.localStorage.setItem(SPEED_DIAL_WALLPAPER_KEY, next);
+    }, intervalSeconds * 1000);
+    return () => clearInterval(timer);
   }, [homePageStyle]);
 
   const searchPlaceholder = useMemo(() => {
@@ -220,9 +234,13 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
       <form onSubmit={handleSearch} className="w-full max-w-lg mb-10 relative z-10 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
         <div
           className={`flex items-center h-12 rounded-xl border px-4 gap-3 transition-colors duration-fast ${
-            searchFocused
-              ? 'bg-notilus-surface-1 border-primary/50'
-              : 'bg-transparent border-transparent hover:bg-primary/10'
+            showModernWallpaper
+              ? (searchFocused
+                ? 'bg-notilus-surface-1 border-primary/50'
+                : 'bg-notilus-surface-1/90 border-border/50 hover:bg-notilus-surface-1')
+              : (searchFocused
+                ? 'bg-notilus-surface-1 border-primary/50'
+                : 'bg-transparent border-transparent hover:bg-primary/10')
           }`}
         >
           <Search size={18} className="text-muted-foreground" />
@@ -235,7 +253,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
               setSearchFocused(false);
             }}
             onKeyDown={event => {
-              if (event.key === 'Enter' && !event.isComposing) {
+              if (event.key === 'Enter' && !(event.nativeEvent as KeyboardEvent).isComposing) {
                 submitIntentRef.current = true;
                 return;
               }

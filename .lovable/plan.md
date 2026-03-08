@@ -1,88 +1,143 @@
+# Plan : Corrections UX Notilus
 
+## 1. Persistance des onglets (localStorage)
 
-# Plan: Corrections UX, build fixes, Settings redesign, sidebar web icons en bas
+**Fichier** : `src/hooks/useBrowserState.ts`
 
-## 1. Fix tous les build errors (priorité absolue)
+- Sauvegarder `localTabs` et `localActiveTabId` dans `localStorage` (`notilus_tabs` / `notilus_active_tab`)
+- Au montage, restaurer depuis localStorage au lieu de partir avec un seul onglet par défaut
+- Écrire dans localStorage à chaque changement de `localTabs` et `localActiveTabId` (via `useEffect`)
+- Ne persister que les données sérialisables (id, title, url, kind) — pas isLoading etc.
 
-### `src/lib/electronBridge.ts` (lignes 21-27)
-- Les types Terminal* sont importés depuis `browser-contract` mais ne sont pas ré-exportés — changer l'import pour les prendre depuis `../../shared/terminal-contract` directement.
+## 2. Onglets : bouton fermer n'occupe pas d'espace réservé
 
-### `src/components/browser/BackendLabPanel.tsx` (ligne 44)
-- Le type `{ size?: number }` est incompatible avec LucideIcon. Changer le type icon dans `TABS` en `React.ComponentType<any>` ou `LucideIcon`.
+**Fichier** : `src/components/browser/TopChromeBar.tsx`
 
-### `src/components/browser/LighthousePanel.tsx` (ligne 91)
-- `raw` est typé `| null` mais affecté à un `unknown`. Ajouter un cast `as typeof raw` après le `.catch(() => null)`.
+- Le bouton close doit être en `position: absolute` à droite de l'onglet, pas dans le flux
+- Le titre (`<span>`) occupe tout l'espace disponible après l'icône
+- Le close apparaît uniquement au hover (`opacity-0 group-hover:opacity-100`) avec un fond semi-transparent pour ne pas masquer le texte
+- En mode `icon-only`, pas de close du tout (déjà le cas)
 
-### `src/components/browser/NavigationBar.tsx` (ligne 244) et `SpeedDial.tsx` (ligne 238)
-- `event.isComposing` n'existe pas sur `React.KeyboardEvent`. Utiliser `(event.nativeEvent as KeyboardEvent).isComposing` ou `event.nativeEvent.isComposing`.
+**Fichier** : `src/components/browser/TopChromeBar.tsx` (hover card)
 
-### `src/components/browser/devtools/DevConsole.tsx` (ligne 44)
-- `fractionalSecondDigits` n'existe pas dans le type `DateTimeFormatOptions`. Caster les options en `Intl.DateTimeFormatOptions & { fractionalSecondDigits?: number }`.
+- Supprimer le message "No tabs from this domain" — si `sameDomainTabs` est vide, ne pas afficher la section liste du tout (garder juste le titre + URL)
 
-### `src/test/sidebarPanel.test.tsx` (lignes 6-15)
-- L'objet `stats` manque les propriétés réseau. Ajouter les champs manquants : `networkOnline`, `networkLatency`, `networkJitter`, `networkPacketLoss`, `networkInterface`, `networkQuality`, `updatedAt`.
+## 3. Barre d'adresse : icônes sans couleur sauf si actives
 
-### `src/test/useBrowserState.desktop.test.tsx` (lignes 26-170)
-- Le mock `bridge` manque les méthodes `getBackendLabState`, `startBackendLab`, `stopBackendLab`, `restartBackendLab`, `onBackendLabStateChanged`, `getSystemMetrics`, `onSystemMetricsChanged`, `studioSetWebviewViewport`, `studioGetWebviewViewport`, `onStudioWebviewViewportChanged`, `openTerminalSession`, `sendTerminalInput`, `resizeTerminalSession`, `closeTerminalSession`, `onTerminalData`, `onTerminalExit`. Ajouter ces mocks.
+**Fichier** : `src/components/browser/NavigationBar.tsx`
 
-### `electron/main/backend-sidecar-manager.ts` (ligne 297)
-- `replaceAll` nécessite ES2021. Remplacer par `.split(x).join(y)` ou ajouter `es2021` au `lib` dans `tsconfig.node.json`.
+- Le composant `UrlActionButton` : quand `active` est false, utiliser `text-muted-foreground` (déjà le cas)
+- Quand `active` est true : utiliser `text-primary` (rose/secondaire) pour le favori rempli, `text-green-500` pour le ad-blocker actif
+- Passer une prop `activeColor` ou conditionner directement dans les usages
 
-## 2. Sidebar : icônes web en bas
+## 4. Sidebar : retirer les bordures des boutons
 
-**`src/components/browser/DevToolsSidebar.tsx`**
-- Déplacer la section web services après le `<div className="flex-1" />` (le spacer), juste avant le bouton collapse. Ainsi les web services viennent du bas vers le haut.
+**Fichier** : `src/components/browser/DevToolsSidebar.tsx`
 
-## 3. Bottom bar : pas d'ouverture de panels latéraux
+- Retirer `border border-primary/50` du style actif des boutons sidebar
+- Garder uniquement le fond `bg-primary/20` et `text-white` pour l'état actif
+- Idem pour les boutons web services
 
-**`src/components/browser/StatusBar.tsx`** et **`BrowserShell.tsx`**
-- Les éléments de la bottom bar qui ouvrent des choses (Labs, Tools) doivent ouvrir des overlays de type DevTools (en bas, au-dessus du contenu), pas des panels latéraux.
-- Ajouter des callbacks `onOpenBottomOverlay` pour Frontend Lab, Backend Lab, Lighthouse, etc.
-- Dans `BrowserShell`, créer un state `bottomOverlayPanel` qui rend le panneau correspondant en overlay absolu en bas (comme le DevTools Notilus), pas via le système de sidebar.
+## 5. Tooltips/Popovers au-dessus de tout
 
-## 4. Settings : redesign complet
+**Fichier** : `src/index.css`
 
-**`src/components/browser/SettingsPanel.tsx`**
-- Refonte complète avec un design moderne inspiré de navigateurs comme Arc/Vivaldi :
-  - Navigation par sections dans la sidebar gauche du panel (liste verticale de sections)
-  - Contenu à droite qui scroll, chaque section bien séparée
-  - Cards avec effets glass, icônes pour chaque section
-  - Espacement généreux, typographie hiérarchisée
-  - Section "Home Page" enrichie : ajout du réglage d'intervalle de changement de wallpaper, possibilité de changer le wallpaper manuellement
-  - Section "About" avec le vrai logo `/logo_n_no_bg.png`
-- Ajouter dans settings.ts un nouveau champ `wallpaperInterval` (durée en secondes, default 30)
+- Ajouter des règles CSS pour forcer les portails Radix (tooltips, popovers, hover cards) à un z-index très élevé (z-[9999])
+- Cibler `[data-radix-popper-content-wrapper]` avec `z-index: 9999 !important`
 
-## 5. SpeedDial : search bar standard sur wallpaper + rotation wallpaper
+## 6. Panneaux latéraux en overlay + redimensionnables
 
-**`src/components/browser/SpeedDial.tsx`**
-- Sur le style "modern" (avec wallpaper), la search bar doit avoir un fond opaque par défaut (`bg-notilus-surface-1 border-border`) au lieu de transparent.
-- Ajouter la rotation automatique des wallpapers basée sur le `wallpaperInterval` des settings.
-- Déplacer la météo et widgets utiles (date, quote) directement sur la page d'accueil (pas dans un panel séparé).
+**Fichier** : `src/components/browser/BrowserShell.tsx`
 
-**`src/lib/settings.ts`**
-- Ajouter `wallpaperInterval: number` (default 30) dans `BrowserSettings`.
+- Le `SidebarPanel` ne doit plus pousser le contenu : le placer en `position: absolute` (ou `fixed`) par-dessus la zone de contenu, aligné à gauche après la sidebar d'icônes
+- Ajouter un handle de resize (bordure droite draggable)
+- Persister la largeur dans localStorage (`notilus_panel_width`)
 
-## 6. Widget Panel → supprimé de la sidebar
+**Fichier** : `src/components/browser/SidebarPanel.tsx`
 
-**`src/components/browser/DevToolsSidebar.tsx`**
-- Retirer `widgets` de `SIDEBAR_ITEMS`. Les infos utiles (météo, horloge, quotes) sont déjà sur la page d'accueil.
+- Créer un composant wrapper réutilisable `SidebarPanelShell` avec :
+  - Header avec titre, bouton fermer, bouton options (dropdown)
+  - Zone de recherche optionnelle (prop `searchable`)
+  - Zone de filtres optionnelle (prop `filters`)
+  - Slot pour le contenu enfant
+  - Handle de resize à droite
+- Tous les panneaux existants (Bookmarks, History, Downloads, etc.) utiliseront ce shell au lieu de dupliquer leur propre header
+
+## 7. Composant `SidebarPanelShell` réutilisable
+
+**Nouveau fichier** : `src/components/browser/SidebarPanelShell.tsx`
+
+```text
+┌─────────────────────────────┐
+│ [icon] TITRE      [⋮] [✕]  │  ← header fixe
+├─────────────────────────────┤
+│ 🔍 Recherche...             │  ← optionnel (searchable)
+├─────────────────────────────┤
+│ [Filtre1] [Filtre2] [All]   │  ← optionnel (filters)
+├─────────────────────────────┤
+│                             │
+│   Contenu (children)        │
+│                             │
+└─────────────────────────────┤ ← handle resize
+```
+
+Props :
+
+- `title: string`
+- `icon?: LucideIcon`
+- `searchable?: boolean` + `searchValue / onSearchChange`
+- `filters?: { label: string; value: string }[]` + `activeFilter / onFilterChange`
+- `onClose: () => void`
+- `menuItems?: { label: string; onClick: () => void }[]` (bouton options ⋮)
+- `children: ReactNode`
+
+Chaque panneau sera refactoré pour utiliser `<SidebarPanelShell>` au lieu de son propre header.
+
+## 8. Fix build errors
+
+**Fichier** : `src/components/browser/TopChromeBar.tsx`
+
+- Les 5 erreurs `WebkitAppRegion` : caster les styles en `React.CSSProperties` (comme fait dans TitleBar)
+
+**Fichier** : `src/test/tabLayout.test.ts`
+
+- Ligne 11 : remplacer `min` par `minWidth` et `max` par `maxWidth` dans les options
+
+## 9. Clés Supabase dans .env
+
+Le fichier `.env` est auto-généré et contient déjà `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`. Aucune modification manuelle nécessaire — le fichier ne doit pas être édité.  
+  
+NB: ASSURE TOI BIEN QUE LES OVERLAYS PASSENT BIEN AU DESSUS DE WEBCONTENTVIEW (PRIORITE MAX), JE NE PARLE PAS DE IFRAME
 
 ---
 
-## Fichiers à modifier
-- `src/lib/electronBridge.ts` (fix terminal imports)
-- `src/components/browser/BackendLabPanel.tsx` (fix icon type)
-- `src/components/browser/LighthousePanel.tsx` (fix type cast)
-- `src/components/browser/NavigationBar.tsx` (fix isComposing)
-- `src/components/browser/SpeedDial.tsx` (fix isComposing, search bar opaque, wallpaper rotation)
-- `src/components/browser/devtools/DevConsole.tsx` (fix fractionalSecondDigits)
-- `src/test/sidebarPanel.test.tsx` (add missing stats fields)
-- `src/test/useBrowserState.desktop.test.tsx` (add missing bridge mocks)
-- `electron/main/backend-sidecar-manager.ts` (fix replaceAll)
-- `src/components/browser/DevToolsSidebar.tsx` (web icons en bas, retirer widgets)
-- `src/components/browser/StatusBar.tsx` (bottom overlays au lieu de panels)
-- `src/components/browser/BrowserShell.tsx` (bottom overlay system)
-- `src/components/browser/SidebarPanel.tsx` (retirer widgets du panel map)
-- `src/components/browser/SettingsPanel.tsx` (redesign complet)
-- `src/lib/settings.ts` (ajouter wallpaperInterval)
+## Fichiers à créer
 
+- `src/components/browser/SidebarPanelShell.tsx`
+
+## Fichiers à modifier
+
+- `src/hooks/useBrowserState.ts` (persistance tabs)
+- `src/components/browser/TopChromeBar.tsx` (close button layout, hover card, TS fix)
+- `src/components/browser/NavigationBar.tsx` (couleurs actives)
+- `src/components/browser/DevToolsSidebar.tsx` (retirer bordures)
+- `src/components/browser/SidebarPanel.tsx` (overlay + resize)
+- `src/components/browser/BrowserShell.tsx` (layout overlay)
+- `src/components/browser/BookmarksPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/HistoryPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/DownloadsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/WidgetsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/ExtensionsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/DocumentationPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/MosaicPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/SystemMonitor.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/TerminalPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/LighthousePanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/GitPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/ApiDocsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/SettingsPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/StudioPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/UpdatesPanel.tsx` (utiliser SidebarPanelShell)
+- `src/components/browser/GitHubReposPanel.tsx` (utiliser SidebarPanelShell)
+- `src/index.css` (z-index tooltips)
+- `src/test/tabLayout.test.ts` (fix TS error)

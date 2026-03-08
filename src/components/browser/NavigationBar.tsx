@@ -241,7 +241,7 @@ export function NavigationBar({
               setFocused(false);
             }}
             onKeyDown={event => {
-              if (event.key === 'Enter' && !event.isComposing) {
+              if (event.key === 'Enter' && !(event.nativeEvent as KeyboardEvent).isComposing) {
                 submitIntentRef.current = true;
                 return;
               }

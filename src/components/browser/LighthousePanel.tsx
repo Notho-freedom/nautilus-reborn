@@ -88,7 +88,7 @@ async function collectAuditSnapshot(): Promise<AuditSnapshot> {
   } | null = null;
 
   if (activeWebview?.executeJavaScript) {
-    raw = await activeWebview.executeJavaScript(collectScript, true).catch(() => null);
+    raw = await activeWebview.executeJavaScript(collectScript, true).catch(() => null) as typeof raw;
   }
 
   if (!raw) {

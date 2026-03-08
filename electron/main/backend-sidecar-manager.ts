@@ -294,7 +294,7 @@ export class BackendSidecarManager {
 
   private resolveWorkingDirectory(executablePath: string): string {
     const exeDir = dirname(executablePath);
-    const normalizedExePath = normalize(executablePath).replaceAll('\\', '/').toLowerCase();
+    const normalizedExePath = normalize(executablePath).split('\\').join('/').toLowerCase();
     const backendSuffix = `/backend/dist/${BACKEND_EXE_NAME}`;
     if (normalizedExePath.endsWith(backendSuffix)) {
       return dirname(exeDir);

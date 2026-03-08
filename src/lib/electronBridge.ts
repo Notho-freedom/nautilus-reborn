@@ -18,6 +18,8 @@ import type {
   StudioScriptResult,
   StudioWebviewViewportRequest,
   StudioViewportRequest,
+} from '../../shared/browser-contract';
+import type {
   TerminalCloseRequest,
   TerminalDataEvent,
   TerminalExitEvent,
@@ -25,6 +27,8 @@ import type {
   TerminalResizeRequest,
   TerminalSessionOpenRequest,
   TerminalSessionOpenResponse,
+} from '../../shared/terminal-contract';
+import type {
   BrowserSnapshot,
   NavigateRequest,
   TabActionRequest,
