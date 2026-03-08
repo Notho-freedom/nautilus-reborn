@@ -220,9 +220,13 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
       <form onSubmit={handleSearch} className="w-full max-w-lg mb-10 relative z-10 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
         <div
           className={`flex items-center h-12 rounded-xl border px-4 gap-3 transition-colors duration-fast ${
-            searchFocused
-              ? 'bg-notilus-surface-1 border-primary/50'
-              : 'bg-transparent border-transparent hover:bg-primary/10'
+            showModernWallpaper
+              ? (searchFocused
+                ? 'bg-notilus-surface-1 border-primary/50'
+                : 'bg-notilus-surface-1/90 border-border/50 hover:bg-notilus-surface-1')
+              : (searchFocused
+                ? 'bg-notilus-surface-1 border-primary/50'
+                : 'bg-transparent border-transparent hover:bg-primary/10')
           }`}
         >
           <Search size={18} className="text-muted-foreground" />

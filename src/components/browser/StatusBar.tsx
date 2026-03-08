@@ -343,10 +343,6 @@ export function StatusBar({
             <DropdownMenuItem onClick={() => onOpenPanel('backend-lab')}>
               Backend Lab
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onOpenPanel('mosaic')}>Mosaic</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onOpenPanel('lighthouse')}>
-              Lighthouse
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

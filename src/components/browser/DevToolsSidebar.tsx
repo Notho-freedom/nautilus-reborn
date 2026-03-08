@@ -1,7 +1,7 @@
 import {
   Activity, Terminal, Code2, BookOpen, GitBranch,
   Gauge, Settings, ChevronLeft, ChevronRight,
-  Star, Clock, Download, LayoutGrid, Puzzle,
+  Star, Clock, Download, Puzzle,
   FileText, Wrench, RefreshCw,
   Youtube, MessageCircle, Bot, Send, Music,
   MonitorSmartphone, Github, type LucideIcon
@@ -25,7 +25,6 @@ const SIDEBAR_ITEMS = [
   { id: 'history', icon: Clock, label: 'History' },
   { id: 'downloads', icon: Download, label: 'Downloads' },
   { type: 'separator' as const },
-  { id: 'widgets', icon: LayoutGrid, label: 'Widgets' },
   { id: 'monitor', icon: Activity, label: 'System Monitor' },
   { id: 'terminal', icon: Terminal, label: 'Terminal' },
   { id: 'vscode', icon: Code2, label: 'Studio' },
@@ -109,8 +108,16 @@ export function DevToolsSidebar({
           );
         })}
 
-        <div className="w-6 h-px bg-sidebar-border my-1" />
-        <div className="text-[7px] font-display text-muted-foreground uppercase tracking-widest mb-0.5">Web</div>
+        {/* Spacer pushes web services + collapse to bottom */}
+        <div className="flex-1" />
+
+        {/* Web services at the bottom */}
+        {visibleWebServices.length > 0 && (
+          <>
+            <div className="w-6 h-px bg-sidebar-border my-1" />
+            <div className="text-[7px] font-display text-muted-foreground uppercase tracking-widest mb-0.5">Web</div>
+          </>
+        )}
 
         {visibleWebServices.map(svc => (
           <Tooltip key={svc.label}>
@@ -138,8 +145,6 @@ export function DevToolsSidebar({
             </TooltipContent>
           </Tooltip>
         ))}
-
-        <div className="flex-1" />
 
         <Tooltip>
           <TooltipTrigger asChild>
