@@ -399,6 +399,7 @@ export function BrowserShell() {
               githubToken={auth.credentials.token}
               githubUsername={auth.credentials.username}
               onSaveGitHubCredentials={auth.saveCredentials}
+              onSignInWithGitHub={auth.signInWithGitHub}
             />
           </div>
         )}
