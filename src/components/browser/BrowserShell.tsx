@@ -369,6 +369,12 @@ export function BrowserShell() {
         onOpenExtensions={() => browser.toggleSidebar('extensions')}
         onOpenSettings={() => browser.toggleSidebar('settings')}
         onToggleAI={browser.toggleAiPanel}
+        isAuthenticated={auth.isAuthenticated}
+        userAvatarUrl={auth.profile.avatar_url}
+        userDisplayName={auth.profile.display_name}
+        userEmail={auth.profile.email}
+        onSignIn={() => void auth.signInWithGoogle()}
+        onSignOut={() => void auth.signOut()}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
