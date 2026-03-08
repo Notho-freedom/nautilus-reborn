@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useAuth } from '@/hooks/useAuth';
 import { TopChromeBar } from './TopChromeBar';
 import { NavigationBar } from './NavigationBar';
 import { DevToolsSidebar } from './DevToolsSidebar';
