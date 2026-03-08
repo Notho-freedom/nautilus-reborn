@@ -32,6 +32,11 @@ interface SidebarPanelProps {
   onNavigate: (url: string) => void;
   onOpenPanel?: (panel: string) => void;
   onCreateTab?: (url: string, title?: string) => void;
+  isAuthenticated?: boolean;
+  githubToken?: string;
+  githubUsername?: string;
+  onSignIn?: () => void;
+  onSaveGitHubCredentials?: (token: string, username: string) => void;
 }
 
 type GenericPanelProps = {
@@ -40,6 +45,11 @@ type GenericPanelProps = {
   onClose?: () => void;
   onOpenPanel?: (panel: string) => void;
   onCreateTab?: (url: string, title?: string) => void;
+  isAuthenticated?: boolean;
+  githubToken?: string;
+  githubUsername?: string;
+  onSignIn?: () => void;
+  onSaveGitHubCredentials?: (token: string, username: string) => void;
 };
 
 const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
