@@ -188,7 +188,9 @@ export function SidebarPanel({
       {Component ? (
         panel === 'monitor' ? (
           <Component stats={stats} onClose={onClosePanel} />
-        ) : isBookmarksPanel || isHistoryPanel || isGitHubPanel || isFlouPanel ? (
+        ) : isGitHubPanel ? (
+          <Component onNavigate={onNavigate} onClose={onClosePanel} isAuthenticated={isAuthenticated} githubToken={githubToken} githubUsername={githubUsername} onSignIn={onSignIn} onSaveGitHubCredentials={onSaveGitHubCredentials} />
+        ) : isBookmarksPanel || isHistoryPanel || isFlouPanel ? (
           <Component onNavigate={onNavigate} onClose={onClosePanel} />
         ) : (
           <Component onClose={onClosePanel} />
