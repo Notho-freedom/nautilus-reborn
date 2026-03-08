@@ -62,6 +62,7 @@ const DEFAULT_SETTINGS: BrowserSettings = {
   searchEngine: 'duckduckgo',
   notificationsEnabled: true,
   enabledWebServices: [...WEB_SERVICE_IDS],
+  wallpaperInterval: 30,
 };
 
 const THEME_PRIMARY: Record<AccentThemeId, string> = {
