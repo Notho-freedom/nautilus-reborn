@@ -121,6 +121,10 @@ function sanitizeSettings(candidate: Partial<BrowserSettings>): BrowserSettings 
     settings.enabledWebServices = [...DEFAULT_SETTINGS.enabledWebServices];
   }
 
+  if (typeof settings.wallpaperInterval !== 'number' || settings.wallpaperInterval < 5) {
+    settings.wallpaperInterval = DEFAULT_SETTINGS.wallpaperInterval;
+  }
+
   return settings;
 }
 
