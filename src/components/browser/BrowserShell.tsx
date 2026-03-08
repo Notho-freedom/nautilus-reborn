@@ -397,6 +397,11 @@ export function BrowserShell() {
               onNavigate={browser.navigateTo}
               onOpenPanel={handleOpenPanel}
               onCreateTab={browser.addTab}
+              isAuthenticated={auth.isAuthenticated}
+              githubToken={auth.profile.github_token}
+              githubUsername={auth.profile.github_username}
+              onSignIn={() => void auth.signInWithGoogle()}
+              onSaveGitHubCredentials={(token, username) => void auth.updateGitHubCredentials(token, username)}
             />
           </div>
         )}
