@@ -102,6 +102,11 @@ export function SidebarPanel({
   onNavigate,
   onOpenPanel,
   onCreateTab,
+  isAuthenticated,
+  githubToken,
+  githubUsername,
+  onSignIn,
+  onSaveGitHubCredentials,
 }: SidebarPanelProps) {
   const [width, setWidth] = useState(() => readPanelWidth());
   const isResizing = useRef(false);
