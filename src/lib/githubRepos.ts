@@ -286,13 +286,3 @@ export function formatRelativeDate(isoDate: string): string {
   if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)}d ago`;
   return `${Math.floor(diffSeconds / 604800)}w ago`;
 }
-  const date = new Date(isoDate);
-  if (Number.isNaN(date.getTime())) return '';
-
-  const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (diffSeconds < 60) return 'just now';
-  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
-  if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
-  if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)}d ago`;
-  return `${Math.floor(diffSeconds / 604800)}w ago`;
-}
