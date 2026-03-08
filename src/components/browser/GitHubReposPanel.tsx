@@ -105,28 +105,40 @@ export function GitHubReposPanel({
           <div className="text-center space-y-1.5">
             <h3 className="text-sm font-display text-foreground">Connect your GitHub</h3>
             <p className="text-[11px] font-body text-muted-foreground leading-relaxed">
-              Add a Personal Access Token to browse your repositories. Create one at{' '}
-              <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">github.com/settings/tokens</a>.
+              Sign in with your GitHub account to browse and manage your repositories.
             </p>
           </div>
-          <form onSubmit={handleSavePAT} className="w-full space-y-2">
-            <input
-              value={localConnection.username}
-              onChange={e => setLocalConnection(c => ({ ...c, username: e.target.value }))}
-              placeholder="GitHub username"
-              className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
-            />
-            <input
-              value={localConnection.token}
-              onChange={e => setLocalConnection(c => ({ ...c, token: e.target.value }))}
-              placeholder="Personal access token"
-              type="password"
-              className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
-            />
-            <button type="submit" className="w-full h-9 rounded-lg notilus-gradient text-xs font-display text-primary-foreground tracking-wider">
-              Connect
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={onSignInWithGitHub}
+            className="w-full h-10 rounded-lg notilus-gradient text-xs font-display text-primary-foreground tracking-wider flex items-center justify-center gap-2"
+          >
+            <Github size={16} />
+            Sign in with GitHub
+          </button>
+          <details className="w-full">
+            <summary className="text-[10px] font-body text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+              Advanced: Personal Access Token
+            </summary>
+            <form onSubmit={handleSavePAT} className="w-full space-y-2 mt-2">
+              <input
+                value={localConnection.username}
+                onChange={e => setLocalConnection(c => ({ ...c, username: e.target.value }))}
+                placeholder="GitHub username"
+                className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+              />
+              <input
+                value={localConnection.token}
+                onChange={e => setLocalConnection(c => ({ ...c, token: e.target.value }))}
+                placeholder="Personal access token"
+                type="password"
+                className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+              />
+              <button type="submit" className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border text-xs font-display text-foreground tracking-wider hover:bg-notilus-surface-2 transition-colors">
+                Connect with PAT
+              </button>
+            </form>
+          </details>
         </div>
       </SidebarPanelShell>
     );
