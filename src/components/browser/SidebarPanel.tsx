@@ -191,6 +191,7 @@ export function SidebarPanel({
           <Component
             onNavigate={onNavigate}
             onClose={onClosePanel}
+            onCreateTab={onCreateTab}
             githubToken={githubToken}
             githubUsername={githubUsername}
             isGitHubOAuth={isGitHubOAuth}
