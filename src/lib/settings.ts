@@ -40,6 +40,7 @@ export interface BrowserSettings {
   searchEngine: SearchEngineId;
   notificationsEnabled: boolean;
   enabledWebServices: WebServiceId[];
+  wallpaperInterval: number;
 }
 
 const SETTINGS_KEY = 'notilus_settings';
