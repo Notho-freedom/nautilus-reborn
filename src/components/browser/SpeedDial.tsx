@@ -112,6 +112,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
     return subscribeToSettingsUpdates(refreshSettings);
   }, []);
 
+  // Wallpaper init
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -130,6 +131,19 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
 
     setWallpaperUrl(resolved);
     setWallpaperStatus('loading');
+  }, [homePageStyle]);
+
+  // Wallpaper auto-rotation
+  useEffect(() => {
+    if (homePageStyle !== 'modern') return;
+    const intervalSeconds = getSettings().wallpaperInterval || 30;
+    const timer = setInterval(() => {
+      const next = pickRandomDefaultWallpaper();
+      setWallpaperUrl(next);
+      setWallpaperStatus('loading');
+      window.localStorage.setItem(SPEED_DIAL_WALLPAPER_KEY, next);
+    }, intervalSeconds * 1000);
+    return () => clearInterval(timer);
   }, [homePageStyle]);
 
   const searchPlaceholder = useMemo(() => {
