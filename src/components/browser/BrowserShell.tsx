@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -34,6 +34,7 @@ export function BrowserShell() {
   const browser = useBrowserState();
   const stats = useSystemMonitor();
   const auth = useAuth();
+  const handledGitHubOAuthUrlRef = useRef(new Set<string>());
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
@@ -297,6 +298,61 @@ export function BrowserShell() {
     setAdBlockEnabled(next.adBlock);
   };
 
+  const handleSignInWithGitHub = useCallback(() => {
+    void auth.signInWithGitHub({
+      openInNautilusTab: browser.isDesktopMode,
+      openAuthInTab: url => {
+        browser.addTab(url, 'GitHub Auth');
+      },
+    });
+  }, [auth.signInWithGitHub, browser.addTab, browser.isDesktopMode]);
+
+  useEffect(() => {
+    if (!auth.isGitHubAuthFlowPending) {
+      handledGitHubOAuthUrlRef.current.clear();
+    }
+  }, [auth.isGitHubAuthFlowPending]);
+
+  useEffect(() => {
+    if (!browser.isDesktopMode || !auth.isGitHubAuthFlowPending) return;
+
+    let cancelled = false;
+
+    const processGitHubCallbackTabs = async () => {
+      for (const tab of browser.tabs) {
+        if (cancelled || tab.kind !== 'external') continue;
+        const tabUrl = tab.url?.trim();
+        if (!tabUrl) continue;
+
+        const seenKey = `${tab.id}|${tabUrl}`;
+        if (handledGitHubOAuthUrlRef.current.has(seenKey)) continue;
+        handledGitHubOAuthUrlRef.current.add(seenKey);
+
+        const result = await auth.completeGitHubOAuthFromUrl(tabUrl);
+        if (cancelled || !result.handled) continue;
+
+        if (result.success) {
+          browser.closeTab(tab.id);
+          browser.toggleSidebar('github');
+        }
+        return;
+      }
+    };
+
+    void processGitHubCallbackTabs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    auth.completeGitHubOAuthFromUrl,
+    auth.isGitHubAuthFlowPending,
+    browser.closeTab,
+    browser.isDesktopMode,
+    browser.tabs,
+    browser.toggleSidebar,
+  ]);
+
   const handleOpenPanel = useCallback((panel: string) => {
     browser.toggleSidebar(panel);
   }, [browser]);
@@ -375,7 +431,7 @@ export function BrowserShell() {
         githubAvatarUrl={auth.githubAvatarUrl}
         onOpenGitHub={() => browser.toggleSidebar('github')}
         onDisconnectGitHub={auth.disconnect}
-        onSignInWithGitHub={auth.signInWithGitHub}
+        onSignInWithGitHub={handleSignInWithGitHub}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -402,7 +458,7 @@ export function BrowserShell() {
               githubUsername={auth.credentials.username}
               isGitHubOAuth={auth.isSupabaseGitHubSession}
               onSaveGitHubCredentials={auth.saveCredentials}
-              onSignInWithGitHub={auth.signInWithGitHub}
+              onSignInWithGitHub={handleSignInWithGitHub}
             />
           </div>
         )}

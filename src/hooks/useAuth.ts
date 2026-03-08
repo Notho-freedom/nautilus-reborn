@@ -8,6 +8,48 @@ export interface GitHubCredentials {
   username: string;
 }
 
+interface SignInWithGitHubOptions {
+  openInNautilusTab?: boolean;
+  openAuthInTab?: (url: string) => void;
+}
+
+interface GitHubOAuthCompletionResult {
+  handled: boolean;
+  success: boolean;
+}
+
+function parseHashParams(hash: string): URLSearchParams {
+  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (!raw) return new URLSearchParams();
+  if (raw.startsWith('/')) {
+    const queryStart = raw.indexOf('?');
+    if (queryStart >= 0) {
+      return new URLSearchParams(raw.slice(queryStart + 1));
+    }
+    return new URLSearchParams();
+  }
+  return new URLSearchParams(raw);
+}
+
+function hasOAuthPayload(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const hashParams = parseHashParams(parsed.hash);
+    const searchParams = parsed.searchParams;
+    return Boolean(
+      searchParams.get('code') ||
+        searchParams.get('error') ||
+        searchParams.get('error_description') ||
+        hashParams.get('access_token') ||
+        hashParams.get('refresh_token') ||
+        hashParams.get('error') ||
+        hashParams.get('error_description')
+    );
+  } catch {
+    return false;
+  }
+}
+
 function resolveGitHubAvatarUrl(user: User | null, fallbackUsername?: string): string {
   if (!user) return '';
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
@@ -95,6 +137,7 @@ export function useAuth() {
   const [credentials, setCredentials] = useState<GitHubCredentials>(() => getGitHubConnectionConfig());
   const [isSupabaseGitHubSession, setIsSupabaseGitHubSession] = useState(false);
   const [githubAvatarUrl, setGitHubAvatarUrl] = useState('');
+  const [isGitHubAuthFlowPending, setIsGitHubAuthFlowPending] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -136,6 +179,7 @@ export function useAuth() {
       setCredentials(merged);
       setIsSupabaseGitHubSession(Boolean(sessionCredentials.token || sessionCredentials.username));
       setGitHubAvatarUrl(resolveGitHubAvatarUrl(signedUser, merged.username));
+      setIsGitHubAuthFlowPending(false);
       updateGitHubConnectionConfig(merged);
 
       if (sessionCredentials.token || sessionCredentials.username) {
@@ -160,17 +204,95 @@ export function useAuth() {
 
   const isConnected = Boolean(user || credentials.token || credentials.username);
 
-  const signInWithGitHub = useCallback(async () => {
+  const signInWithGitHub = useCallback(async (options?: SignInWithGitHubOptions) => {
+    const redirectTo = resolveOAuthRedirect();
+    const shouldOpenInNautilusTab = Boolean(options?.openInNautilusTab && options.openAuthInTab);
+
+    if (shouldOpenInNautilusTab) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo,
+          scopes: 'repo read:user',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) {
+        console.error('GitHub OAuth error:', error.message);
+        return;
+      }
+      if (data?.url) {
+        setIsGitHubAuthFlowPending(true);
+        options?.openAuthInTab?.(data.url);
+        return;
+      }
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: resolveOAuthRedirect(),
+        redirectTo,
         scopes: 'repo read:user',
       },
     });
     if (error) {
       console.error('GitHub OAuth error:', error.message);
     }
+  }, []);
+
+  const completeGitHubOAuthFromUrl = useCallback(async (url: string): Promise<GitHubOAuthCompletionResult> => {
+    if (!hasOAuthPayload(url)) {
+      return { handled: false, success: false };
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return { handled: false, success: false };
+    }
+
+    const searchParams = parsed.searchParams;
+    const hashParams = parseHashParams(parsed.hash);
+    const errorMessage =
+      searchParams.get('error_description') ||
+      hashParams.get('error_description') ||
+      searchParams.get('error') ||
+      hashParams.get('error');
+
+    if (errorMessage) {
+      setIsGitHubAuthFlowPending(false);
+      console.error('GitHub OAuth callback error:', errorMessage);
+      return { handled: true, success: false };
+    }
+
+    const code = searchParams.get('code');
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      setIsGitHubAuthFlowPending(false);
+      if (error) {
+        console.error('GitHub OAuth code exchange error:', error.message);
+        return { handled: true, success: false };
+      }
+      return { handled: true, success: true };
+    }
+
+    const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      setIsGitHubAuthFlowPending(false);
+      if (error) {
+        console.error('GitHub OAuth token session error:', error.message);
+        return { handled: true, success: false };
+      }
+      return { handled: true, success: true };
+    }
+
+    return { handled: false, success: false };
   }, []);
 
   const saveCredentials = useCallback((token: string, username: string) => {
@@ -188,6 +310,7 @@ export function useAuth() {
     setUser(null);
     setIsSupabaseGitHubSession(false);
     setGitHubAvatarUrl('');
+    setIsGitHubAuthFlowPending(false);
   }, []);
 
   return {
@@ -195,9 +318,11 @@ export function useAuth() {
     loading,
     isConnected,
     isSupabaseGitHubSession,
+    isGitHubAuthFlowPending,
     githubAvatarUrl,
     credentials,
     signInWithGitHub,
+    completeGitHubOAuthFromUrl,
     saveCredentials,
     disconnect,
   };
