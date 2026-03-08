@@ -1,143 +1,79 @@
-# Plan : Corrections UX Notilus
 
-## 1. Persistance des onglets (localStorage)
 
-**Fichier** : `src/hooks/useBrowserState.ts`
+# Plan: Vue Repo intégrée dans le panel GitHub
 
-- Sauvegarder `localTabs` et `localActiveTabId` dans `localStorage` (`notilus_tabs` / `notilus_active_tab`)
-- Au montage, restaurer depuis localStorage au lieu de partir avec un seul onglet par défaut
-- Écrire dans localStorage à chaque changement de `localTabs` et `localActiveTabId` (via `useEffect`)
-- Ne persister que les données sérialisables (id, title, url, kind) — pas isLoading etc.
+## Objectif
+Quand l'utilisateur clique sur un repo dans le panel GitHub, au lieu d'ouvrir github.com, on affiche une **vue repo in-app** qui liste le contenu du dépôt (dossiers/fichiers). On peut ensuite naviguer dans les dossiers, voir les fichiers, et avoir des actions contextuelles.
 
-## 2. Onglets : bouton fermer n'occupe pas d'espace réservé
-
-**Fichier** : `src/components/browser/TopChromeBar.tsx`
-
-- Le bouton close doit être en `position: absolute` à droite de l'onglet, pas dans le flux
-- Le titre (`<span>`) occupe tout l'espace disponible après l'icône
-- Le close apparaît uniquement au hover (`opacity-0 group-hover:opacity-100`) avec un fond semi-transparent pour ne pas masquer le texte
-- En mode `icon-only`, pas de close du tout (déjà le cas)
-
-**Fichier** : `src/components/browser/TopChromeBar.tsx` (hover card)
-
-- Supprimer le message "No tabs from this domain" — si `sameDomainTabs` est vide, ne pas afficher la section liste du tout (garder juste le titre + URL)
-
-## 3. Barre d'adresse : icônes sans couleur sauf si actives
-
-**Fichier** : `src/components/browser/NavigationBar.tsx`
-
-- Le composant `UrlActionButton` : quand `active` est false, utiliser `text-muted-foreground` (déjà le cas)
-- Quand `active` est true : utiliser `text-primary` (rose/secondaire) pour le favori rempli, `text-green-500` pour le ad-blocker actif
-- Passer une prop `activeColor` ou conditionner directement dans les usages
-
-## 4. Sidebar : retirer les bordures des boutons
-
-**Fichier** : `src/components/browser/DevToolsSidebar.tsx`
-
-- Retirer `border border-primary/50` du style actif des boutons sidebar
-- Garder uniquement le fond `bg-primary/20` et `text-white` pour l'état actif
-- Idem pour les boutons web services
-
-## 5. Tooltips/Popovers au-dessus de tout
-
-**Fichier** : `src/index.css`
-
-- Ajouter des règles CSS pour forcer les portails Radix (tooltips, popovers, hover cards) à un z-index très élevé (z-[9999])
-- Cibler `[data-radix-popper-content-wrapper]` avec `z-index: 9999 !important`
-
-## 6. Panneaux latéraux en overlay + redimensionnables
-
-**Fichier** : `src/components/browser/BrowserShell.tsx`
-
-- Le `SidebarPanel` ne doit plus pousser le contenu : le placer en `position: absolute` (ou `fixed`) par-dessus la zone de contenu, aligné à gauche après la sidebar d'icônes
-- Ajouter un handle de resize (bordure droite draggable)
-- Persister la largeur dans localStorage (`notilus_panel_width`)
-
-**Fichier** : `src/components/browser/SidebarPanel.tsx`
-
-- Créer un composant wrapper réutilisable `SidebarPanelShell` avec :
-  - Header avec titre, bouton fermer, bouton options (dropdown)
-  - Zone de recherche optionnelle (prop `searchable`)
-  - Zone de filtres optionnelle (prop `filters`)
-  - Slot pour le contenu enfant
-  - Handle de resize à droite
-- Tous les panneaux existants (Bookmarks, History, Downloads, etc.) utiliseront ce shell au lieu de dupliquer leur propre header
-
-## 7. Composant `SidebarPanelShell` réutilisable
-
-**Nouveau fichier** : `src/components/browser/SidebarPanelShell.tsx`
+## Architecture
 
 ```text
-┌─────────────────────────────┐
-│ [icon] TITRE      [⋮] [✕]  │  ← header fixe
-├─────────────────────────────┤
-│ 🔍 Recherche...             │  ← optionnel (searchable)
-├─────────────────────────────┤
-│ [Filtre1] [Filtre2] [All]   │  ← optionnel (filters)
-├─────────────────────────────┤
-│                             │
-│   Contenu (children)        │
-│                             │
-└─────────────────────────────┤ ← handle resize
+GitHubReposPanel
+  ├── Vue "repos list" (existante)
+  └── Vue "repo detail" (nouvelle)
+       ├── Breadcrumb navigation (owner/repo > src > components)
+       ├── File/folder tree list
+       │    ├── Dossier → clic = naviguer dedans
+       │    └── Fichier → clic = ouvrir viewer avec actions
+       └── Actions sur fichier:
+            ├── Voir le contenu (code viewer inline)
+            ├── Ouvrir dans un onglet (éditeur style VS Code)
+            ├── Ouvrir sur GitHub (lien externe)
+            └── Télécharger le fichier
 ```
 
-Props :
+## Fichiers à créer / modifier
 
-- `title: string`
-- `icon?: LucideIcon`
-- `searchable?: boolean` + `searchValue / onSearchChange`
-- `filters?: { label: string; value: string }[]` + `activeFilter / onFilterChange`
-- `onClose: () => void`
-- `menuItems?: { label: string; onClick: () => void }[]` (bouton options ⋮)
-- `children: ReactNode`
+### 1. `src/lib/githubRepos.ts` — Nouvelles fonctions API
+- `fetchRepoContents(owner, repo, path, token)` → appelle `GET /repos/{owner}/{repo}/contents/{path}`
+- `fetchFileContent(owner, repo, path, token)` → récupère le contenu raw d'un fichier
+- Types: `GitHubContentItem` (name, path, type: 'file'|'dir', size, download_url, sha)
 
-Chaque panneau sera refactoré pour utiliser `<SidebarPanelShell>` au lieu de son propre header.
+### 2. `src/components/browser/GitHubRepoView.tsx` — Nouveau composant
+- Vue détaillée d'un repo sélectionné
+- Header: nom du repo, description, stats (stars/forks/language), bouton "Open on GitHub"
+- Breadcrumb: navigation dans l'arborescence (root > src > components > ...)
+- Liste: icones dossier/fichier, nom, taille, dernier commit message
+- Clic dossier → push dans le path, re-fetch contents
+- Clic fichier → ouvre le file viewer
 
-## 8. Fix build errors
+### 3. `src/components/browser/GitHubFileViewer.tsx` — Nouveau composant
+- Affiche le contenu d'un fichier avec syntax highlighting basique (via `<pre><code>`)
+- Barre d'actions en haut:
+  - "Open in Tab" → ouvre un nouvel onglet du navigateur avec le contenu (éditeur Monaco-like ou simple viewer)
+  - "Open on GitHub" → lien externe
+  - "Download" → télécharge via download_url
+  - "Copy raw" → copie le contenu brut
+- Retour au listing via breadcrumb
 
-**Fichier** : `src/components/browser/TopChromeBar.tsx`
+### 4. `src/components/browser/GitHubReposPanel.tsx` — Modifier
+- Ajouter un state `selectedRepo: GitHubRepo | null` et `currentPath: string[]`
+- Quand `selectedRepo` est set → afficher `GitHubRepoView` au lieu de la liste
+- Bouton retour pour revenir à la liste des repos
+- L'option "Open on GitHub" reste accessible via le menu contextuel / bouton secondaire
 
-- Les 5 erreurs `WebkitAppRegion` : caster les styles en `React.CSSProperties` (comme fait dans TitleBar)
+### 5. `src/components/browser/BrowserShell.tsx` — Modifier
+- Passer `onCreateTab` au panel GitHub pour permettre l'ouverture de fichiers dans un nouvel onglet
 
-**Fichier** : `src/test/tabLayout.test.ts`
+## Détail technique
 
-- Ligne 11 : remplacer `min` par `minWidth` et `max` par `maxWidth` dans les options
+### API GitHub Contents
+```
+GET /repos/{owner}/{repo}/contents/{path}
+→ Array<{ name, path, type, size, download_url, sha, html_url }>
+```
 
-## 9. Clés Supabase dans .env
+### Navigation interne
+- State machine dans GitHubReposPanel: `list` → `repo` → `file`
+- Breadcrumb cliquable pour remonter dans l'arborescence
+- Le token PAT est passé pour accéder aux repos privés
 
-Le fichier `.env` est auto-généré et contient déjà `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`. Aucune modification manuelle nécessaire — le fichier ne doit pas être édité.  
-  
-NB: ASSURE TOI BIEN QUE LES OVERLAYS PASSENT BIEN AU DESSUS DE WEBCONTENTVIEW (PRIORITE MAX), JE NE PARLE PAS DE IFRAME
+### Ouverture en onglet
+- Crée un nouvel onglet avec URL `notilus://github-file?repo={fullName}&path={filePath}`
+- ContentArea reconnaît ce schéma et affiche le GitHubFileViewer en plein écran
+- Alternative simple: ouvrir le raw URL dans un onglet iframe
 
----
+### Design
+- Suit le design system existant (notilus-surface-1, font-body, text-[10px]/text-xs)
+- Icones lucide: `Folder`, `File`, `FileCode`, `Download`, `ExternalLink`, `Copy`, `ChevronRight`
 
-## Fichiers à créer
-
-- `src/components/browser/SidebarPanelShell.tsx`
-
-## Fichiers à modifier
-
-- `src/hooks/useBrowserState.ts` (persistance tabs)
-- `src/components/browser/TopChromeBar.tsx` (close button layout, hover card, TS fix)
-- `src/components/browser/NavigationBar.tsx` (couleurs actives)
-- `src/components/browser/DevToolsSidebar.tsx` (retirer bordures)
-- `src/components/browser/SidebarPanel.tsx` (overlay + resize)
-- `src/components/browser/BrowserShell.tsx` (layout overlay)
-- `src/components/browser/BookmarksPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/HistoryPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/DownloadsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/WidgetsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/ExtensionsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/DocumentationPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/MosaicPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/SystemMonitor.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/TerminalPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/LighthousePanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/GitPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/ApiDocsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/SettingsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/StudioPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/UpdatesPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/GitHubReposPanel.tsx` (utiliser SidebarPanelShell)
-- `src/index.css` (z-index tooltips)
-- `src/test/tabLayout.test.ts` (fix TS error)
