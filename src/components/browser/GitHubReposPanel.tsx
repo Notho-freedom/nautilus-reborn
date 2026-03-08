@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpDown,
+  FolderOpen,
   ExternalLink,
   GitFork,
   Github,
@@ -156,6 +157,7 @@ export function GitHubReposPanel({
           onBack={handleBackToList}
           onOpenFile={handleOpenFile}
           onNavigate={onNavigate}
+          onCreateTab={onCreateTab}
         />
       </SidebarPanelShell>
     );
@@ -168,9 +170,9 @@ export function GitHubReposPanel({
         <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
           <Github size={56} className="text-muted-foreground/40" />
           <div className="text-center space-y-1.5">
-            <h3 className="text-sm font-display text-foreground">Connect your GitHub</h3>
+            <h3 className="text-sm font-display text-foreground">Connect your GitHub via Supabase</h3>
             <p className="text-[11px] font-body text-muted-foreground leading-relaxed">
-              Sign in with GitHub to browse and manage your repositories.
+              Sign in with GitHub to browse repositories and open files directly in Nautilus.
             </p>
           </div>
           <button
@@ -236,18 +238,47 @@ export function GitHubReposPanel({
 
         {isGitHubOAuth && (
           <div className="text-[10px] font-body text-info bg-info/10 border border-border/35 rounded-md p-2">
-            Auth source: GitHub OAuth
+            Auth source: Supabase GitHub OAuth
           </div>
         )}
-        {error && <div className="text-[10px] font-body text-error bg-error/10 border border-error/30 rounded-md p-2">{error}</div>}
+        {error && <div className="text-[10px] font-body text-error bg-error/10 border border-border/35 rounded-md p-2">{error}</div>}
+
+        <div className="text-[10px] font-body text-muted-foreground bg-notilus-surface-1 border border-border/35 rounded-md px-2 py-1.5">
+          Click a repository to open its file tree. GitHub website opening stays available via the external action.
+        </div>
 
         <div className="space-y-2">
           {filtered.map(repo => (
-            <button type="button" key={repo.id} onClick={() => handleSelectRepo(repo)} className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-border space-y-1.5 hover:bg-notilus-surface-2 transition-colors">
+            <div
+              key={repo.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open repository view ${repo.fullName}`}
+              onClick={() => handleSelectRepo(repo)}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  handleSelectRepo(repo);
+                }
+              }}
+              className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-border/35 space-y-2 hover:bg-notilus-surface-2 transition-colors"
+            >
               <div className="flex items-center gap-1.5">
                 {repo.isPrivate ? <Lock size={10} className="text-warning" /> : <Globe size={10} className="text-muted-foreground" />}
                 <span className="text-xs font-body text-info font-semibold">{repo.fullName}</span>
-                <ExternalLink size={10} className="text-muted-foreground ml-auto" onClick={(e) => { e.stopPropagation(); onNavigate ? onNavigate(repo.htmlUrl) : window.open(repo.htmlUrl, '_blank'); }} />
+                <button
+                  type="button"
+                  onClick={event => {
+                    event.stopPropagation();
+                    if (onNavigate) onNavigate(repo.htmlUrl);
+                    else window.open(repo.htmlUrl, '_blank');
+                  }}
+                  aria-label={`Open ${repo.fullName} on GitHub`}
+                  className="ml-auto h-6 w-6 rounded-md border border-border/35 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                  title="Open on GitHub"
+                >
+                  <ExternalLink size={10} />
+                </button>
               </div>
               <p className="text-[10px] font-body text-muted-foreground line-clamp-2">{repo.description || 'No description'}</p>
               <div className="flex items-center gap-3 text-[9px] font-body text-muted-foreground">
@@ -256,7 +287,13 @@ export function GitHubReposPanel({
                 <span className="flex items-center gap-0.5"><GitFork size={8} /> {repo.forks}</span>
                 <span>{formatRelativeDate(repo.updatedAt)}</span>
               </div>
-            </button>
+              <div className="flex items-center justify-end">
+                <span className="inline-flex items-center gap-1 text-[10px] font-body text-muted-foreground">
+                  <FolderOpen size={10} />
+                  Open repo view
+                </span>
+              </div>
+            </div>
           ))}
         </div>
 

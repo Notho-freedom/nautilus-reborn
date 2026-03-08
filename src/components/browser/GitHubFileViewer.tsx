@@ -3,12 +3,19 @@ import {
   ArrowLeft,
   Check,
   ClipboardCopy,
+  Code2,
   Download,
   ExternalLink,
   FileCode,
   Loader2,
 } from 'lucide-react';
-import { fetchFileContent, formatFileSize, type GitHubContentItem, type GitHubRepo } from '@/lib/githubRepos';
+import {
+  buildVscodeItemUrl,
+  fetchFileContent,
+  formatFileSize,
+  type GitHubContentItem,
+  type GitHubRepo,
+} from '@/lib/githubRepos';
 
 interface GitHubFileViewerProps {
   repo: GitHubRepo;
@@ -69,10 +76,30 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
     else window.open(file.htmlUrl, '_blank');
   };
 
-  const handleOpenInTab = () => {
-    if (file.downloadUrl && onCreateTab) {
-      onCreateTab(file.downloadUrl, `${fileName} — ${repo.fullName}`);
+  const handleOpenInVscodeTab = () => {
+    const vscodeUrl = buildVscodeItemUrl(repo, file);
+    if (onCreateTab) {
+      onCreateTab(vscodeUrl, `VS Code - ${fileName}`);
+      return;
     }
+    if (onNavigate) {
+      onNavigate(vscodeUrl);
+      return;
+    }
+    window.open(vscodeUrl, '_blank');
+  };
+
+  const handleOpenRawInTab = () => {
+    if (!file.downloadUrl) return;
+    if (onCreateTab) {
+      onCreateTab(file.downloadUrl, `${fileName} - raw`);
+      return;
+    }
+    if (onNavigate) {
+      onNavigate(file.downloadUrl);
+      return;
+    }
+    window.open(file.downloadUrl, '_blank');
   };
 
   const lineCount = content?.split('\n').length ?? 0;
@@ -80,11 +107,12 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-3 border-b border-border space-y-2">
+      <div className="p-3 border-b border-border/35 space-y-2">
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={onBack}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-1 transition-colors"
           >
             <ArrowLeft size={12} />
           </button>
@@ -106,8 +134,16 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
 
         {/* Actions */}
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleOpenInVscodeTab}
+            className="flex items-center gap-1 px-2 h-6 rounded-md border border-border/35 bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Code2 size={9} /> VS Code
+          </button>
           {!isBinary && content && (
             <button
+              type="button"
               onClick={handleCopy}
               className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -117,21 +153,24 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
           )}
           {file.downloadUrl && (
             <button
+              type="button"
               onClick={handleDownload}
               className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
             >
               <Download size={9} /> Download
             </button>
           )}
-          {onCreateTab && file.downloadUrl && (
+          {file.downloadUrl && (
             <button
-              onClick={handleOpenInTab}
+              type="button"
+              onClick={handleOpenRawInTab}
               className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ExternalLink size={9} /> Open in Tab
+              <ExternalLink size={9} /> Raw tab
             </button>
           )}
           <button
+            type="button"
             onClick={handleOpenOnGitHub}
             className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors ml-auto"
           >
@@ -149,7 +188,7 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
         )}
 
         {error && (
-          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-error/30 rounded-md p-2">
+          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-border/35 rounded-md p-2">
             {error}
           </div>
         )}

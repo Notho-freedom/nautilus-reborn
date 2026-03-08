@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   ChevronRight,
+  Code2,
+  Download,
   ExternalLink,
   File,
   FileCode,
@@ -13,6 +15,8 @@ import {
   Star,
 } from 'lucide-react';
 import {
+  buildVscodeItemUrl,
+  buildVscodeRepoUrl,
   fetchRepoContents,
   formatFileSize,
   type GitHubContentItem,
@@ -25,6 +29,7 @@ interface GitHubRepoViewProps {
   onBack: () => void;
   onOpenFile: (item: GitHubContentItem) => void;
   onNavigate?: (url: string) => void;
+  onCreateTab?: (url: string, title?: string) => void;
 }
 
 const CODE_EXTENSIONS = new Set([
@@ -39,7 +44,7 @@ function isCodeFile(name: string): boolean {
   return CODE_EXTENSIONS.has(ext);
 }
 
-export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate }: GitHubRepoViewProps) {
+export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, onCreateTab }: GitHubRepoViewProps) {
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [contents, setContents] = useState<GitHubContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,14 +87,51 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate }: 
     }
   };
 
+  const openInTabOrNavigate = (url: string, title: string) => {
+    if (onCreateTab) {
+      onCreateTab(url, title);
+      return;
+    }
+    if (onNavigate) {
+      onNavigate(url);
+      return;
+    }
+    window.open(url, '_blank');
+  };
+
+  const handleOpenOnGitHub = (url: string) => {
+    if (onNavigate) {
+      onNavigate(url);
+      return;
+    }
+    window.open(url, '_blank');
+  };
+
+  const handleOpenRepoInVscode = () => {
+    openInTabOrNavigate(buildVscodeRepoUrl(repo), `VS Code - ${repo.fullName}`);
+  };
+
+  const handleOpenItemInVscode = (item: GitHubContentItem) => {
+    openInTabOrNavigate(buildVscodeItemUrl(repo, item), `VS Code - ${item.name}`);
+  };
+
+  const handleDownloadFile = (item: GitHubContentItem) => {
+    if (!item.downloadUrl) return;
+    const a = document.createElement('a');
+    a.href = item.downloadUrl;
+    a.download = item.name;
+    a.click();
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Repo header */}
-      <div className="p-3 border-b border-border space-y-2">
+      <div className="p-3 border-b border-border/35 space-y-2">
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={onBack}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-1 transition-colors"
           >
             <ArrowLeft size={12} />
           </button>
@@ -100,9 +142,20 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate }: 
             </div>
           </div>
           <button
-            onClick={() => onNavigate ? onNavigate(repo.htmlUrl) : window.open(repo.htmlUrl, '_blank')}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            title="Open on GitHub"
+            type="button"
+            onClick={handleOpenRepoInVscode}
+            className="h-6 px-2 flex items-center justify-center gap-1 rounded-md border border-border/35 bg-notilus-surface-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+            title="Open repository in VS Code tab"
+          >
+            <Code2 size={10} />
+            VS Code
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOpenOnGitHub(repo.htmlUrl)}
+            aria-label="Open repository on GitHub"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-1 transition-colors"
+            title="Open repository on GitHub"
           >
             <ExternalLink size={10} />
           </button>
@@ -123,8 +176,9 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate }: 
       </div>
 
       {/* Breadcrumb */}
-      <div className="px-3 py-1.5 border-b border-border flex items-center gap-0.5 overflow-x-auto text-[10px] font-body">
+      <div className="px-3 py-1.5 border-b border-border/30 flex items-center gap-0.5 overflow-x-auto text-[10px] font-body">
         <button
+          type="button"
           onClick={() => navigateToBreadcrumb(0)}
           className="text-info hover:text-foreground transition-colors shrink-0"
         >
@@ -134,6 +188,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate }: 
           <span key={i} className="flex items-center gap-0.5 shrink-0">
             <ChevronRight size={8} className="text-muted-foreground" />
             <button
+              type="button"
               onClick={() => navigateToBreadcrumb(i + 1)}
               className={i === currentPath.length - 1 ? 'text-foreground' : 'text-info hover:text-foreground transition-colors'}
             >
@@ -152,7 +207,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate }: 
         )}
 
         {error && (
-          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-error/30 rounded-md p-2">
+          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-border/35 rounded-md p-2">
             {error}
           </div>
         )}
@@ -165,29 +220,61 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate }: 
         )}
 
         {!isLoading && !error && contents.map(item => (
-          <button
+          <div
             key={item.sha}
-            type="button"
-            onClick={() => handleItemClick(item)}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-notilus-surface-1 transition-colors border-b border-border/50"
+            className="w-full flex items-center gap-1 border-b border-border/25 hover:bg-notilus-surface-1/80 transition-colors"
           >
-            {item.type === 'dir' ? (
-              <Folder size={12} className="text-info shrink-0" />
-            ) : isCodeFile(item.name) ? (
-              <FileCode size={12} className="text-muted-foreground shrink-0" />
-            ) : (
-              <File size={12} className="text-muted-foreground shrink-0" />
-            )}
-            <span className="flex-1 text-xs font-body text-foreground truncate">{item.name}</span>
-            {item.type === 'file' && (
-              <span className="text-[9px] font-body text-muted-foreground shrink-0">
-                {formatFileSize(item.size)}
-              </span>
-            )}
-            {item.type === 'dir' && (
-              <ChevronRight size={10} className="text-muted-foreground shrink-0" />
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => handleItemClick(item)}
+              className="flex-1 flex items-center gap-2 px-3 py-1.5 text-left"
+            >
+              {item.type === 'dir' ? (
+                <Folder size={12} className="text-info shrink-0" />
+              ) : isCodeFile(item.name) ? (
+                <FileCode size={12} className="text-muted-foreground shrink-0" />
+              ) : (
+                <File size={12} className="text-muted-foreground shrink-0" />
+              )}
+              <span className="flex-1 text-xs font-body text-foreground truncate">{item.name}</span>
+              {item.type === 'file' ? (
+                <span className="text-[9px] font-body text-muted-foreground shrink-0">
+                  {formatFileSize(item.size)}
+                </span>
+              ) : (
+                <ChevronRight size={10} className="text-muted-foreground shrink-0" />
+              )}
+            </button>
+
+            <div className="flex items-center gap-1 pr-2">
+              <button
+                type="button"
+                onClick={() => handleOpenItemInVscode(item)}
+                className="h-6 px-1.5 rounded-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                title="Open in VS Code tab"
+              >
+                <Code2 size={10} />
+              </button>
+              {item.type === 'file' && item.downloadUrl ? (
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFile(item)}
+                  className="h-6 px-1.5 rounded-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                  title="Download file"
+                >
+                  <Download size={10} />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => handleOpenOnGitHub(item.htmlUrl)}
+                className="h-6 px-1.5 rounded-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                title="Open on GitHub"
+              >
+                <ExternalLink size={10} />
+              </button>
+            </div>
+          </div>
         ))}
       </div>
     </div>

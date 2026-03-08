@@ -24,6 +24,11 @@ vi.mock('@/lib/githubRepos', () => ({
       htmlUrl: 'https://github.com/bobim/notilus',
     },
   ]),
+  fetchRepoContents: vi.fn(async () => []),
+  fetchFileContent: vi.fn(async () => 'export default {}'),
+  formatFileSize: vi.fn(() => '1 KB'),
+  buildVscodeRepoUrl: vi.fn(() => 'https://vscode.dev/github/bobim/notilus'),
+  buildVscodeItemUrl: vi.fn(() => 'https://vscode.dev/github/bobim/notilus/blob/main/README.md'),
   formatRelativeDate: vi.fn(() => 'now'),
 }));
 
@@ -142,7 +147,7 @@ describe('Search regression - no auto navigation while typing', () => {
     expect(onReopenClosedTab).not.toHaveBeenCalled();
   });
 
-  it('github panel typing filters only; navigation happens only on explicit repo click', async () => {
+  it('github panel typing filters only; repo click does not navigate and GitHub action is explicit', async () => {
     const onNavigate = vi.fn();
     render(<GitHubReposPanel onNavigate={onNavigate} onClose={vi.fn()} />);
 
@@ -157,6 +162,9 @@ describe('Search regression - no auto navigation while typing', () => {
     expect(onNavigate).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('bobim/notilus'));
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open repository on GitHub' }));
     expect(onNavigate).toHaveBeenCalledWith('https://github.com/bobim/notilus');
   });
 });

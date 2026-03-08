@@ -286,3 +286,64 @@ export function formatRelativeDate(isoDate: string): string {
   if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)}d ago`;
   return `${Math.floor(diffSeconds / 604800)}w ago`;
 }
+
+function encodePath(path: string): string {
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
+}
+
+function extractRepoOwnerAndName(fullName: string): { owner: string; repo: string } | null {
+  const [owner, repo] = fullName.split('/');
+  if (!owner || !repo) return null;
+  return { owner, repo };
+}
+
+function inferBranchFromItemHtmlUrl(item: GitHubContentItem): string {
+  try {
+    const parsed = new URL(item.htmlUrl);
+    const marker = item.type === 'dir' ? '/tree/' : '/blob/';
+    const markerIndex = parsed.pathname.indexOf(marker);
+    if (markerIndex < 0) return 'main';
+
+    const tail = parsed.pathname.slice(markerIndex + marker.length);
+    const normalizedItemPath = item.path.replace(/^\/+/, '');
+    const suffix = `/${normalizedItemPath}`;
+    if (normalizedItemPath && tail.endsWith(suffix)) {
+      const branch = tail.slice(0, -suffix.length).replace(/^\/+|\/+$/g, '');
+      return branch || 'main';
+    }
+
+    const slashIndex = tail.indexOf('/');
+    if (slashIndex > 0) {
+      return tail.slice(0, slashIndex);
+    }
+
+    return tail || 'main';
+  } catch {
+    return 'main';
+  }
+}
+
+export function buildVscodeRepoUrl(repo: GitHubRepo): string {
+  const ownerAndName = extractRepoOwnerAndName(repo.fullName);
+  if (!ownerAndName) return `https://vscode.dev/github/${repo.fullName}`;
+  return `https://vscode.dev/github/${ownerAndName.owner}/${ownerAndName.repo}`;
+}
+
+export function buildVscodeItemUrl(repo: GitHubRepo, item: GitHubContentItem): string {
+  const ownerAndName = extractRepoOwnerAndName(repo.fullName);
+  if (!ownerAndName) return buildVscodeRepoUrl(repo);
+
+  const kind = item.type === 'dir' ? 'tree' : 'blob';
+  const branch = encodeURIComponent(inferBranchFromItemHtmlUrl(item));
+  const path = encodePath(item.path);
+
+  if (!path) {
+    return buildVscodeRepoUrl(repo);
+  }
+
+  return `https://vscode.dev/github/${ownerAndName.owner}/${ownerAndName.repo}/${kind}/${branch}/${path}`;
+}
