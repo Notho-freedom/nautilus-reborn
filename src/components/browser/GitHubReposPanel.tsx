@@ -25,6 +25,7 @@ interface GitHubReposPanelProps {
   githubToken?: string;
   githubUsername?: string;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
+  onSignInWithGitHub?: () => void;
 }
 
 export function GitHubReposPanel({
