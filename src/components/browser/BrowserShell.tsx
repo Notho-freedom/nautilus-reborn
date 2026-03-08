@@ -33,6 +33,7 @@ import { useMosaicState } from '@/hooks/useMosaicState';
 export function BrowserShell() {
   const browser = useBrowserState();
   const stats = useSystemMonitor();
+  const auth = useAuth();
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
