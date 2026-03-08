@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ContentArea } from '@/components/browser/ContentArea';
 import type { BrowserTab } from '@/hooks/useBrowserState';
+import type { MosaicState } from '@/types/mosaic';
 
 const externalTab: BrowserTab = {
   id: 'tab-1',
@@ -11,6 +12,18 @@ const externalTab: BrowserTab = {
   isLoading: false,
   canGoBack: false,
   canGoForward: false,
+};
+
+const baseMosaicState: MosaicState = {
+  isInitialized: true,
+  isActive: false,
+  isVisible: true,
+  activeWorkspaceId: null,
+  workspaces: [],
+  hoveredTileId: null,
+  focusedTileId: null,
+  dragOverTileId: null,
+  dragOverZone: null,
 };
 
 describe('ContentArea', () => {
@@ -25,7 +38,8 @@ describe('ContentArea', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 
@@ -44,7 +58,8 @@ describe('ContentArea', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 
@@ -63,7 +78,8 @@ describe('ContentArea', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 

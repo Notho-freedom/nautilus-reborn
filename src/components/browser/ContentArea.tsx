@@ -1,7 +1,7 @@
 import { SpeedDial } from './SpeedDial';
 import { DesktopWebviewLayer } from './DesktopWebviewLayer';
 import type { BrowserTab } from '@/hooks/useBrowserState';
-import type { MosaicLayoutId } from '@/lib/mosaic';
+import type { MosaicState, MosaicTile } from '@/types/mosaic';
 
 interface ContentAreaProps {
   url: string;
@@ -12,7 +12,8 @@ interface ContentAreaProps {
   onCreateTab: (url: string) => void;
   zoom: number;
   studioViewport: { width: number; height: number } | null;
-  mosaicLayout: MosaicLayoutId;
+  mosaicState: MosaicState;
+  mosaicRootTile: MosaicTile | null;
 }
 
 export function ContentArea({
@@ -24,7 +25,8 @@ export function ContentArea({
   onCreateTab,
   zoom,
   studioViewport,
-  mosaicLayout,
+  mosaicState,
+  mosaicRootTile,
 }: ContentAreaProps) {
   const isInternalPage = url.startsWith('notilus://');
 
@@ -41,7 +43,8 @@ export function ContentArea({
           onCreateTab={onCreateTab}
           zoom={zoom}
           studioViewport={studioViewport}
-          mosaicLayout={mosaicLayout}
+          mosaicState={mosaicState}
+          mosaicRootTile={mosaicRootTile}
         />
       </div>
     );

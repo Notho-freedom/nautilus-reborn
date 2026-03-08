@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DesktopWebviewLayer } from '@/components/browser/DesktopWebviewLayer';
 import type { BrowserTab } from '@/hooks/useBrowserState';
+import type { MosaicState } from '@/types/mosaic';
 
 const externalTabA: BrowserTab = {
   id: 'tab-external-a',
@@ -33,6 +34,18 @@ const internalTab: BrowserTab = {
   canGoForward: false,
 };
 
+const baseMosaicState: MosaicState = {
+  isInitialized: true,
+  isActive: false,
+  isVisible: true,
+  activeWorkspaceId: null,
+  workspaces: [],
+  hoveredTileId: null,
+  focusedTileId: null,
+  dragOverTileId: null,
+  dragOverZone: null,
+};
+
 describe('DesktopWebviewLayer', () => {
   const bindTabWebContents = vi.fn().mockResolvedValue(undefined);
   const unbindTabWebContents = vi.fn().mockResolvedValue(undefined);
@@ -61,7 +74,8 @@ describe('DesktopWebviewLayer', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 
@@ -84,7 +98,8 @@ describe('DesktopWebviewLayer', () => {
         onCreateTab={onCreateTab}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 
@@ -116,7 +131,8 @@ describe('DesktopWebviewLayer', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 
@@ -136,7 +152,8 @@ describe('DesktopWebviewLayer', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 
@@ -154,7 +171,8 @@ describe('DesktopWebviewLayer', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 
@@ -176,7 +194,8 @@ describe('DesktopWebviewLayer', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 
@@ -191,7 +210,8 @@ describe('DesktopWebviewLayer', () => {
         onCreateTab={() => {}}
         zoom={100}
         studioViewport={null}
-        mosaicLayout="single"
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
       />
     );
 

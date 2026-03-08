@@ -27,7 +27,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { getGitSnapshot, subscribeToGitUpdates } from '@/lib/git';
-import { getMosaicLayout, subscribeToMosaicLayoutUpdates } from '@/lib/mosaic';
+import { useMosaicState } from '@/hooks/useMosaicState';
 
 export function BrowserShell() {
   const browser = useBrowserState();
@@ -42,7 +42,7 @@ export function BrowserShell() {
   const [notilusDevToolsDetached, setNotilusDevToolsDetached] = useState(false);
   const [notilusDevToolsHeight, setNotilusDevToolsHeight] = useState(250);
   const [gitBranch, setGitBranch] = useState(() => getGitSnapshot().branch);
-  const [mosaicLayout, setMosaicLayout] = useState(() => getMosaicLayout());
+  const mosaic = useMosaicState();
   const [studioWebviewViewport, setStudioWebviewViewport] = useState<{
     width: number;
     height: number;
@@ -82,14 +82,6 @@ export function BrowserShell() {
     };
     refresh();
     return subscribeToGitUpdates(refresh);
-  }, []);
-
-  useEffect(() => {
-    const refresh = () => {
-      setMosaicLayout(getMosaicLayout());
-    };
-    refresh();
-    return subscribeToMosaicLayoutUpdates(refresh);
   }, []);
 
   useEffect(() => {
@@ -419,7 +411,8 @@ export function BrowserShell() {
               onCreateTab={browser.addTab}
               zoom={zoom}
               studioViewport={studioWebviewViewport}
-              mosaicLayout={mosaicLayout}
+              mosaicState={mosaic.state}
+              mosaicRootTile={mosaic.activeWorkspace?.rootTile ?? null}
             />
           </div>
           {/* Notilus DevTools as overlay */}

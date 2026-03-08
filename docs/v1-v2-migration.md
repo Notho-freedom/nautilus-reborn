@@ -94,3 +94,25 @@ Les commits doivent être faits depuis `nautilus-reborn` uniquement.
 
 - [ ] Jamais de navigation automatique pendant la saisie (global + GitHub)
 - [ ] Navigation uniquement sur action explicite (`Enter` / clic résultat / clic bouton)
+
+## Checklist Mosaic V1 -> V2 (Clone strict)
+
+- [x] Modèles Mosaic V1 portés en TS (`MosaicTile`, `MosaicWorkspace`, `SplitDirection`, `DropZone`, types de tiles complets)
+- [x] Service Mosaic V1 porté côté V2 (`src/lib/mosaic.ts`) avec:
+  - [x] activation / visibilité
+  - [x] workspaces (create/delete/switch + persistance)
+  - [x] presets V1 (9 presets)
+  - [x] opérations tiles (set content/tab, split, close, swap, resize, move, maximize, lock/minimize)
+  - [x] état UI (hover/focus/drag-over)
+- [x] `MosaicPanel` migré vers logique V1 (workspaces + presets + activation)
+- [x] `BrowserShell` branché sur état Mosaic global (plus de layout 1/2/3 statique)
+- [x] `DesktopWebviewLayer` migré en rendu récursif par arbre de tiles (split tree)
+- [x] Assignation des tabs web aux feuilles Mosaic (priorité onglet actif)
+- [x] Contrôles tile inline dans la vue Mosaic desktop (type, split H/V, close)
+- [x] Tests V2 mis à jour pour nouveau contrat Mosaic (`ContentArea`, `DesktopWebviewLayer`)
+
+### Limites restantes (à finir pour parité intégrale UI V1)
+
+- [x] Drag & drop visuel inter-tiles (zones de drop gauche/droite/haut/bas/centre)
+- [x] Redimensionneurs visuels entre tiles en UI
+- [ ] Embedding complet de toutes les vues non-web V1 dans les tiles (certaines restent en placeholder)
