@@ -107,7 +107,7 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-3 border-b border-border/35 space-y-2">
+      <div className="p-3 border-b border-secondary/45 space-y-2 bg-gradient-to-b from-notilus-surface-2/35 to-transparent">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -133,11 +133,11 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-end gap-1">
           <button
             type="button"
             onClick={handleOpenInVscodeTab}
-            className="flex items-center gap-1 px-2 h-6 rounded-md border border-border/35 bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-2/70 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
           >
             <Code2 size={9} /> VS Code
           </button>
@@ -172,7 +172,7 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
           <button
             type="button"
             onClick={handleOpenOnGitHub}
-            className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors ml-auto"
+            className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
           >
             <ExternalLink size={9} /> GitHub
           </button>
@@ -188,7 +188,7 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
         )}
 
         {error && (
-          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-border/35 rounded-md p-2">
+          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-secondary/45 rounded-md p-2">
             {error}
           </div>
         )}
@@ -206,7 +206,7 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
               </button>
             )}
             {['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension) && file.downloadUrl && (
-              <img src={file.downloadUrl} alt={fileName} className="max-w-full max-h-48 rounded-md border border-border mt-2" />
+              <img src={file.downloadUrl} alt={fileName} className="max-w-full max-h-48 rounded-md border border-secondary/45 mt-2" />
             )}
           </div>
         )}

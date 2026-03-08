@@ -118,6 +118,11 @@
     --input: var(--secondary);
   }
 
+  .notilus-github-scope {
+    --border: var(--secondary);
+    --input: var(--secondary);
+  }
+
   .glass {
     background: hsl(var(--notilus-surface-3) / 0.85);
     backdrop-filter: blur(16px);

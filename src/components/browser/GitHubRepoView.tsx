@@ -126,7 +126,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
   return (
     <div className="flex flex-col h-full">
       {/* Repo header */}
-      <div className="p-3 border-b border-border/35 space-y-2">
+      <div className="p-3 border-b border-secondary/45 space-y-2 bg-gradient-to-b from-notilus-surface-2/35 to-transparent">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -144,7 +144,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
           <button
             type="button"
             onClick={handleOpenRepoInVscode}
-            className="h-6 px-2 flex items-center justify-center gap-1 rounded-md border border-border/35 bg-notilus-surface-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+            className="h-6 px-2 flex items-center justify-center gap-1 rounded-md bg-notilus-surface-2/70 text-[10px] text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
             title="Open repository in VS Code tab"
           >
             <Code2 size={10} />
@@ -176,7 +176,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
       </div>
 
       {/* Breadcrumb */}
-      <div className="px-3 py-1.5 border-b border-border/30 flex items-center gap-0.5 overflow-x-auto text-[10px] font-body">
+      <div className="px-3 py-1.5 border-b border-secondary/35 flex items-center gap-0.5 overflow-x-auto text-[10px] font-body">
         <button
           type="button"
           onClick={() => navigateToBreadcrumb(0)}
@@ -207,7 +207,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
         )}
 
         {error && (
-          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-border/35 rounded-md p-2">
+          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-secondary/45 rounded-md p-2">
             {error}
           </div>
         )}
@@ -222,7 +222,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
         {!isLoading && !error && contents.map(item => (
           <div
             key={item.sha}
-            className="w-full flex items-center gap-1 border-b border-border/25 hover:bg-notilus-surface-1/80 transition-colors"
+            className="group w-full flex items-center gap-1 border-b border-secondary/20 hover:bg-notilus-surface-1/80 transition-colors"
           >
             <button
               type="button"
@@ -246,11 +246,11 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
               )}
             </button>
 
-            <div className="flex items-center gap-1 pr-2">
+            <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-fast flex items-center gap-1 pr-2">
               <button
                 type="button"
                 onClick={() => handleOpenItemInVscode(item)}
-                className="h-6 px-1.5 rounded-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                className="h-6 px-1.5 rounded-md bg-notilus-surface-2/70 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
                 title="Open in VS Code tab"
               >
                 <Code2 size={10} />
@@ -259,7 +259,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
                 <button
                   type="button"
                   onClick={() => handleDownloadFile(item)}
-                  className="h-6 px-1.5 rounded-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                  className="h-6 px-1.5 rounded-md bg-notilus-surface-2/70 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
                   title="Download file"
                 >
                   <Download size={10} />
@@ -268,7 +268,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
               <button
                 type="button"
                 onClick={() => handleOpenOnGitHub(item.htmlUrl)}
-                className="h-6 px-1.5 rounded-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                className="h-6 px-1.5 rounded-md bg-notilus-surface-2/70 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
                 title="Open on GitHub"
               >
                 <ExternalLink size={10} />

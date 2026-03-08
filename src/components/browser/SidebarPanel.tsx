@@ -181,7 +181,9 @@ export function SidebarPanel({
 
   return (
     <div
-      className="h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left shadow-xl relative"
+      className={`h-full border-r bg-card overflow-hidden flex flex-col animate-slide-in-left shadow-xl relative ${
+        isGitHubPanel ? 'notilus-github-scope border-secondary/45' : 'border-border'
+      }`}
       style={{ width: `${width}px` }}
     >
       {Component ? (

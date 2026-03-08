@@ -333,7 +333,12 @@ export function BrowserShell() {
 
         if (result.success) {
           browser.closeTab(tab.id);
-          browser.toggleSidebar('github');
+          toast({
+            title: 'GitHub connected',
+            description: auth.credentials.username
+              ? `Connected as ${auth.credentials.username}`
+              : 'Authentication successful.',
+          });
         }
         return;
       }
@@ -350,7 +355,7 @@ export function BrowserShell() {
     browser.closeTab,
     browser.isDesktopMode,
     browser.tabs,
-    browser.toggleSidebar,
+    auth.credentials.username,
   ]);
 
   const handleOpenPanel = useCallback((panel: string) => {

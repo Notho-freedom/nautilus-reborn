@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useMemo, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpDown,
   FolderOpen,
@@ -131,9 +131,13 @@ export function GitHubReposPanel({
     setSelectedFile(null);
   };
 
+  const renderScopedShell = (content: ReactNode) => (
+    <div className="notilus-github-scope h-full">{content}</div>
+  );
+
   // ── File viewer ──
   if (view === 'file' && selectedRepo && selectedFile) {
-    return (
+    return renderScopedShell(
       <SidebarPanelShell title="GitHub" icon={Github} onClose={onClose ?? (() => {})}>
         <GitHubFileViewer
           repo={selectedRepo}
@@ -149,7 +153,7 @@ export function GitHubReposPanel({
 
   // ── Repo view ──
   if (view === 'repo' && selectedRepo) {
-    return (
+    return renderScopedShell(
       <SidebarPanelShell title="GitHub" icon={Github} onClose={onClose ?? (() => {})}>
         <GitHubRepoView
           repo={selectedRepo}
@@ -165,7 +169,7 @@ export function GitHubReposPanel({
 
   // ── Not connected: show PAT form ──
   if (!hasGitHubConnection) {
-    return (
+    return renderScopedShell(
       <SidebarPanelShell title="GitHub" icon={Github} onClose={onClose ?? (() => {})}>
         <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
           <Github size={56} className="text-muted-foreground/40" />
@@ -192,16 +196,16 @@ export function GitHubReposPanel({
                 value={localConnection.username}
                 onChange={e => setLocalConnection(c => ({ ...c, username: e.target.value }))}
                 placeholder="GitHub username"
-                className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+                className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-secondary/45 px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
               />
               <input
                 value={localConnection.token}
                 onChange={e => setLocalConnection(c => ({ ...c, token: e.target.value }))}
                 placeholder="Personal access token"
                 type="password"
-                className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+                className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-secondary/45 px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
               />
-              <button type="submit" className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border text-xs font-display text-foreground tracking-wider hover:bg-notilus-surface-2 transition-colors">
+              <button type="submit" className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-secondary/45 text-xs font-display text-foreground tracking-wider hover:bg-notilus-surface-2 transition-colors">
                 Connect with PAT
               </button>
             </form>
@@ -212,7 +216,7 @@ export function GitHubReposPanel({
   }
 
   // ── Connected: repos list ──
-  return (
+  return renderScopedShell(
     <SidebarPanelShell
       title="GitHub"
       icon={Github}
@@ -226,8 +230,8 @@ export function GitHubReposPanel({
         { label: 'Refresh repos', onClick: () => void handleLoadRepos() },
       ]}
     >
-      <div className="p-3 space-y-3">
-        <div className="flex items-center gap-2">
+      <div className="p-3 space-y-3 bg-gradient-to-b from-notilus-surface-2/35 to-transparent">
+        <div className="flex items-center justify-end gap-2">
           <button onClick={() => setShowPrivate(c => !c)} className={`flex items-center gap-1 px-2 h-6 rounded-md text-[10px] font-body transition-colors ${showPrivate ? 'bg-primary/15 text-primary' : 'bg-notilus-surface-1 text-muted-foreground'}`}>
             <Lock size={9} /> Private
           </button>
@@ -237,17 +241,17 @@ export function GitHubReposPanel({
         </div>
 
         {isGitHubOAuth && (
-          <div className="text-[10px] font-body text-info bg-info/10 border border-border/35 rounded-md p-2">
+          <div className="text-[10px] font-body text-info bg-info/10 border border-secondary/45 rounded-md p-2">
             Auth source: Supabase GitHub OAuth
           </div>
         )}
-        {error && <div className="text-[10px] font-body text-error bg-error/10 border border-border/35 rounded-md p-2">{error}</div>}
+        {error && <div className="text-[10px] font-body text-error bg-error/10 border border-secondary/45 rounded-md p-2">{error}</div>}
 
-        <div className="text-[10px] font-body text-muted-foreground bg-notilus-surface-1 border border-border/35 rounded-md px-2 py-1.5">
+        <div className="text-[10px] font-body text-muted-foreground bg-notilus-surface-1/80 border border-secondary/35 rounded-md px-2 py-1.5">
           Click a repository to open its file tree. GitHub website opening stays available via the external action.
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {filtered.map(repo => (
             <div
               key={repo.id}
@@ -261,7 +265,7 @@ export function GitHubReposPanel({
                   handleSelectRepo(repo);
                 }
               }}
-              className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-border/35 space-y-2 hover:bg-notilus-surface-2 transition-colors"
+              className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-secondary/35 space-y-2 hover:bg-notilus-surface-2 transition-colors"
             >
               <div className="flex items-center gap-1.5">
                 {repo.isPrivate ? <Lock size={10} className="text-warning" /> : <Globe size={10} className="text-muted-foreground" />}
@@ -274,7 +278,7 @@ export function GitHubReposPanel({
                     else window.open(repo.htmlUrl, '_blank');
                   }}
                   aria-label={`Open ${repo.fullName} on GitHub`}
-                  className="ml-auto h-6 w-6 rounded-md border border-border/35 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                  className="ml-auto h-6 w-6 rounded-md bg-notilus-surface-2/70 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
                   title="Open on GitHub"
                 >
                   <ExternalLink size={10} />
