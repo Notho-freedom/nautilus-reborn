@@ -35,6 +35,7 @@ interface SidebarPanelProps {
   githubToken?: string;
   githubUsername?: string;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
+  onSignInWithGitHub?: () => void;
 }
 
 type GenericPanelProps = {
@@ -46,6 +47,7 @@ type GenericPanelProps = {
   githubToken?: string;
   githubUsername?: string;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
+  onSignInWithGitHub?: () => void;
 };
 
 const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
