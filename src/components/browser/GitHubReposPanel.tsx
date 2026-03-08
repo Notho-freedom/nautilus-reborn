@@ -24,6 +24,7 @@ interface GitHubReposPanelProps {
   onClose?: () => void;
   githubToken?: string;
   githubUsername?: string;
+  isGitHubOAuth?: boolean;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
   onSignInWithGitHub?: () => void;
 }
@@ -33,6 +34,7 @@ export function GitHubReposPanel({
   onClose,
   githubToken = '',
   githubUsername = '',
+  isGitHubOAuth = false,
   onSaveGitHubCredentials,
   onSignInWithGitHub,
 }: GitHubReposPanelProps) {
@@ -103,9 +105,9 @@ export function GitHubReposPanel({
         <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
           <Github size={56} className="text-muted-foreground/40" />
           <div className="text-center space-y-1.5">
-            <h3 className="text-sm font-display text-foreground">Connect your GitHub</h3>
+            <h3 className="text-sm font-display text-foreground">Connect your GitHub via Supabase</h3>
             <p className="text-[11px] font-body text-muted-foreground leading-relaxed">
-              Sign in with your GitHub account to browse and manage your repositories.
+              Sign in with GitHub to browse and manage your repositories from the current session.
             </p>
           </div>
           <button
@@ -169,6 +171,11 @@ export function GitHubReposPanel({
           </button>
         </div>
 
+        {isGitHubOAuth ? (
+          <div className="text-[10px] font-body text-info bg-info/10 border border-border/35 rounded-md p-2">
+            Auth source: Supabase GitHub OAuth
+          </div>
+        ) : null}
         {error && <div className="text-[10px] font-body text-error bg-error/10 border border-error/30 rounded-md p-2">{error}</div>}
 
         <div className="space-y-2">

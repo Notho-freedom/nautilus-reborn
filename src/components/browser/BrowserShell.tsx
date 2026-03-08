@@ -370,7 +370,9 @@ export function BrowserShell() {
         onOpenSettings={() => browser.toggleSidebar('settings')}
         onToggleAI={browser.toggleAiPanel}
         isGitHubConnected={auth.isConnected}
+        isGitHubOAuth={auth.isSupabaseGitHubSession}
         githubUsername={auth.credentials.username}
+        githubAvatarUrl={auth.githubAvatarUrl}
         onOpenGitHub={() => browser.toggleSidebar('github')}
         onDisconnectGitHub={auth.disconnect}
         onSignInWithGitHub={auth.signInWithGitHub}
@@ -398,6 +400,7 @@ export function BrowserShell() {
               onCreateTab={browser.addTab}
               githubToken={auth.credentials.token}
               githubUsername={auth.credentials.username}
+              isGitHubOAuth={auth.isSupabaseGitHubSession}
               onSaveGitHubCredentials={auth.saveCredentials}
               onSignInWithGitHub={auth.signInWithGitHub}
             />

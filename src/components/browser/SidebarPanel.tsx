@@ -34,6 +34,7 @@ interface SidebarPanelProps {
   onCreateTab?: (url: string, title?: string) => void;
   githubToken?: string;
   githubUsername?: string;
+  isGitHubOAuth?: boolean;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
   onSignInWithGitHub?: () => void;
 }
@@ -46,6 +47,7 @@ type GenericPanelProps = {
   onCreateTab?: (url: string, title?: string) => void;
   githubToken?: string;
   githubUsername?: string;
+  isGitHubOAuth?: boolean;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
   onSignInWithGitHub?: () => void;
 };
@@ -101,6 +103,7 @@ export function SidebarPanel({
   onCreateTab,
   githubToken,
   githubUsername,
+  isGitHubOAuth,
   onSaveGitHubCredentials,
   onSignInWithGitHub,
 }: SidebarPanelProps) {
@@ -185,7 +188,15 @@ export function SidebarPanel({
         panel === 'monitor' ? (
           <Component stats={stats} onClose={onClosePanel} />
         ) : isGitHubPanel ? (
-          <Component onNavigate={onNavigate} onClose={onClosePanel} githubToken={githubToken} githubUsername={githubUsername} onSaveGitHubCredentials={onSaveGitHubCredentials} onSignInWithGitHub={onSignInWithGitHub} />
+          <Component
+            onNavigate={onNavigate}
+            onClose={onClosePanel}
+            githubToken={githubToken}
+            githubUsername={githubUsername}
+            isGitHubOAuth={isGitHubOAuth}
+            onSaveGitHubCredentials={onSaveGitHubCredentials}
+            onSignInWithGitHub={onSignInWithGitHub}
+          />
         ) : isBookmarksPanel || isHistoryPanel || isFlouPanel ? (
           <Component onNavigate={onNavigate} onClose={onClosePanel} />
         ) : (

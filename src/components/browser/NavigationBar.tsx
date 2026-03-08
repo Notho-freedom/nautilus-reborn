@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface NavigationBarProps {
   url: string;
@@ -48,7 +49,9 @@ interface NavigationBarProps {
   onOpenSettings?: () => void;
   onToggleAI: () => void;
   isGitHubConnected?: boolean;
+  isGitHubOAuth?: boolean;
   githubUsername?: string;
+  githubAvatarUrl?: string;
   onOpenGitHub?: () => void;
   onDisconnectGitHub?: () => void;
   onSignInWithGitHub?: () => void;
@@ -95,7 +98,9 @@ export function NavigationBar({
   onOpenSettings,
   onToggleAI,
   isGitHubConnected = false,
+  isGitHubOAuth = false,
   githubUsername,
+  githubAvatarUrl,
   onOpenGitHub,
   onDisconnectGitHub,
   onSignInWithGitHub,
@@ -109,6 +114,7 @@ export function NavigationBar({
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
+  const profileInitial = (githubUsername?.trim().charAt(0) || 'N').toUpperCase();
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -351,9 +357,9 @@ export function NavigationBar({
         </button>
       </ActionHint>
       <Popover>
-        <ActionHint label={isGitHubConnected ? `GitHub: ${githubUsername || 'connected'}` : 'Connect GitHub'}>
+        <ActionHint label={isGitHubConnected ? `Profile: ${githubUsername || 'connected'}` : 'Profile'}>
           <PopoverTrigger
-            aria-label="GitHub"
+            aria-label="Profile"
             className={cn(
               'h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-fast overflow-hidden',
               isGitHubConnected
@@ -361,17 +367,29 @@ export function NavigationBar({
                 : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'
             )}
           >
-            <Github size={15} />
+            <Avatar className="h-6 w-6 border border-border/40">
+              <AvatarImage src={githubAvatarUrl} alt={githubUsername || 'Profile avatar'} />
+              <AvatarFallback className="text-[10px] font-display bg-notilus-surface-2 text-foreground">
+                {isGitHubConnected ? profileInitial : <User size={12} />}
+              </AvatarFallback>
+            </Avatar>
           </PopoverTrigger>
         </ActionHint>
         <PopoverContent align="end" sideOffset={8} className="w-56 p-3 glass border-border">
           {isGitHubConnected ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Github size={16} className="text-foreground shrink-0" />
+                <Avatar className="h-6 w-6 border border-border/40 shrink-0">
+                  <AvatarImage src={githubAvatarUrl} alt={githubUsername || 'Profile avatar'} />
+                  <AvatarFallback className="text-[10px] font-display bg-notilus-surface-2 text-foreground">
+                    {profileInitial}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="min-w-0">
                   <p className="text-xs font-display text-foreground truncate">{githubUsername || 'Connected'}</p>
-                  <p className="text-[10px] font-body text-muted-foreground">GitHub PAT active</p>
+                  <p className="text-[10px] font-body text-muted-foreground">
+                    {isGitHubOAuth ? 'Connected via Supabase OAuth' : 'Personal Access Token active'}
+                  </p>
                 </div>
               </div>
               <div className="flex gap-2">
