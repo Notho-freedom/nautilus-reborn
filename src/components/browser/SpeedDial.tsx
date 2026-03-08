@@ -3,7 +3,7 @@ import { Search, Globe, Clock, Zap, Quote, Terminal, Plus, Wrench, ShieldCheck }
 import { getBookmarks, subscribeToBookmarksUpdates } from '@/lib/bookmarks';
 import { getHistoryItems, subscribeToHistoryUpdates } from '@/lib/history';
 import { getSettings, subscribeToSettingsUpdates, type BrowserSettings } from '@/lib/settings';
-import { resolveInitialWallpaper } from '@/lib/defaultWallpapers';
+import { resolveInitialWallpaper, pickRandomDefaultWallpaper } from '@/lib/defaultWallpapers';
 
 interface SpeedDialProps {
   onNavigate: (url: string) => void;
