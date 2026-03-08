@@ -98,6 +98,7 @@ export function NavigationBar({
   githubUsername,
   onOpenGitHub,
   onDisconnectGitHub,
+  onSignInWithGitHub,
 }: NavigationBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
