@@ -51,6 +51,7 @@ interface NavigationBarProps {
   githubUsername?: string;
   onOpenGitHub?: () => void;
   onDisconnectGitHub?: () => void;
+  onSignInWithGitHub?: () => void;
 }
 
 function ActionHint({
