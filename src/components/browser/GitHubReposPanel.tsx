@@ -14,10 +14,15 @@ import {
   formatRelativeDate,
   getGitHubConnectionConfig,
   updateGitHubConnectionConfig,
+  type GitHubContentItem,
   type GitHubRepo,
   type GitHubSortBy,
 } from '@/lib/githubRepos';
 import { SidebarPanelShell } from './SidebarPanelShell';
+import { GitHubRepoView } from './GitHubRepoView';
+import { GitHubFileViewer } from './GitHubFileViewer';
+
+type PanelView = 'list' | 'repo' | 'file';
 
 interface GitHubReposPanelProps {
   onNavigate?: (url: string) => void;
@@ -27,6 +32,7 @@ interface GitHubReposPanelProps {
   isGitHubOAuth?: boolean;
   onSaveGitHubCredentials?: (token: string, username: string) => void;
   onSignInWithGitHub?: () => void;
+  onCreateTab?: (url: string, title?: string) => void;
 }
 
 export function GitHubReposPanel({
@@ -37,7 +43,12 @@ export function GitHubReposPanel({
   isGitHubOAuth = false,
   onSaveGitHubCredentials,
   onSignInWithGitHub,
+  onCreateTab,
 }: GitHubReposPanelProps) {
+  const [view, setView] = useState<PanelView>('list');
+  const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
+  const [selectedFile, setSelectedFile] = useState<GitHubContentItem | null>(null);
+
   const [search, setSearch] = useState('');
   const [showPrivate, setShowPrivate] = useState(true);
   const [sortBy, setSortBy] = useState<GitHubSortBy>('updated');
@@ -46,7 +57,6 @@ export function GitHubReposPanel({
   const [error, setError] = useState<string | null>(null);
   const [localConnection, setLocalConnection] = useState(() => getGitHubConnectionConfig());
 
-  // Resolve effective token/username: props first, then localStorage fallback
   const effectiveToken = githubToken || localConnection.token;
   const effectiveUsername = githubUsername || localConnection.username;
   const hasGitHubConnection = Boolean(effectiveToken || effectiveUsername);
@@ -98,6 +108,59 @@ export function GitHubReposPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleSelectRepo = (repo: GitHubRepo) => {
+    setSelectedRepo(repo);
+    setSelectedFile(null);
+    setView('repo');
+  };
+
+  const handleOpenFile = (item: GitHubContentItem) => {
+    setSelectedFile(item);
+    setView('file');
+  };
+
+  const handleBackToList = () => {
+    setView('list');
+    setSelectedRepo(null);
+    setSelectedFile(null);
+  };
+
+  const handleBackToRepo = () => {
+    setView('repo');
+    setSelectedFile(null);
+  };
+
+  // ── File viewer ──
+  if (view === 'file' && selectedRepo && selectedFile) {
+    return (
+      <SidebarPanelShell title="GitHub" icon={Github} onClose={onClose ?? (() => {})}>
+        <GitHubFileViewer
+          repo={selectedRepo}
+          file={selectedFile}
+          token={effectiveToken}
+          onBack={handleBackToRepo}
+          onNavigate={onNavigate}
+          onCreateTab={onCreateTab}
+        />
+      </SidebarPanelShell>
+    );
+  }
+
+  // ── Repo view ──
+  if (view === 'repo' && selectedRepo) {
+    return (
+      <SidebarPanelShell title="GitHub" icon={Github} onClose={onClose ?? (() => {})}>
+        <GitHubRepoView
+          repo={selectedRepo}
+          token={effectiveToken}
+          onBack={handleBackToList}
+          onOpenFile={handleOpenFile}
+          onNavigate={onNavigate}
+        />
+      </SidebarPanelShell>
+    );
+  }
+
   // ── Not connected: show PAT form ──
   if (!hasGitHubConnection) {
     return (
@@ -105,9 +168,9 @@ export function GitHubReposPanel({
         <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
           <Github size={56} className="text-muted-foreground/40" />
           <div className="text-center space-y-1.5">
-            <h3 className="text-sm font-display text-foreground">Connect your GitHub via Supabase</h3>
+            <h3 className="text-sm font-display text-foreground">Connect your GitHub</h3>
             <p className="text-[11px] font-body text-muted-foreground leading-relaxed">
-              Sign in with GitHub to browse and manage your repositories from the current session.
+              Sign in with GitHub to browse and manage your repositories.
             </p>
           </div>
           <button
@@ -146,7 +209,7 @@ export function GitHubReposPanel({
     );
   }
 
-  // ── Connected: show repos ──
+  // ── Connected: repos list ──
   return (
     <SidebarPanelShell
       title="GitHub"
@@ -163,28 +226,28 @@ export function GitHubReposPanel({
     >
       <div className="p-3 space-y-3">
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowPrivate(c => !c)} className={`flex items-center gap-1 px-2 h-6 rounded-md text-[10px] font-body transition-colors duration-fast ${showPrivate ? 'bg-primary/15 text-primary' : 'bg-notilus-surface-1 text-muted-foreground'}`}>
+          <button onClick={() => setShowPrivate(c => !c)} className={`flex items-center gap-1 px-2 h-6 rounded-md text-[10px] font-body transition-colors ${showPrivate ? 'bg-primary/15 text-primary' : 'bg-notilus-surface-1 text-muted-foreground'}`}>
             <Lock size={9} /> Private
           </button>
-          <button onClick={() => setSortBy(c => (c === 'updated' ? 'stars' : c === 'stars' ? 'name' : 'updated'))} className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors duration-fast">
+          <button onClick={() => setSortBy(c => (c === 'updated' ? 'stars' : c === 'stars' ? 'name' : 'updated'))} className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors">
             <ArrowUpDown size={9} /> {sortBy}
           </button>
         </div>
 
-        {isGitHubOAuth ? (
+        {isGitHubOAuth && (
           <div className="text-[10px] font-body text-info bg-info/10 border border-border/35 rounded-md p-2">
-            Auth source: Supabase GitHub OAuth
+            Auth source: GitHub OAuth
           </div>
-        ) : null}
+        )}
         {error && <div className="text-[10px] font-body text-error bg-error/10 border border-error/30 rounded-md p-2">{error}</div>}
 
         <div className="space-y-2">
           {filtered.map(repo => (
-            <button type="button" key={repo.id} onClick={() => (onNavigate ? onNavigate(repo.htmlUrl) : window.open(repo.htmlUrl, '_blank'))} className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-border space-y-1.5 hover:bg-notilus-surface-2 transition-colors duration-fast">
+            <button type="button" key={repo.id} onClick={() => handleSelectRepo(repo)} className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-border space-y-1.5 hover:bg-notilus-surface-2 transition-colors">
               <div className="flex items-center gap-1.5">
                 {repo.isPrivate ? <Lock size={10} className="text-warning" /> : <Globe size={10} className="text-muted-foreground" />}
                 <span className="text-xs font-body text-info font-semibold">{repo.fullName}</span>
-                <ExternalLink size={10} className="text-muted-foreground ml-auto" />
+                <ExternalLink size={10} className="text-muted-foreground ml-auto" onClick={(e) => { e.stopPropagation(); onNavigate ? onNavigate(repo.htmlUrl) : window.open(repo.htmlUrl, '_blank'); }} />
               </div>
               <p className="text-[10px] font-body text-muted-foreground line-clamp-2">{repo.description || 'No description'}</p>
               <div className="flex items-center gap-3 text-[9px] font-body text-muted-foreground">
