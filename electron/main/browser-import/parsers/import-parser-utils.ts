@@ -8,9 +8,9 @@ let sqlJsPromise: Promise<SqlJsStatic> | undefined;
 
 function getSqlJs(): Promise<SqlJsStatic> {
   if (!sqlJsPromise) {
-    sqlJsPromise = (initSqlJs as any)();
+    sqlJsPromise = initSqlJs();
   }
-  return sqlJsPromise;
+  return sqlJsPromise!;
 }
 
 export async function withTimeout<T>(
