@@ -129,8 +129,8 @@ function pushBookmarkEntries(
       title: resolveTitle(rawUrl, String(node.name ?? '')),
       folder: normalizeFolderPath(context.folderParts),
       tags: [],
-      createdAt: chromiumTimeToIso(Number(node.date_added)),
-      updatedAt: chromiumTimeToIso(Number(node.date_last_used)) ?? chromiumTimeToIso(Number(node.date_added)),
+      createdAt: chromiumTimeToIso(Number(node.date_added)) ?? undefined,
+      updatedAt: (chromiumTimeToIso(Number(node.date_last_used)) ?? chromiumTimeToIso(Number(node.date_added))) ?? undefined,
       sourceBrowser: context.browser,
       sourceProfileId: context.profileId,
     });

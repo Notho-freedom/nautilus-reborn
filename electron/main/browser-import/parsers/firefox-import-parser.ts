@@ -179,8 +179,8 @@ export async function parseFirefoxBookmarks(
           title: resolveTitle(rawUrl, String(row.title ?? '')),
           folder: folderPathForId(parentId),
           tags: [],
-          createdAt: sqliteDateToIso(Number(row.dateAdded)),
-          updatedAt: sqliteDateToIso(Number(row.lastModified)),
+          createdAt: sqliteDateToIso(Number(row.dateAdded)) ?? undefined,
+          updatedAt: sqliteDateToIso(Number(row.lastModified)) ?? undefined,
           sourceBrowser: 'firefox',
           sourceProfileId: profileId,
         });

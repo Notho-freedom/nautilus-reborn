@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { ImportDataset } from '../../shared/browser-contract';
+import type { ImportDataset } from '@/types/browser-contract';
 import {
   Dialog,
   DialogContent,
