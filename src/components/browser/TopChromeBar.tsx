@@ -158,18 +158,35 @@ export function TopChromeBar({
   const noDragStyle = { WebkitAppRegion: 'no-drag' } as CSSProperties;
   const pinnedTabs = useMemo(() => tabs.filter(tab => tab.isPinned), [tabs]);
   const regularTabs = useMemo(() => tabs.filter(tab => !tab.isPinned), [tabs]);
+  const groupedItems = useMemo(() => groupTabsByDomain(regularTabs), [regularTabs]);
+
+  // Count visual items (groups count as 1 when collapsed, N when expanded)
+  const visibleTabCount = useMemo(() => {
+    let count = 0;
+    for (const item of groupedItems) {
+      if (item.kind === 'single') {
+        count += 1;
+      } else if (expandedGroup === item.group.domain) {
+        count += item.group.tabs.length;
+      } else {
+        count += 1; // group chip
+      }
+    }
+    return count;
+  }, [groupedItems, expandedGroup]);
+
   const tabWidth = useMemo(
     () =>
-      computeTabWidth(tabsAreaWidth, regularTabs.length, {
+      computeTabWidth(tabsAreaWidth, visibleTabCount, {
         addButtonWidth: 34,
         gap: 4,
         minWidth: 36,
         maxWidth: 220,
       }),
-    [tabsAreaWidth, regularTabs.length]
+    [tabsAreaWidth, visibleTabCount]
   );
   const displayMode = getTabDisplayMode(tabWidth);
-  const iconSize = getTabIconSize(Math.max(regularTabs.length, 1));
+  const iconSize = getTabIconSize(Math.max(visibleTabCount, 1));
 
   const query = searchQuery.trim().toLowerCase();
   const filteredOpenTabs = useMemo(
