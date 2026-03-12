@@ -99,7 +99,7 @@ export function TopChromeBar({
   const desktopMode = isDesktopRuntime();
   const [isMaximized, setIsMaximized] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ tabId: string; x: number; y: number } | null>(null);
-  const [tabsAreaWidth, setTabsAreaWidth] = useState(0);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const tabsAreaRef = useRef<HTMLDivElement>(null);
