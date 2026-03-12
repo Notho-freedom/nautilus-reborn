@@ -293,89 +293,159 @@ export function TopChromeBar({
 
         <div ref={tabsAreaRef} className="flex-1 min-w-0">
           <div className="flex items-center gap-1 h-8">
-            {regularTabs.map(tab => {
-              const isActive = tab.id === activeTabId;
-              const showClose = displayMode !== 'icon-only';
-              const tabDomainGroup = extractDomainGroup(tab.url);
-              const sameDomainTabs = tabs.filter(
-                other =>
-                  other.id !== tab.id &&
-                  tabDomainGroup &&
-                  extractDomainGroup(other.url) === tabDomainGroup
-              );
+            {groupedItems.map(item => {
+              if (item.kind === 'single') {
+                const tab = item.tab;
+                const isActive = tab.id === activeTabId;
+                const showClose = displayMode !== 'icon-only';
+                return (
+                  <button
+                    key={tab.id}
+                    data-testid={`tab-button-${tab.id}`}
+                    style={{ ...noDragStyle, width: `${tabWidth}px` }}
+                    onClick={() => onSelectTab(tab.id)}
+                    onContextMenu={event => handleContext(event, tab.id)}
+                    className={cn(
+                      'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0',
+                      isActive
+                        ? 'bg-card border border-border text-foreground'
+                        : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
+                      displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : ''
+                    )}
+                  >
+                    {isActive && (
+                      <div className="absolute bottom-0 left-2 right-2 h-[2px] notilus-gradient rounded-t" />
+                    )}
+                    <TabIcon tab={tab} size={iconSize} />
+                    {displayMode !== 'icon-only' && (
+                      <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
+                    )}
+                    {showClose && (
+                      <span
+                        onClick={event => { event.stopPropagation(); onCloseTab(tab.id); }}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-primary/10 rounded-sm p-0.5 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+                      >
+                        <X size={10} />
+                      </span>
+                    )}
+                  </button>
+                );
+              }
 
-              return (
-                <HoverCard key={tab.id} openDelay={180} closeDelay={70}>
-                  <HoverCardTrigger asChild>
+              // Group chip or expanded group
+              const { group } = item;
+              const isExpanded = expandedGroup === group.domain;
+              const groupHasActive = group.tabs.some(t => t.id === activeTabId);
+              const bgColor = getDomainColorBg(group.domain, 0.15);
+              const accentColor = getDomainColor(group.domain);
+
+              if (!isExpanded) {
+                // Collapsed group chip
+                const firstTab = group.tabs[0];
+                return (
+                  <ActionHint key={`group-${group.domain}`} label={`${group.domain} — ${group.tabs.length} tabs`}>
                     <button
-                      data-testid={`tab-button-${tab.id}`}
-                      style={{ ...noDragStyle, width: `${tabWidth}px` }}
-                      onClick={() => onSelectTab(tab.id)}
-                      onContextMenu={event => handleContext(event, tab.id)}
+                      data-testid={`tab-group-${group.domain}`}
+                      style={{ ...noDragStyle, width: `${tabWidth}px`, backgroundColor: bgColor }}
+                      onClick={() => setExpandedGroup(group.domain)}
                       className={cn(
-                        'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-fast min-w-0',
-                        isActive
-                          ? 'bg-card border border-border text-foreground'
-                          : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
-                        displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : ''
+                        'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0 hover:scale-[1.03]',
+                        groupHasActive
+                          ? 'border text-foreground'
+                          : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
-                      {isActive && (
-                        <div className="absolute bottom-0 left-2 right-2 h-[2px] notilus-gradient rounded-t" />
-                      )}
-
-                      <TabIcon tab={tab} size={iconSize} />
+                      {/* Color accent bar */}
+                      <div
+                        className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t transition-opacity duration-200"
+                        style={{ backgroundColor: accentColor, opacity: groupHasActive ? 1 : 0.4 }}
+                      />
+                      <TabIcon tab={firstTab} size={iconSize} />
                       {displayMode !== 'icon-only' && (
-                        <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
+                        <span className="truncate flex-1 min-w-0 text-left flex items-center gap-1">
+                          {group.domain}
+                          <span
+                            className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1 min-w-[16px] h-4"
+                            style={{ backgroundColor: accentColor, color: '#fff' }}
+                          >
+                            {group.tabs.length}
+                          </span>
+                        </span>
                       )}
-
-                      {showClose && (
+                      {displayMode === 'icon-only' && (
                         <span
-                          onClick={event => {
-                            event.stopPropagation();
-                            onCloseTab(tab.id);
-                          }}
-                          className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-primary/10 rounded-sm p-0.5 transition-opacity duration-fast opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                          className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full text-[8px] font-bold px-0.5 min-w-[14px] h-3.5"
+                          style={{ backgroundColor: accentColor, color: '#fff' }}
                         >
-                          <X size={10} />
+                          {group.tabs.length}
                         </span>
                       )}
                     </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent
-                    side="bottom"
-                    align="start"
-                    sideOffset={6}
-                    className="w-72 p-2 glass border-border"
+                  </ActionHint>
+                );
+              }
+
+              // Expanded group — show individual tabs with a colored border
+              return (
+                <div
+                  key={`group-${group.domain}`}
+                  className="flex items-center gap-0.5 h-8 rounded-md px-0.5 animate-scale-in"
+                  style={{
+                    backgroundColor: bgColor,
+                    borderLeft: `2px solid ${accentColor}`,
+                  }}
+                >
+                  {group.tabs.map(tab => {
+                    const isActive = tab.id === activeTabId;
+                    const showClose = displayMode !== 'icon-only';
+                    return (
+                      <button
+                        key={tab.id}
+                        data-testid={`tab-button-${tab.id}`}
+                        style={{ ...noDragStyle, width: `${tabWidth}px` }}
+                        onClick={() => {
+                          onSelectTab(tab.id);
+                          setExpandedGroup(null);
+                        }}
+                        onContextMenu={event => handleContext(event, tab.id)}
+                        className={cn(
+                          'group relative flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0 animate-fade-in',
+                          isActive
+                            ? 'bg-card border border-border text-foreground'
+                            : 'text-muted-foreground hover:bg-card/50 hover:text-foreground',
+                          displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : ''
+                        )}
+                      >
+                        {isActive && (
+                          <div
+                            className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t"
+                            style={{ backgroundColor: accentColor }}
+                          />
+                        )}
+                        <TabIcon tab={tab} size={iconSize} />
+                        {displayMode !== 'icon-only' && (
+                          <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
+                        )}
+                        {showClose && (
+                          <span
+                            onClick={event => { event.stopPropagation(); onCloseTab(tab.id); }}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-primary/10 rounded-sm p-0.5 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+                          >
+                            <X size={10} />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {/* Collapse button */}
+                  <button
+                    style={noDragStyle}
+                    onClick={() => setExpandedGroup(null)}
+                    className="flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-card/50 transition-colors duration-200 shrink-0"
                   >
-                    <div className="px-1">
-                      <div className="text-xs font-body text-foreground truncate">{tab.title}</div>
-                      <div className="text-[11px] font-body text-muted-foreground truncate">
-                        {extractDisplayDomain(tab.url)}
-                      </div>
-                    </div>
-                    {sameDomainTabs.length > 0 && (
-                      <>
-                        <div className="my-2 h-px notilus-gradient-full opacity-50" />
-                        <div className="space-y-0.5">
-                          {sameDomainTabs.map(other => (
-                            <button
-                              key={other.id}
-                              data-testid={`hover-tab-item-${tab.id}-${other.id}`}
-                              onClick={() => onSelectTab(other.id)}
-                              className="w-full h-8 px-1.5 rounded-md flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast"
-                            >
-                              <TabIcon tab={other} size={12} />
-                              <span className="truncate text-xs font-body text-foreground">
-                                {other.title}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </HoverCardContent>
-                </HoverCard>
+                    <Layers size={10} />
+                  </button>
+                </div>
               );
             })}
 
@@ -384,7 +454,7 @@ export function TopChromeBar({
                 style={noDragStyle}
                 onClick={onAddTab}
                 aria-label="New tab"
-                className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-fast shrink-0"
+                className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-200 shrink-0"
               >
                 <Plus size={14} />
               </button>
