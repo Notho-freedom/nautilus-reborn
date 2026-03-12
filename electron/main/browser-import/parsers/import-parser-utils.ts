@@ -4,13 +4,13 @@ import { tmpdir } from 'node:os';
 import initSqlJs from 'sql.js/dist/sql-asm.js';
 import type { Database, QueryExecResult, SqlJsStatic } from 'sql.js';
 
-let sqlJsPromise: Promise<SqlJsStatic> | null = null;
+let sqlJsPromise: Promise<SqlJsStatic> | undefined;
 
 function getSqlJs(): Promise<SqlJsStatic> {
   if (!sqlJsPromise) {
     sqlJsPromise = initSqlJs();
   }
-  return sqlJsPromise;
+  return sqlJsPromise!;
 }
 
 export async function withTimeout<T>(
@@ -115,9 +115,9 @@ export function readQueryRows(
   if (!result || result.length === 0) return [];
 
   const first = result[0] as QueryExecResult;
-  return first.values.map(row => {
+  return first.values.map((row: any) => {
     const mapped: Record<string, string | number | null> = {};
-    first.columns.forEach((column, index) => {
+    first.columns.forEach((column: string, index: number) => {
       const cell = row[index] as string | number | null;
       mapped[column] = cell;
     });
