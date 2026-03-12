@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os';
 import initSqlJs from 'sql.js/dist/sql-asm.js';
 import type { Database, QueryExecResult, SqlJsStatic } from 'sql.js';
 
-let sqlJsPromise: Promise<SqlJsStatic> | null = null;
+let sqlJsPromise: Promise<SqlJsStatic> | undefined;
 
 function getSqlJs(): Promise<SqlJsStatic> {
   if (!sqlJsPromise) {
-    sqlJsPromise = initSqlJs();
+    sqlJsPromise = (initSqlJs as any)();
   }
   return sqlJsPromise;
 }
