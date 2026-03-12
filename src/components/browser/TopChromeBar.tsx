@@ -1,9 +1,10 @@
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, LayoutGrid, Loader2, Minus, Pin, Plus, Search, Square, X, XCircle } from 'lucide-react';
+import { Copy, LayoutGrid, Layers, Loader2, Minus, Pin, Plus, Search, Square, X, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BrowserTab, RecentlyClosedTab } from '@/hooks/useBrowserState';
 import { computeTabWidth, getTabDisplayMode, getTabIconSize } from '@/lib/tabLayout';
 import { extractDisplayDomain, extractDomainGroup } from '@/lib/urlDisplay';
+import { groupTabsByDomain, getDomainColor, getDomainColorBg, type TabGroup } from '@/lib/tabGrouping';
 import {
   desktopCloseWindow,
   desktopGetWindowState,
