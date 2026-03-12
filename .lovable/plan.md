@@ -1,143 +1,116 @@
-# Plan : Corrections UX Notilus
 
-## 1. Persistance des onglets (localStorage)
 
-**Fichier** : `src/hooks/useBrowserState.ts`
+# Plan: Système de regroupement d'onglets par domaine + Corrections build
 
-- Sauvegarder `localTabs` et `localActiveTabId` dans `localStorage` (`notilus_tabs` / `notilus_active_tab`)
-- Au montage, restaurer depuis localStorage au lieu de partir avec un seul onglet par défaut
-- Écrire dans localStorage à chaque changement de `localTabs` et `localActiveTabId` (via `useEffect`)
-- Ne persister que les données sérialisables (id, title, url, kind) — pas isLoading etc.
+## Portée de cette itération
 
-## 2. Onglets : bouton fermer n'occupe pas d'espace réservé
+Ce plan couvre **deux objectifs** :
+1. Le système de **tab grouping par domaine** avec couleurs et animations expand/collapse
+2. La **correction des erreurs de build** existantes
 
-**Fichier** : `src/components/browser/TopChromeBar.tsx`
-
-- Le bouton close doit être en `position: absolute` à droite de l'onglet, pas dans le flux
-- Le titre (`<span>`) occupe tout l'espace disponible après l'icône
-- Le close apparaît uniquement au hover (`opacity-0 group-hover:opacity-100`) avec un fond semi-transparent pour ne pas masquer le texte
-- En mode `icon-only`, pas de close du tout (déjà le cas)
-
-**Fichier** : `src/components/browser/TopChromeBar.tsx` (hover card)
-
-- Supprimer le message "No tabs from this domain" — si `sameDomainTabs` est vide, ne pas afficher la section liste du tout (garder juste le titre + URL)
-
-## 3. Barre d'adresse : icônes sans couleur sauf si actives
-
-**Fichier** : `src/components/browser/NavigationBar.tsx`
-
-- Le composant `UrlActionButton` : quand `active` est false, utiliser `text-muted-foreground` (déjà le cas)
-- Quand `active` est true : utiliser `text-primary` (rose/secondaire) pour le favori rempli, `text-green-500` pour le ad-blocker actif
-- Passer une prop `activeColor` ou conditionner directement dans les usages
-
-## 4. Sidebar : retirer les bordures des boutons
-
-**Fichier** : `src/components/browser/DevToolsSidebar.tsx`
-
-- Retirer `border border-primary/50` du style actif des boutons sidebar
-- Garder uniquement le fond `bg-primary/20` et `text-white` pour l'état actif
-- Idem pour les boutons web services
-
-## 5. Tooltips/Popovers au-dessus de tout
-
-**Fichier** : `src/index.css`
-
-- Ajouter des règles CSS pour forcer les portails Radix (tooltips, popovers, hover cards) à un z-index très élevé (z-[9999])
-- Cibler `[data-radix-popper-content-wrapper]` avec `z-index: 9999 !important`
-
-## 6. Panneaux latéraux en overlay + redimensionnables
-
-**Fichier** : `src/components/browser/BrowserShell.tsx`
-
-- Le `SidebarPanel` ne doit plus pousser le contenu : le placer en `position: absolute` (ou `fixed`) par-dessus la zone de contenu, aligné à gauche après la sidebar d'icônes
-- Ajouter un handle de resize (bordure droite draggable)
-- Persister la largeur dans localStorage (`notilus_panel_width`)
-
-**Fichier** : `src/components/browser/SidebarPanel.tsx`
-
-- Créer un composant wrapper réutilisable `SidebarPanelShell` avec :
-  - Header avec titre, bouton fermer, bouton options (dropdown)
-  - Zone de recherche optionnelle (prop `searchable`)
-  - Zone de filtres optionnelle (prop `filters`)
-  - Slot pour le contenu enfant
-  - Handle de resize à droite
-- Tous les panneaux existants (Bookmarks, History, Downloads, etc.) utiliseront ce shell au lieu de dupliquer leur propre header
-
-## 7. Composant `SidebarPanelShell` réutilisable
-
-**Nouveau fichier** : `src/components/browser/SidebarPanelShell.tsx`
-
-```text
-┌─────────────────────────────┐
-│ [icon] TITRE      [⋮] [✕]  │  ← header fixe
-├─────────────────────────────┤
-│ 🔍 Recherche...             │  ← optionnel (searchable)
-├─────────────────────────────┤
-│ [Filtre1] [Filtre2] [All]   │  ← optionnel (filters)
-├─────────────────────────────┤
-│                             │
-│   Contenu (children)        │
-│                             │
-└─────────────────────────────┤ ← handle resize
-```
-
-Props :
-
-- `title: string`
-- `icon?: LucideIcon`
-- `searchable?: boolean` + `searchValue / onSearchChange`
-- `filters?: { label: string; value: string }[]` + `activeFilter / onFilterChange`
-- `onClose: () => void`
-- `menuItems?: { label: string; onClick: () => void }[]` (bouton options ⋮)
-- `children: ReactNode`
-
-Chaque panneau sera refactoré pour utiliser `<SidebarPanelShell>` au lieu de son propre header.
-
-## 8. Fix build errors
-
-**Fichier** : `src/components/browser/TopChromeBar.tsx`
-
-- Les 5 erreurs `WebkitAppRegion` : caster les styles en `React.CSSProperties` (comme fait dans TitleBar)
-
-**Fichier** : `src/test/tabLayout.test.ts`
-
-- Ligne 11 : remplacer `min` par `minWidth` et `max` par `maxWidth` dans les options
-
-## 9. Clés Supabase dans .env
-
-Le fichier `.env` est auto-généré et contient déjà `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`. Aucune modification manuelle nécessaire — le fichier ne doit pas être édité.  
-  
-NB: ASSURE TOI BIEN QUE LES OVERLAYS PASSENT BIEN AU DESSUS DE WEBCONTENTVIEW (PRIORITE MAX), JE NE PARLE PAS DE IFRAME
+La demande "terminer intégralement l'application" est trop large pour un seul passage. On traitera le tab grouping d'abord, puis on itérera sur les finitions dans les messages suivants.
 
 ---
 
-## Fichiers à créer
+## 1. Corrections build
 
-- `src/components/browser/SidebarPanelShell.tsx`
+### `src/components/browser/BrowserImportDialog.tsx` (ligne 2)
+- L'import `../../shared/browser-contract` ne résout pas dans le contexte Vite web. Créer un fichier `src/types/browser-contract.ts` qui ré-exporte le type `ImportDataset` (ou le définir directement), et mettre à jour l'import.
 
-## Fichiers à modifier
+### Fichiers `electron/` (TS errors)
+- Ces fichiers sont pour Electron et ne devraient pas être compilés par Vite. Le `tsconfig.app.json` devrait les exclure. On vérifiera et ajoutera `"exclude": ["electron/**"]` si nécessaire. Alternativement, on corrige les types (`null` → `undefined`, `any` types) directement.
 
-- `src/hooks/useBrowserState.ts` (persistance tabs)
-- `src/components/browser/TopChromeBar.tsx` (close button layout, hover card, TS fix)
-- `src/components/browser/NavigationBar.tsx` (couleurs actives)
-- `src/components/browser/DevToolsSidebar.tsx` (retirer bordures)
-- `src/components/browser/SidebarPanel.tsx` (overlay + resize)
-- `src/components/browser/BrowserShell.tsx` (layout overlay)
-- `src/components/browser/BookmarksPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/HistoryPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/DownloadsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/WidgetsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/ExtensionsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/DocumentationPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/MosaicPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/SystemMonitor.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/TerminalPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/LighthousePanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/GitPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/ApiDocsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/SettingsPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/StudioPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/UpdatesPanel.tsx` (utiliser SidebarPanelShell)
-- `src/components/browser/GitHubReposPanel.tsx` (utiliser SidebarPanelShell)
-- `src/index.css` (z-index tooltips)
-- `src/test/tabLayout.test.ts` (fix TS error)
+---
+
+## 2. Système de Tab Grouping par Domaine
+
+### Concept
+```text
+Avant (tabs individuels):
+[github.com/repo1] [github.com/repo2] [youtube.com/a] [youtube.com/b] [docs.google.com]
+
+Après (groupés, collapsed):
+[■ github.com (2)] [■ youtube.com (2)] [docs.google.com]
+       ↓ clic
+[github.com/repo1] [github.com/repo2]  ← expanded, reste groupé visuellement
+       ↓ clic sur un onglet spécifique  
+[■ github.com (2)] ← re-collapsed, onglet sélectionné actif
+```
+
+### Architecture
+
+#### `src/lib/tabGrouping.ts` — Nouveau fichier
+- `groupTabsByDomain(tabs: BrowserTab[]): TabGroup[]`
+  - Utilise `extractDomainGroup()` existant de `urlDisplay.ts`
+  - Retourne `{ domain: string, color: string, tabs: BrowserTab[] }[]`
+  - Les domaines uniques (1 seul onglet) ne forment pas de groupe
+- `getDomainColor(domain: string): string` — Palette de 8 couleurs HSL assignées par hash du domaine. Couleurs: bleu, vert, orange, violet, rose, cyan, jaune, rouge.
+- Types: `TabGroup { domain, color, tabs, isExpanded }`
+
+#### `src/components/browser/TopChromeBar.tsx` — Modifier
+- Remplacer le rendu linéaire des `regularTabs` par un rendu groupé
+- State: `expandedGroup: string | null` (domaine du groupe ouvert)
+- Logique de rendu:
+  - Si un domaine a 2+ onglets → afficher un **chip groupé** (couleur de fond, icône, "domain (n)")
+  - Clic sur chip groupé → `setExpandedGroup(domain)` → les onglets du groupe s'affichent avec animation slide/fade
+  - Clic sur un onglet dans le groupe expanded → `onSelectTab(id)` + `setExpandedGroup(null)` → re-collapse
+  - Le groupe contenant l'onglet actif montre un indicateur (bordure plus vive)
+  - Domaines avec 1 seul onglet → rendu normal (inchangé)
+
+#### Animations
+- **Expand**: les onglets du groupe apparaissent avec `animate-scale-in` (scale 0.95→1 + fade)
+- **Collapse**: `animate-scale-out` avant de revenir au chip
+- **Chip groupé**: léger `hover:scale-105` + transition de couleur
+- **Indicateur de couleur**: barre de 2px en bas du chip avec la couleur du groupe (style gradient actuel remplacé par couleur domaine)
+
+### Rendu visuel du chip groupé
+```text
+┌──────────────────────┐
+│ ● favicon  github.com (3)  │  ← fond teinté de la couleur du domaine (opacity 15%)
+│ ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔│  ← barre de couleur si contient l'onglet actif
+└──────────────────────┘
+```
+
+### Rendu expanded
+```text
+┌─ github.com ─────────────────────────────────────┐
+│ [repo1 ×] [repo2 ×] [issues ×]                   │  ← bordure gauche colorée
+└──────────────────────────────────────────────────┘
+```
+
+### Fichiers modifiés/créés
+
+| Fichier | Action |
+|---------|--------|
+| `src/lib/tabGrouping.ts` | Créer — logique de groupement + couleurs |
+| `src/components/browser/TopChromeBar.tsx` | Modifier — rendu groupé avec expand/collapse |
+| `src/lib/tabLayout.ts` | Modifier — adapter `computeTabWidth` pour prendre en compte les groupes |
+| `src/components/browser/BrowserImportDialog.tsx` | Fix — corriger l'import du type |
+| `src/types/browser-contract.ts` | Créer — types ré-exportés pour le contexte web |
+
+### Détails d'implémentation
+
+**Palette de couleurs par domaine** (8 couleurs):
+```typescript
+const DOMAIN_COLORS = [
+  'hsl(210, 80%, 60%)',  // blue
+  'hsl(150, 70%, 50%)',  // green
+  'hsl(30, 90%, 55%)',   // orange
+  'hsl(270, 70%, 60%)',  // purple
+  'hsl(340, 75%, 55%)',  // pink
+  'hsl(185, 70%, 50%)',  // cyan
+  'hsl(45, 90%, 55%)',   // yellow
+  'hsl(0, 70%, 55%)',    // red
+];
+```
+
+**State dans TopChromeBar**:
+```typescript
+const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+const groups = useMemo(() => groupTabsByDomain(regularTabs), [regularTabs]);
+```
+
+**Auto-expand**: quand l'onglet actif est dans un groupe, ce groupe a un indicateur visuel (bordure colorée) mais reste collapsed. Clic sur le chip → expand.
+
+**Auto-collapse**: sélectionner un onglet dans un groupe expanded → collapse le groupe. Cliquer ailleurs → collapse aussi.
+
