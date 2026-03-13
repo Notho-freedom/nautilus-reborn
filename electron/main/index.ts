@@ -29,6 +29,20 @@ const SHARED_WEBVIEW_PARTITION = 'persist:notilus-default';
 const IS_DEV = !app.isPackaged;
 const SINGLE_INSTANCE_LOCK = app.requestSingleInstanceLock();
 
+function configureUserAgent() {
+  const chromeVersion = process.versions.chrome;
+  if (!chromeVersion) return;
+  const ua = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+  app.userAgentFallback = ua;
+
+  app.on('web-contents-created', (_event, contents) => {
+    const type = contents.getType();
+    if (type === 'webview' || type === 'webContentsView') {
+      contents.setUserAgent(app.userAgentFallback);
+    }
+  });
+}
+
 let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let downloadManager: DownloadManager | null = null;
@@ -326,6 +340,7 @@ function createDesktopWindow() {
 
 app.whenReady().then(() => {
   app.setAppUserModelId('com.notilus.reborn');
+  configureUserAgent();
 
   createDesktopWindow();
 

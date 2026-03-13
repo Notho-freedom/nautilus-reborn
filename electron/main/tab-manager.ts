@@ -1,4 +1,5 @@
 import {
+  app,
   Menu,
   clipboard,
   webContents,
@@ -464,6 +465,9 @@ export class TabManager {
     this.nativeViewsByTabId.set(tabId, view);
 
     const targetWebContents = view.webContents;
+    if (app.userAgentFallback) {
+      targetWebContents.setUserAgent(app.userAgentFallback);
+    }
     this.attachContextMenuForTab(tabId, targetWebContents);
 
     const onUpdate = () => {

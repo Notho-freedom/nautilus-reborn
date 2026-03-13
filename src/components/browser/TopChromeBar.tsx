@@ -1,5 +1,5 @@
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, EyeOff, LayoutGrid, Layers, Loader2, Minus, Pin, Plus, Search, Shield, Square, X, XCircle } from 'lucide-react';
+import { Copy, LayoutGrid, Layers, Loader2, Minus, Pin, Plus, Search, Square, VenetianMask, X, XCircle, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BrowserTab, RecentlyClosedTab } from '@/hooks/useBrowserState';
 import { computeTabWidth, getTabDisplayMode, getTabIconSize } from '@/lib/tabLayout';
@@ -49,17 +49,17 @@ function getFaviconUrl(url: string): string | null {
   }
 }
 
-function TabIcon({ tab, size }: { tab: BrowserTab; size: number }) {
+function TabIcon({ tab, size, showNativeBadge = false }: { tab: BrowserTab; size: number; showNativeBadge?: boolean }) {
   const [faviconError, setFaviconError] = useState(false);
   const faviconUrl = getFaviconUrl(tab.url);
   if (tab.isLoading) {
     return <Loader2 size={size} className="text-primary animate-spin shrink-0" />;
   }
   if (tab.isPrivate) {
-    return <EyeOff size={size} className="text-muted-foreground shrink-0" />;
+    return <VenetianMask size={size} className="text-muted-foreground shrink-0" />;
   }
-  if (faviconUrl && !faviconError) {
-    return (
+  const iconContent =
+    faviconUrl && !faviconError ? (
       <img
         src={faviconUrl}
         alt=""
@@ -67,10 +67,21 @@ function TabIcon({ tab, size }: { tab: BrowserTab; size: number }) {
         style={{ width: size, height: size }}
         onError={() => setFaviconError(true)}
       />
+    ) : (
+      <LayoutGrid size={size} className="text-muted-foreground shrink-0" />
     );
+
+  if (!showNativeBadge || tab.renderMode !== 'native') {
+    return iconContent;
   }
+
   return (
-    <LayoutGrid size={size} className="text-muted-foreground shrink-0" />
+    <span className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      {iconContent}
+      <span className="absolute -right-1 -bottom-1 flex items-center justify-center h-3 w-3 rounded-full bg-primary text-primary-foreground shadow-sm">
+        <Zap size={8} />
+      </span>
+    </span>
   );
 }
 
@@ -234,6 +245,11 @@ export function TopChromeBar({
     event.preventDefault();
     setContextMenu({ tabId, x: event.clientX, y: event.clientY });
   };
+  const handlePrivateTabContext = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onAddPrivateTab?.();
+  };
 
   // DnD handlers
   const handleDragStart = (event: React.DragEvent, tabId: string) => {
@@ -348,7 +364,7 @@ export function TopChromeBar({
         {isActive && tab.isPrivate && (
           <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-muted-foreground/50 rounded-t" />
         )}
-        <TabIcon tab={tab} size={iconSize} />
+        <TabIcon tab={tab} size={iconSize} showNativeBadge />
         {displayMode !== 'icon-only' && (
           <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
         )}
@@ -385,29 +401,35 @@ export function TopChromeBar({
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0 max-w-[180px] min-w-0 overflow-hidden">
-          {pinnedTabs.map(tab => {
-            const isActive = tab.id === activeTabId;
-            return (
-              <ActionHint key={tab.id} label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}>
-                <button
-                  data-testid={`pinned-tab-${tab.id}`}
-                  style={noDragStyle}
-                  onClick={() => onSelectTab(tab.id)}
-                  aria-label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}
-                  className={cn(
-                    'h-8 w-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0 text-muted-foreground hover:text-foreground',
-                    isActive ? 'text-white scale-[1.05]' : ''
-                  )}
-                >
-                  <TabIcon tab={tab} size={15} />
-                </button>
-              </ActionHint>
-            );
-          })}
-        </div>
+        {pinnedTabs.map(tab => {
+          const isActive = tab.id === activeTabId;
+          return (
+            <ActionHint key={tab.id} label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}>
+              <button
+                data-testid={`pinned-tab-${tab.id}`}
+                style={noDragStyle}
+                onClick={() => onSelectTab(tab.id)}
+                aria-label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}
+                className={cn(
+                  'h-8 w-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0 text-muted-foreground hover:text-foreground',
+                  isActive ? 'text-white scale-[1.05]' : ''
+                )}
+              >
+                <TabIcon tab={tab} size={15} showNativeBadge />
+              </button>
+            </ActionHint>
+          );
+        })}
+      </div>
 
-        <div ref={tabsAreaRef} className="flex-1 min-w-0">
-          <div className="flex items-center gap-1 h-8">
+      <div ref={tabsAreaRef} className="flex-1 min-w-0">
+          <div
+            className="flex items-center gap-1 h-8"
+            onContextMenu={event => {
+              if (event.target !== event.currentTarget) return;
+              handlePrivateTabContext(event);
+            }}
+          >
             {groupedItems.map(item => {
               if (item.kind === 'single') {
                 return renderSingleTab(item.tab);
@@ -455,13 +477,13 @@ export function TopChromeBar({
                           ? 'border text-foreground'
                           : 'text-muted-foreground hover:text-foreground',
                       )}
-                    >
-                      {/* Color accent bar */}
-                      <div
-                        className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t transition-opacity duration-200"
-                        style={{ backgroundColor: accentColor, opacity: groupHasActive ? 1 : 0.4 }}
-                      />
-                      <TabIcon tab={firstTab} size={iconSize} />
+                      >
+                        {/* Color accent bar */}
+                        <div
+                          className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t transition-opacity duration-200"
+                          style={{ backgroundColor: accentColor, opacity: groupHasActive ? 1 : 0.4 }}
+                        />
+                        <TabIcon tab={firstTab} size={iconSize} showNativeBadge />
                       {displayMode !== 'icon-only' && (
                         <span className="truncate flex-1 min-w-0 text-left flex items-center gap-1">
                           {group.domain}
@@ -534,7 +556,7 @@ export function TopChromeBar({
                             style={{ backgroundColor: accentColor }}
                           />
                         )}
-                        <TabIcon tab={tab} size={iconSize} />
+                        <TabIcon tab={tab} size={iconSize} showNativeBadge />
                         {displayMode !== 'icon-only' && (
                           <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
                         )}
@@ -569,20 +591,11 @@ export function TopChromeBar({
                 <button
                   style={noDragStyle}
                   onClick={onAddTab}
+                  onContextMenu={handlePrivateTabContext}
                   aria-label="New tab"
                   className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-200 shrink-0"
                 >
                   <Plus size={14} />
-                </button>
-              </ActionHint>
-              <ActionHint label="New private tab">
-                <button
-                  style={noDragStyle}
-                  onClick={onAddPrivateTab}
-                  aria-label="New private tab"
-                  className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-foreground transition-colors duration-200 shrink-0"
-                >
-                  <EyeOff size={12} />
                 </button>
               </ActionHint>
             </div>
@@ -679,7 +692,7 @@ export function TopChromeBar({
                       <div className="min-w-0">
                         <div className="text-xs font-body text-foreground truncate flex items-center gap-1">
                           {tab.title}
-                          {tab.isPrivate && <EyeOff size={10} className="text-muted-foreground shrink-0" />}
+                          {tab.isPrivate && <VenetianMask size={10} className="text-muted-foreground shrink-0" />}
                         </div>
                         <div className="text-[10px] font-body text-muted-foreground truncate">
                           {extractDisplayDomain(tab.url)}
@@ -758,7 +771,7 @@ export function TopChromeBar({
                 action: () => onTogglePinTab(contextMenu.tabId),
               },
               {
-                icon: EyeOff,
+                icon: VenetianMask,
                 label: 'New Private Tab',
                 action: () => onAddPrivateTab?.(),
               },
