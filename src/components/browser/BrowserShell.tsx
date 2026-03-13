@@ -418,6 +418,7 @@ export function BrowserShell() {
         onToggleBookmark={() => {
           if (!browser.activeTab) return;
           const nextState = toggleBookmark(browser.activeTab.url, browser.activeTab.title);
+          playBookmark();
           setActiveTabBookmarked(nextState);
         }}
         onTogglePin={() => {
