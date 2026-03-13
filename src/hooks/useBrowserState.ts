@@ -358,24 +358,31 @@ export function useBrowserState() {
     setLocalActiveTabId(id);
   }, [desktopMode]);
 
-  const addTab = useCallback((url = 'notilus://speed-dial', title = 'New Tab') => {
+  const addTab = useCallback((url = 'notilus://speed-dial', title = 'New Tab', options?: { isPrivate?: boolean }) => {
     const normalizedUrl = normalizeUrl(url);
     const resolvedTitle = resolveTitle(normalizedUrl, title);
+    const isPrivate = options?.isPrivate ?? false;
+
+    if (isPrivate) {
+      playPrivateMode();
+    } else {
+      playTabOpen();
+    }
 
     if (desktopMode) {
       void desktopCreateTab({ url: normalizedUrl });
-      if (!isInternalUrl(normalizedUrl)) {
+      if (!isInternalUrl(normalizedUrl) && !isPrivate) {
         addHistoryItem(normalizedUrl, resolvedTitle);
       }
       return;
     }
 
     const id = `tab-${Date.now()}`;
-    const newTab: BrowserTab = { id, title: resolvedTitle, url: normalizedUrl };
+    const newTab: BrowserTab = { id, title: resolvedTitle, url: normalizedUrl, isPrivate };
     setLocalTabs(prev => [...prev, newTab]);
     setLocalActiveTabId(id);
 
-    if (!isInternalUrl(normalizedUrl)) {
+    if (!isInternalUrl(normalizedUrl) && !isPrivate) {
       addHistoryItem(normalizedUrl, resolvedTitle);
     }
   }, [desktopMode]);
