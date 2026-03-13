@@ -46,6 +46,7 @@ import type {
   TabActivateRequest,
   TabCloseRequest,
   TabCreateRequest,
+  TabMoveRequest,
   WindowState,
 } from '../../shared/browser-contract';
 import type { SystemMetricsSnapshot } from '../../shared/system-contract';
@@ -87,6 +88,14 @@ export async function desktopActivateTab(
   const bridge = getDesktopBridge();
   if (!bridge) return null;
   return bridge.activateTab(payload);
+}
+
+export async function desktopMoveTab(
+  payload: TabMoveRequest
+): Promise<BrowserSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.moveTab(payload);
 }
 
 export async function desktopNavigate(

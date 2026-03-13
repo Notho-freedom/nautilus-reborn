@@ -22,6 +22,7 @@ import { SystemMetricsManager } from './system-metrics-manager';
 import { TabManager } from './tab-manager';
 import { TerminalManager } from './terminal-manager';
 import { createMainWindow } from './window-manager';
+import { TabSessionStore } from './session-store';
 
 const DEBUG_IPC = process.env.NOTILUS_DEBUG_IPC === '1';
 const INITIAL_URL = 'notilus://speed-dial';
@@ -53,6 +54,7 @@ let backendLabQueueManager: BackendLabQueueManager | null = null;
 let studioManager: StudioManager | null = null;
 let systemMetricsManager: SystemMetricsManager | null = null;
 let terminalManager: TerminalManager | null = null;
+let tabSessionStore: TabSessionStore | null = null;
 
 if (!SINGLE_INSTANCE_LOCK) {
   app.quit();
@@ -95,6 +97,7 @@ function createDesktopWindow() {
 
   mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
     const sourceUrl = typeof params.src === 'string' ? params.src.trim() : '';
+    const requestedPartition = typeof params.partition === 'string' ? params.partition : '';
     const blocked =
       sourceUrl.startsWith('notilus://') ||
       sourceUrl.startsWith('javascript:') ||
@@ -115,7 +118,11 @@ function createDesktopWindow() {
     webPreferences.sandbox = true;
     webPreferences.webSecurity = true;
     webPreferences.devTools = true;
-    webPreferences.partition = SHARED_WEBVIEW_PARTITION;
+    if (requestedPartition.startsWith('private:')) {
+      webPreferences.partition = requestedPartition;
+    } else {
+      webPreferences.partition = SHARED_WEBVIEW_PARTITION;
+    }
   });
 
   const networkLayer = new NetworkLayer(session.defaultSession, DEBUG_IPC);
@@ -132,6 +139,9 @@ function createDesktopWindow() {
     onStateChanged: snapshot => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send(BrowserIpcChannels.stateChanged, snapshot);
+      if (tabManager) {
+        tabSessionStore?.schedule(tabManager.exportSession());
+      }
     },
     onDevToolsDockStateChanged: state => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -184,6 +194,14 @@ function createDesktopWindow() {
       mainWindow.webContents.send(BrowserIpcChannels.backendLabStateChanged, state);
     },
   });
+
+  tabSessionStore = new TabSessionStore();
+  const restored = tabSessionStore.load();
+  if (restored && tabManager) {
+    tabManager.restoreSession(restored);
+  } else {
+    tabManager.createTab(INITIAL_URL);
+  }
   registerGitIpc({
     gitManager,
     debug: DEBUG_IPC,
@@ -357,6 +375,10 @@ app.on('second-instance', () => {
     mainWindow.restore();
   }
   mainWindow.focus();
+});
+
+app.on('before-quit', () => {
+  tabSessionStore?.flush();
 });
 
 app.on('window-all-closed', () => {

@@ -18,6 +18,7 @@ export interface TabDescriptor {
   url: string;
   kind: TabKind;
   renderMode?: TabRenderMode;
+  isPrivate?: boolean;
   isLoading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
@@ -59,6 +60,7 @@ export interface DownloadsSnapshot {
 
 export interface TabCreateRequest {
   url?: string;
+  isPrivate?: boolean;
 }
 
 export interface TabCloseRequest {
@@ -67,6 +69,11 @@ export interface TabCloseRequest {
 
 export interface TabActivateRequest {
   tabId: string;
+}
+
+export interface TabMoveRequest {
+  tabId: string;
+  toIndex: number;
 }
 
 export interface NavigateRequest {
@@ -311,6 +318,7 @@ export interface BrowserDesktopApi {
   createTab: (payload: TabCreateRequest) => Promise<BrowserSnapshot>;
   closeTab: (payload: TabCloseRequest) => Promise<BrowserSnapshot>;
   activateTab: (payload: TabActivateRequest) => Promise<BrowserSnapshot>;
+  moveTab: (payload: TabMoveRequest) => Promise<BrowserSnapshot>;
   navigate: (payload: NavigateRequest) => Promise<BrowserSnapshot>;
   goBack: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
   goForward: (payload: TabActionRequest) => Promise<BrowserSnapshot>;
@@ -393,6 +401,7 @@ export const BrowserIpcChannels = {
   tabCreate: 'browser:tab-create',
   tabClose: 'browser:tab-close',
   tabActivate: 'browser:tab-activate',
+  tabMove: 'browser:tab-move',
   navigate: 'browser:navigate',
   goBack: 'browser:go-back',
   goForward: 'browser:go-forward',

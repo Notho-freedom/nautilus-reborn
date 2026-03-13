@@ -5,6 +5,7 @@ import type {
   SetPinnedTabsRequest,
   TabRenderModeRequest,
   TabActivateRequest,
+  TabMoveRequest,
   TabActionRequest,
   TabRuntimeUpdateRequest,
   TabWebContentsBindRequest,
@@ -26,6 +27,7 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.tabCreate);
   ipcMain.removeHandler(BrowserIpcChannels.tabClose);
   ipcMain.removeHandler(BrowserIpcChannels.tabActivate);
+  ipcMain.removeHandler(BrowserIpcChannels.tabMove);
   ipcMain.removeHandler(BrowserIpcChannels.navigate);
   ipcMain.removeHandler(BrowserIpcChannels.goBack);
   ipcMain.removeHandler(BrowserIpcChannels.goForward);
@@ -61,7 +63,7 @@ export function registerBrowserIpc({
 
   ipcMain.handle(BrowserIpcChannels.tabCreate, (_event, payload: TabCreateRequest = {}) => {
     log(BrowserIpcChannels.tabCreate, payload);
-    return tabManager.createTab(payload.url);
+    return tabManager.createTab(payload.url, { isPrivate: payload.isPrivate });
   });
 
   ipcMain.handle(BrowserIpcChannels.tabClose, (_event, payload: TabCloseRequest) => {
@@ -72,6 +74,11 @@ export function registerBrowserIpc({
   ipcMain.handle(BrowserIpcChannels.tabActivate, (_event, payload: TabActivateRequest) => {
     log(BrowserIpcChannels.tabActivate, payload);
     return tabManager.activateTab(payload.tabId);
+  });
+
+  ipcMain.handle(BrowserIpcChannels.tabMove, (_event, payload: TabMoveRequest) => {
+    log(BrowserIpcChannels.tabMove, payload);
+    return tabManager.moveTab(payload.tabId, payload.toIndex);
   });
 
   ipcMain.handle(BrowserIpcChannels.navigate, (_event, payload: NavigateRequest) => {

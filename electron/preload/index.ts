@@ -7,6 +7,7 @@ const api: BrowserDesktopApi = {
   createTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabCreate, payload),
   closeTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabClose, payload),
   activateTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabActivate, payload),
+  moveTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabMove, payload),
   navigate: payload => ipcRenderer.invoke(BrowserIpcChannels.navigate, payload),
   goBack: payload => ipcRenderer.invoke(BrowserIpcChannels.goBack, payload),
   goForward: payload => ipcRenderer.invoke(BrowserIpcChannels.goForward, payload),

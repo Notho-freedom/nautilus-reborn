@@ -38,6 +38,7 @@ interface WebSurface {
   serviceId?: string;
   tabId?: string;
   webview: WebviewTag;
+  partition: string;
   container: HTMLElement | null;
   domReady: boolean;
   boundTabId: string | null;
@@ -61,6 +62,8 @@ const BLOCKED_ERROR_SIGNATURES = [
   'ERR_BLOCKED_BY_CSP',
   'ERR_BLOCKED_BY_X_FRAME_OPTIONS',
 ];
+const DEFAULT_PARTITION = 'persist:notilus-default';
+const PRIVATE_PARTITION_PREFIX = 'private:';
 
 function deriveTitle(url: string): string {
   try {
@@ -146,6 +149,13 @@ class WebSurfaceManager {
   private pendingPanelTransfer: PendingPanelTransfer | null = null;
   private autoSwitchByTabId = new Map<string, AutoSwitchInfo>();
 
+  private resolvePartitionForTab(tab: BrowserTab) {
+    if (tab.isPrivate) {
+      return `${PRIVATE_PARTITION_PREFIX}${tab.id}`;
+    }
+    return DEFAULT_PARTITION;
+  }
+
   setOnCreateTab(callback: ((url: string) => void) | null) {
     this.onCreateTab = callback;
   }
@@ -209,11 +219,19 @@ class WebSurfaceManager {
       surface = this.surfaces.get(surfaceId);
     }
 
+    if (surface && surface.partition !== DEFAULT_PARTITION) {
+      this.destroySurface(surface);
+      this.surfaces.delete(surface.id);
+      surface = undefined;
+      surfaceId = undefined;
+    }
+
     if (!surface) {
       surface = this.createSurface({
         url,
         mode: 'panel',
         serviceId,
+        partition: DEFAULT_PARTITION,
       });
       surfaceId = surface.id;
       this.surfaces.set(surfaceId, surface);
@@ -282,7 +300,7 @@ class WebSurfaceManager {
     if (tab.kind !== 'external' || tab.renderMode === 'native') return;
 
     let surfaceId = this.tabSurfaceByTabId.get(tab.id);
-    if (!surfaceId && this.pendingPanelTransfer) {
+    if (!surfaceId && this.pendingPanelTransfer && !tab.isPrivate) {
       const normalizedTarget = normalizeComparableUrl(this.pendingPanelTransfer.url);
       const normalizedTab = normalizeComparableUrl(tab.url);
       if (normalizedTarget === normalizedTab || tab.id === this.activeTabId) {
@@ -299,10 +317,19 @@ class WebSurfaceManager {
       surface = this.surfaces.get(surfaceId);
     }
 
+    const desiredPartition = this.resolvePartitionForTab(tab);
+    if (surface && surface.partition !== desiredPartition) {
+      this.destroySurface(surface);
+      this.surfaces.delete(surface.id);
+      surface = undefined;
+      surfaceId = undefined;
+    }
+
     if (!surface) {
       surface = this.createSurface({
         url: tab.url,
         mode: 'tab',
+        partition: desiredPartition,
       });
       surfaceId = surface.id;
       this.surfaces.set(surfaceId, surface);
@@ -441,9 +468,19 @@ class WebSurfaceManager {
     }
   }
 
-  private createSurface({ url, mode, serviceId }: { url: string; mode: SurfaceMode; serviceId?: string }) {
+  private createSurface({
+    url,
+    mode,
+    serviceId,
+    partition,
+  }: {
+    url: string;
+    mode: SurfaceMode;
+    serviceId?: string;
+    partition: string;
+  }) {
     const webview = document.createElement('webview') as WebviewTag;
-    webview.setAttribute('partition', 'persist:notilus-default');
+    webview.setAttribute('partition', partition);
     webview.setAttribute('allowpopups', 'true');
     webview.setAttribute('data-surface', 'true');
     webview.className = 'bg-transparent';
@@ -463,6 +500,7 @@ class WebSurfaceManager {
       url,
       serviceId,
       webview,
+      partition,
       container: null,
       domReady: false,
       boundTabId: null,

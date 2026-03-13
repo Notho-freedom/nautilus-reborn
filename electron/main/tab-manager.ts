@@ -19,6 +19,7 @@ import type {
   ViewportBounds,
 } from '../../shared/browser-contract';
 import { DevToolsDockManager } from './devtools-dock-manager';
+import type { PersistedTabSession } from './session-store';
 
 interface ManagedTab {
   descriptor: TabDescriptor;
@@ -34,6 +35,7 @@ interface TabManagerOptions {
 const INTERNAL_PREFIX = 'notilus://';
 const DEFAULT_INTERNAL_URL = 'notilus://speed-dial';
 const SHARED_WEBVIEW_PARTITION = 'persist:notilus-default';
+const PRIVATE_PARTITION_PREFIX = 'private:';
 
 function isInternalUrl(url: string): boolean {
   return url.startsWith(INTERNAL_PREFIX);
@@ -110,15 +112,86 @@ export class TabManager {
     };
   }
 
-  createTab(rawUrl = DEFAULT_INTERNAL_URL): BrowserSnapshot {
+  exportSession(): PersistedTabSession {
+    const tabs = this.order
+      .map(id => this.tabs.get(id)?.descriptor)
+      .filter((tab): tab is TabDescriptor => Boolean(tab))
+      .filter(tab => !tab.isPrivate)
+      .map(tab => ({
+        id: tab.id,
+        url: tab.url,
+        title: tab.title,
+        kind: tab.kind,
+        renderMode: tab.renderMode,
+        isPrivate: tab.isPrivate,
+      }));
+
+    const validIds = new Set(tabs.map(tab => tab.id));
+    const activeTabId =
+      this.activeTabId && validIds.has(this.activeTabId) ? this.activeTabId : tabs[0]?.id ?? null;
+
+    return {
+      version: 1,
+      activeTabId,
+      tabs,
+      pinnedTabIds: Array.from(this.pinnedTabIds).filter(id => validIds.has(id)),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  restoreSession(session: PersistedTabSession): BrowserSnapshot {
+    this.resetTabs();
+
+    const tabs = Array.isArray(session.tabs) ? session.tabs : [];
+    const trimmed = tabs.slice(0, 50);
+
+    for (const tab of trimmed) {
+      if (!tab || typeof tab.id !== 'string' || typeof tab.url !== 'string') continue;
+      const url = normalizeUrl(tab.url);
+      const kind = isInternalUrl(url) ? 'internal' : 'external';
+      const descriptor: TabDescriptor = {
+        id: tab.id,
+        title: tab.title?.trim() || deriveTitle(url),
+        url,
+        kind,
+        renderMode: kind === 'external' ? 'webview' : undefined,
+        isPrivate: undefined,
+        isLoading: kind === 'external',
+        canGoBack: false,
+        canGoForward: false,
+      };
+      this.tabs.set(tab.id, { descriptor });
+      this.order.push(tab.id);
+    }
+
+    if (this.order.length === 0) {
+      return this.createTab(DEFAULT_INTERNAL_URL);
+    }
+
+    this.pinnedTabIds = new Set(
+      (session.pinnedTabIds ?? []).filter(id => this.tabs.has(id))
+    );
+
+    const preferredActive =
+      session.activeTabId && this.tabs.has(session.activeTabId)
+        ? session.activeTabId
+        : this.order[0];
+    this.activateTabInternal(preferredActive);
+    this.notifyStateChanged();
+    return this.getSnapshot();
+  }
+
+  createTab(rawUrl = DEFAULT_INTERNAL_URL, options?: { isPrivate?: boolean }): BrowserSnapshot {
     const url = normalizeUrl(rawUrl);
     const tabId = this.createTabId();
+    const isPrivate = options?.isPrivate ?? false;
     const descriptor: TabDescriptor = {
       id: tabId,
       title: deriveTitle(url),
       url,
       kind: isInternalUrl(url) ? 'internal' : 'external',
       renderMode: isInternalUrl(url) ? undefined : 'webview',
+      isPrivate: isPrivate || undefined,
       isLoading: !isInternalUrl(url),
       canGoBack: false,
       canGoForward: false,
@@ -176,6 +249,18 @@ export class TabManager {
   activateTab(tabId: string): BrowserSnapshot {
     if (!this.tabs.has(tabId)) return this.getSnapshot();
     this.activateTabInternal(tabId);
+    this.notifyStateChanged();
+    return this.getSnapshot();
+  }
+
+  moveTab(tabId: string, toIndex: number): BrowserSnapshot {
+    const fromIndex = this.order.indexOf(tabId);
+    if (fromIndex < 0) return this.getSnapshot();
+    const clamped = Math.max(0, Math.min(toIndex, this.order.length - 1));
+    if (fromIndex === clamped) return this.getSnapshot();
+
+    this.order.splice(fromIndex, 1);
+    this.order.splice(clamped, 0, tabId);
     this.notifyStateChanged();
     return this.getSnapshot();
   }
@@ -392,6 +477,7 @@ export class TabManager {
   setPinnedTabs(tabIds: string[]): void {
     const validIds = new Set(this.order);
     this.pinnedTabIds = new Set(tabIds.filter(tabId => validIds.has(tabId)));
+    this.notifyStateChanged();
   }
 
   setTabRenderMode(tabId: string, mode: TabRenderMode): BrowserSnapshot {
@@ -445,6 +531,9 @@ export class TabManager {
       this.destroyNativeView(tabId);
     }
 
+    const isPrivate = this.tabs.get(tabId)?.descriptor.isPrivate ?? false;
+    const partition = isPrivate ? `${PRIVATE_PARTITION_PREFIX}${tabId}` : SHARED_WEBVIEW_PARTITION;
+
     let view: WebContentsView;
     try {
       view = new WebContentsView({
@@ -453,7 +542,7 @@ export class TabManager {
           contextIsolation: true,
           sandbox: true,
           webSecurity: true,
-          partition: SHARED_WEBVIEW_PARTITION,
+          partition,
         },
       });
     } catch (error) {
@@ -489,7 +578,7 @@ export class TabManager {
 
     targetWebContents.setWindowOpenHandler(details => {
       if (details?.url) {
-        this.createTab(details.url);
+        this.createTab(details.url, { isPrivate });
       }
       return { action: 'deny' };
     });
@@ -636,6 +725,19 @@ export class TabManager {
     if (!attached) {
       contentView.addChildView(view);
     }
+  }
+
+  private resetTabs(): void {
+    for (const tabId of this.order) {
+      this.destroyNativeView(tabId);
+      this.detachContextMenuForTab(tabId);
+    }
+    this.tabs.clear();
+    this.order.length = 0;
+    this.webContentsByTabId.clear();
+    this.pinnedTabIds.clear();
+    this.activeTabId = null;
+    this.devToolsDock.close();
   }
 
   private activateTabInternal(tabId: string): void {

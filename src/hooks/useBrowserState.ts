@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { BrowserSnapshot, DevToolsDockState, TabDescriptor } from '../../shared/browser-contract';
 import { addHistoryItem } from '@/lib/history';
 import { playTabOpen, playTabClose, playTabSwitch, playPrivateMode } from '@/lib/sounds';
@@ -12,6 +12,7 @@ import {
   desktopGoBack,
   desktopGoForward,
   desktopNavigate,
+  desktopMoveTab,
   onDesktopDevToolsDockStateChanged,
   desktopOpenDevTools,
   desktopReload,
@@ -174,6 +175,7 @@ function mapDesktopTab(tab: TabDescriptor): BrowserTab {
     canGoForward: tab.canGoForward,
     kind: tab.kind,
     renderMode: tab.renderMode,
+    isPrivate: tab.isPrivate,
   };
 }
 
@@ -326,6 +328,7 @@ export function useBrowserState() {
   );
   const activeTabId = desktopMode && desktopSnapshot ? desktopSnapshot.activeTabId ?? '' : localActiveTabId;
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0] || DEFAULT_TAB;
+  const lastHistoryRef = useRef(new Map<string, string>());
 
   useEffect(() => {
     writePinnedTabs(pinnedTabIds);
@@ -355,6 +358,21 @@ export function useBrowserState() {
     writePersistedTabs(localTabs, localActiveTabId);
   }, [localTabs, localActiveTabId, desktopMode]);
 
+  useEffect(() => {
+    if (!desktopMode || !desktopSnapshot) return;
+    const cache = lastHistoryRef.current;
+    for (const tab of desktopSnapshot.tabs) {
+      if (tab.kind !== 'external') continue;
+      if (tab.isPrivate) continue;
+      const url = tab.url;
+      if (!url || isInternalUrl(url)) continue;
+      const previous = cache.get(tab.id);
+      if (previous === url) continue;
+      cache.set(tab.id, url);
+      addHistoryItem(url, tab.title);
+    }
+  }, [desktopMode, desktopSnapshot]);
+
   const setActiveTabId = useCallback((id: string) => {
     playTabSwitch();
     if (desktopMode) {
@@ -376,7 +394,7 @@ export function useBrowserState() {
     }
 
     if (desktopMode) {
-      void desktopCreateTab({ url: normalizedUrl });
+      void desktopCreateTab({ url: normalizedUrl, isPrivate });
       if (!isInternalUrl(normalizedUrl) && !isPrivate) {
         addHistoryItem(normalizedUrl, resolvedTitle);
       }
@@ -592,7 +610,12 @@ export function useBrowserState() {
   }, []);
 
   const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
-    if (desktopMode) return;
+    if (desktopMode) {
+      const tabId = tabs[fromIndex]?.id;
+      if (!tabId) return;
+      void desktopMoveTab({ tabId, toIndex });
+      return;
+    }
     setLocalTabs(prev => {
       const next = [...prev];
       const [moved] = next.splice(fromIndex, 1);
@@ -603,7 +626,10 @@ export function useBrowserState() {
   }, [desktopMode]);
 
   const moveTabToIndex = useCallback((tabId: string, toIndex: number) => {
-    if (desktopMode) return;
+    if (desktopMode) {
+      void desktopMoveTab({ tabId, toIndex });
+      return;
+    }
     setLocalTabs(prev => {
       const fromIndex = prev.findIndex(t => t.id === tabId);
       if (fromIndex < 0) return prev;
