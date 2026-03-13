@@ -1,33 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { WebServiceItem } from './DevToolsSidebar';
 import { SidebarPanelShell } from './SidebarPanelShell';
 import { WebServiceIcon } from './WebServiceIcon';
+import { webSurfaceManagerApi } from '@/lib/webSurfaceManager';
 import { isDesktopRuntime } from '@/lib/electronBridge';
 
 interface WebServicePanelProps {
   service: WebServiceItem | null;
-  onOpenInTab: (url: string, label: string) => void;
+  onOpenInTab: (service: WebServiceItem) => void;
   onClose: () => void;
 }
 
 export function WebServicePanel({ service, onOpenInTab, onClose }: WebServicePanelProps) {
-  const [reloadKey, setReloadKey] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const isDesktop = isDesktopRuntime();
-
-  useEffect(() => {
-    setReloadKey(0);
-  }, [service?.id]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const menuItems = useMemo(() => {
     if (!service) return [];
     return [
       {
         label: 'Reload',
-        onClick: () => setReloadKey(prev => prev + 1),
+        onClick: () => {
+          if (isDesktop) {
+            webSurfaceManagerApi.reloadPanelSurface(service.id);
+          } else {
+            setReloadKey(prev => prev + 1);
+          }
+        },
       },
       {
         label: 'Open in tab',
-        onClick: () => onOpenInTab(service.url, service.label),
+        onClick: () => onOpenInTab(service),
       },
       {
         label: 'Copy URL',
@@ -59,7 +63,7 @@ export function WebServicePanel({ service, onOpenInTab, onClose }: WebServicePan
       serviceId={service.id}
       serviceUrl={service.url}
       serviceLabel={service.label}
-      size={12}
+      size={20}
       fallbackIcon={service.fallbackIcon}
     />
   );
@@ -71,14 +75,16 @@ export function WebServicePanel({ service, onOpenInTab, onClose }: WebServicePan
       onClose={onClose}
       menuItems={menuItems}
     >
-      <div className="flex h-full min-h-0 bg-notilus-surface-1">
+      <div className="flex h-full min-h-0 bg-notilus-surface-1 relative">
         {isDesktop ? (
-          <webview
-            key={`${service.id}-${reloadKey}`}
-            src={service.url}
-            className="w-full h-full border-0"
-            partition="persist:notilus-default"
-            allowpopups={"true" as unknown as boolean}
+          <div
+            ref={element => {
+              containerRef.current = element;
+              if (service) {
+                webSurfaceManagerApi.registerPanelContainer(service.id, element);
+              }
+            }}
+            className="flex-1 min-h-0"
             data-testid={`web-service-${service.id}`}
           />
         ) : (
@@ -88,6 +94,7 @@ export function WebServicePanel({ service, onOpenInTab, onClose }: WebServicePan
             title={service.label}
             className="w-full h-full border-0"
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            data-testid={`web-service-${service.id}`}
           />
         )}
       </div>

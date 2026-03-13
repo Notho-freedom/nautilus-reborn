@@ -31,7 +31,7 @@ export function createMainWindow({ preloadPath }: CreateMainWindowOptions): Brow
       sandbox: false,
       webSecurity: true,
       webviewTag: true,
-      devTools: false,
+      devTools: true,
     },
   });
 
@@ -50,5 +50,6 @@ export function createMainWindow({ preloadPath }: CreateMainWindowOptions): Brow
     void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
 
+  mainWindow.webContents.openDevTools();
   return mainWindow;
 }

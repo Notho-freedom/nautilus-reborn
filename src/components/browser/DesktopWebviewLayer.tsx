@@ -9,17 +9,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import type { BrowserTab } from '@/hooks/useBrowserState';
-import {
-  desktopBindTabWebContents,
-  desktopSetTabRenderMode,
-  desktopUnbindTabWebContents,
-  desktopUpdateTabRuntime,
-} from '@/lib/electronBridge';
 import { subscribeToExtensionsUpdates } from '@/lib/extensions';
-import {
-  buildRuntimeExtensionSignature,
-  getRuntimeExtensionsForUrl,
-} from '@/lib/extensionsRuntime';
 import {
   assignTabsToMosaicLeaves,
   closeMosaicTile,
@@ -29,7 +19,6 @@ import {
   setMosaicTileTab,
   splitMosaicTile,
 } from '@/lib/mosaic';
-// no blacklist: runtime auto-switch only
 import {
   MOSAIC_TILE_LABELS,
   type DropZone,
@@ -37,6 +26,7 @@ import {
   type MosaicTile,
   type MosaicTileType,
 } from '@/types/mosaic';
+import { webSurfaceManagerApi } from '@/lib/webSurfaceManager';
 
 interface DesktopWebviewLayerProps {
   tabs: BrowserTab[];
@@ -91,81 +81,6 @@ const TILE_TYPE_OPTIONS: MosaicTileType[] = [
   'documentation',
   'empty',
 ];
-
-const BLOCKED_ERROR_SIGNATURES = [
-  'ERR_BLOCKED_BY_RESPONSE',
-  'ERR_BLOCKED_BY_CLIENT',
-  'ERR_BLOCKED_BY_CSP',
-  'ERR_BLOCKED_BY_X_FRAME_OPTIONS',
-];
-
-function deriveTitle(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
-}
-
-function isInvalidRuntimeUrl(url: string): boolean {
-  if (!url) return true;
-  if (url === 'about:blank') return true;
-  if (url.startsWith('chrome-error://')) return true;
-  return false;
-}
-
-function resolveRuntimeUrl(rawUrl: string, fallbackUrl: string): string {
-  const candidate = rawUrl.trim();
-  return isInvalidRuntimeUrl(candidate) ? fallbackUrl : candidate;
-}
-
-function normalizeComparableUrl(rawUrl: string): string {
-  if (!rawUrl) return '';
-  if (rawUrl.startsWith('notilus://')) return rawUrl;
-  try {
-    const parsed = new URL(rawUrl);
-    parsed.hash = '';
-    const normalizedPath = parsed.pathname.replace(/\/+$/, '');
-    parsed.pathname = normalizedPath || '/';
-    const normalized = parsed.toString();
-    return normalized.endsWith('/') && parsed.pathname === '/' ? normalized.slice(0, -1) : normalized;
-  } catch {
-    return rawUrl;
-  }
-}
-
-function getOrigin(url: string): string | null {
-  if (!url) return null;
-  if (url.startsWith('notilus://')) return url;
-  try {
-    return new URL(url).origin;
-  } catch {
-    return null;
-  }
-}
-
-function extractPopupUrl(rawEvent: Event): string | null {
-  const event = rawEvent as unknown as Record<string, unknown>;
-  const detail = (event.detail as Record<string, unknown> | undefined) ?? {};
-
-  const candidates = [
-    event.url,
-    event.targetUrl,
-    event.newURL,
-    detail.url,
-    detail.targetURL,
-    detail.targetUrl,
-    detail.newURL,
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate !== 'string') continue;
-    const trimmed = candidate.trim();
-    if (!trimmed) continue;
-    return trimmed;
-  }
-  return null;
-}
 
 function collectMosaicLeafFrames(tile: MosaicTile, rect: Rect, output: MosaicLeafFrame[]) {
   if (!tile.children || tile.children.length === 0 || !tile.splitDirection) {
@@ -348,17 +263,7 @@ export function DesktopWebviewLayer({
     return output;
   }, [assignedMosaicRoot]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const webviewRefs = useRef(new Map<string, any>());
   const layerRef = useRef<HTMLDivElement | null>(null);
-  const listenersCleanupRef = useRef(new Map<string, () => void>());
-  const requestedUrlRef = useRef(new Map<string, string>());
-  const runtimeSignatureRef = useRef(new Map<string, string>());
-  const runtimeExtensionSignatureRef = useRef(new Map<string, string>());
-  const domReadyTabsRef = useRef(new Set<string>());
-  const initialSrcByTabId = useRef(new Map<string, string>());
-  const nativeRequestedTabsRef = useRef(new Set<string>());
-  const autoSwitchByTabIdRef = useRef(new Map<string, { origin: string; reason: 'blocked' }>());
   const [extensionsRevision, setExtensionsRevision] = useState(0);
   const [dragSourceTileId, setDragSourceTileId] = useState<string | null>(null);
   const [dragTarget, setDragTarget] = useState<{ tileId: string; zone: DropZone } | null>(null);
@@ -457,251 +362,24 @@ export function DesktopWebviewLayer({
   useEffect(() => subscribeToExtensionsUpdates(() => setExtensionsRevision(prev => prev + 1)), []);
 
   useEffect(() => {
-    for (const tab of tabs) {
-      if (tab.kind !== 'external') continue;
-      if (tab.renderMode !== 'native') continue;
-      const autoSwitch = autoSwitchByTabIdRef.current.get(tab.id);
-      if (!autoSwitch) continue;
-      const currentOrigin = getOrigin(tab.url);
-      if (!currentOrigin || currentOrigin === autoSwitch.origin) continue;
-      autoSwitchByTabIdRef.current.delete(tab.id);
-      nativeRequestedTabsRef.current.delete(tab.id);
-      void desktopSetTabRenderMode({ tabId: tab.id, mode: 'webview' });
-    }
-  }, [tabs]);
-
-  useEffect(() => {
-    const activeTabIds = new Set(externalTabs.map(tab => tab.id));
-
-    for (const tab of externalTabs) {
-      if (initialSrcByTabId.current.has(tab.id)) continue;
-      initialSrcByTabId.current.set(tab.id, tab.url);
-    }
-
-    for (const [tabId, cleanup] of listenersCleanupRef.current) {
-      if (activeTabIds.has(tabId)) continue;
-      cleanup();
-      listenersCleanupRef.current.delete(tabId);
-      webviewRefs.current.delete(tabId);
-      requestedUrlRef.current.delete(tabId);
-      runtimeSignatureRef.current.delete(tabId);
-      domReadyTabsRef.current.delete(tabId);
-      initialSrcByTabId.current.delete(tabId);
-      nativeRequestedTabsRef.current.delete(tabId);
-      autoSwitchByTabIdRef.current.delete(tabId);
-    }
-
-    for (const tab of externalTabs) {
-      const webview = webviewRefs.current.get(tab.id);
-      if (!webview || listenersCleanupRef.current.has(tab.id)) continue;
-
-      const emitRuntime = async () => {
-        if (!domReadyTabsRef.current.has(tab.id)) return;
-
-        let rawUrl = '';
-        let rawTitle = '';
-        let isLoading = false;
-        let canGoBack = false;
-        let canGoForward = false;
-
-        try {
-          rawUrl = webview.getURL();
-          rawTitle = webview.getTitle();
-          isLoading = webview.isLoading();
-          canGoBack = webview.canGoBack();
-          canGoForward = webview.canGoForward();
-        } catch {
-          return;
-        }
-
-        const currentUrl = resolveRuntimeUrl(rawUrl, tab.url);
-        const runtimeTitle = rawTitle.trim() || tab.title || deriveTitle(currentUrl);
-        const payload = {
-          tabId: tab.id,
-          url: currentUrl,
-          title: runtimeTitle,
-          isLoading,
-          canGoBack,
-          canGoForward,
-        };
-        const signature = JSON.stringify(payload);
-        if (runtimeSignatureRef.current.get(tab.id) === signature) return;
-        runtimeSignatureRef.current.set(tab.id, signature);
-        await desktopUpdateTabRuntime(payload);
-      };
-
-      const applyRuntimeExtensions = async () => {
-        if (!domReadyTabsRef.current.has(tab.id)) return;
-        let currentUrl = '';
-        try {
-          currentUrl = webview.getURL();
-        } catch {
-          return;
-        }
-        const resolvedUrl = resolveRuntimeUrl(currentUrl, tab.url);
-        if (resolvedUrl.startsWith('notilus://')) return;
-        const signature = `${normalizeComparableUrl(
-          resolvedUrl
-        )}|${buildRuntimeExtensionSignature(resolvedUrl)}`;
-        if (runtimeExtensionSignatureRef.current.get(tab.id) === signature) return;
-
-        const effects = getRuntimeExtensionsForUrl(resolvedUrl);
-        for (const effect of effects) {
-          try {
-            if (effect.css) {
-              await webview.insertCSS?.(effect.css);
-            }
-            if (effect.js) {
-              await webview.executeJavaScript?.(effect.js, true);
-            }
-          } catch {
-            // Ignore extension-specific failures.
-          }
-        }
-        runtimeExtensionSignatureRef.current.set(tab.id, signature);
-      };
-
-      const handleDomReady = async () => {
-        let webContentsId: number;
-        try {
-          webContentsId = webview.getWebContentsId();
-        } catch {
-          return;
-        }
-        if (typeof webContentsId === 'number' && Number.isFinite(webContentsId)) {
-          domReadyTabsRef.current.add(tab.id);
-          await desktopBindTabWebContents({ tabId: tab.id, webContentsId });
-          webview.setZoomFactor?.(Math.max(0.25, Math.min(5, zoom / 100)));
-          await emitRuntime();
-        }
-      };
-
-      const handlePopup = (event: Event) => {
-        const targetUrl = extractPopupUrl(event);
-        if (!targetUrl) return;
-        (event as { preventDefault?: () => void }).preventDefault?.();
-        onCreateTab(targetUrl);
-      };
-
-      const handleFailLoad = (event: Event) => {
-        const detail = event as unknown as {
-          errorDescription?: string;
-          errorCode?: number;
-          isMainFrame?: boolean;
-        };
-        const isMainFrame = detail.isMainFrame !== false;
-        const description = typeof detail.errorDescription === 'string' ? detail.errorDescription : '';
-        const upperDescription = description.toUpperCase();
-        const blockedByResponse = BLOCKED_ERROR_SIGNATURES.some(signature =>
-          upperDescription.includes(signature)
-        );
-        if (isMainFrame && blockedByResponse) {
-          if (nativeRequestedTabsRef.current.has(tab.id)) {
-            void emitRuntime();
-            return;
-          }
-          nativeRequestedTabsRef.current.add(tab.id);
-          const origin = getOrigin(tab.url);
-          if (origin) {
-            autoSwitchByTabIdRef.current.set(tab.id, { origin, reason: 'blocked' });
-          }
-          void desktopSetTabRenderMode({ tabId: tab.id, mode: 'native' });
-        }
-        void emitRuntime();
-      };
-
-      const listeners: Array<[string, EventListener]> = [
-        ['dom-ready', () => void handleDomReady()],
-        ['did-start-loading', () => void emitRuntime()],
-        [
-          'did-stop-loading',
-          () => {
-            void emitRuntime();
-            void applyRuntimeExtensions();
-          },
-        ],
-        ['did-navigate', () => void emitRuntime()],
-        ['did-navigate-in-page', () => void emitRuntime()],
-        ['page-title-updated', () => void emitRuntime()],
-        ['did-fail-load', handleFailLoad],
-        ['new-window', handlePopup],
-        ['did-create-window', handlePopup],
-      ];
-
-      for (const [name, listener] of listeners) {
-        webview.addEventListener(name, listener);
-      }
-
-      listenersCleanupRef.current.set(tab.id, () => {
-        for (const [name, listener] of listeners) {
-          webview.removeEventListener(name, listener);
-        }
-        domReadyTabsRef.current.delete(tab.id);
-        runtimeExtensionSignatureRef.current.delete(tab.id);
-        void desktopUnbindTabWebContents({ tabId: tab.id });
-      });
-    }
-  }, [externalTabs, onCreateTab, zoom]);
-
-  useEffect(() => {
+    webSurfaceManagerApi.setOnCreateTab(onCreateTab);
     return () => {
-      for (const cleanup of listenersCleanupRef.current.values()) {
-        cleanup();
-      }
-      listenersCleanupRef.current.clear();
-      webviewRefs.current.clear();
-      requestedUrlRef.current.clear();
-      runtimeSignatureRef.current.clear();
-      runtimeExtensionSignatureRef.current.clear();
-      domReadyTabsRef.current.clear();
-      initialSrcByTabId.current.clear();
-      autoSwitchByTabIdRef.current.clear();
+      webSurfaceManagerApi.setOnCreateTab(null);
     };
-  }, []);
+  }, [onCreateTab]);
 
   useEffect(() => {
-    for (const tab of externalTabs) {
-      const webview = webviewRefs.current.get(tab.id);
-      if (!webview) continue;
-      if (!domReadyTabsRef.current.has(tab.id)) continue;
-
-      const targetUrl = tab.url;
-      const lastRequestedUrl = requestedUrlRef.current.get(tab.id);
-      const normalizedTargetUrl = normalizeComparableUrl(targetUrl);
-      if (lastRequestedUrl === normalizedTargetUrl) continue;
-
-      let currentUrl = '';
-      try {
-        currentUrl = webview.getURL();
-      } catch {
-        continue;
-      }
-      const normalizedCurrentUrl = normalizeComparableUrl(resolveRuntimeUrl(currentUrl, targetUrl));
-      if (normalizedCurrentUrl !== normalizedTargetUrl) {
-        void webview.loadURL(targetUrl).catch(() => {
-          // Ignore transient guest navigation errors.
-        });
-      }
-      requestedUrlRef.current.set(tab.id, normalizedTargetUrl);
-    }
-  }, [externalTabs]);
+    webSurfaceManagerApi.syncTabs(tabs, activeTabId, zoom);
+  }, [tabs, activeTabId, zoom]);
 
   useEffect(() => {
-    const clampedFactor = Math.max(0.25, Math.min(5, zoom / 100));
-    for (const tab of externalTabs) {
-      const webview = webviewRefs.current.get(tab.id);
-      if (!webview || !domReadyTabsRef.current.has(tab.id)) continue;
-      webview.setZoomFactor?.(clampedFactor);
-    }
-  }, [externalTabs, zoom]);
+    webSurfaceManagerApi.setZoom(zoom);
+  }, [zoom]);
 
   useEffect(() => {
     if (extensionsRevision === 0) return;
-    const activeWebview = webviewRefs.current.get(activeTabId);
-    if (!activeWebview || !domReadyTabsRef.current.has(activeTabId)) return;
-    runtimeExtensionSignatureRef.current.delete(activeTabId);
-    activeWebview.reload?.();
-  }, [activeTabId, extensionsRevision]);
+    webSurfaceManagerApi.refreshExtensions(activeTabId);
+  }, [extensionsRevision, activeTabId]);
 
   return (
     <div
@@ -726,7 +404,6 @@ export function DesktopWebviewLayer({
           : mosaicEnabled
             ? Boolean(frame)
             : tab.id === activeTabId;
-        const initialSrc = initialSrcByTabId.current.get(tab.id) ?? tab.url;
 
         const paneStyle: CSSProperties = studioViewport
           ? {
@@ -749,26 +426,21 @@ export function DesktopWebviewLayer({
                 inset: 0,
               };
 
+        const paneClasses = [
+          'transition-opacity',
+          'duration-200',
+          studioViewport || mosaicEnabled ? 'rounded-lg border border-border/35 overflow-hidden' : 'rounded-none',
+        ].join(' ');
+
         return (
-          <webview
+          <div
             key={tab.id}
-            ref={element => {
-              if (!element) {
-                webviewRefs.current.delete(tab.id);
-                return;
-              }
-              webviewRefs.current.set(tab.id, element);
-            }}
-            src={initialSrc}
-            partition="persist:notilus-default"
-            allowpopups={"true" as unknown as boolean}
-            className="bg-transparent"
+            ref={element => webSurfaceManagerApi.registerTabContainer(tab.id, element)}
+            className={paneClasses}
             style={{
               visibility: shouldShow ? 'visible' : 'hidden',
               pointerEvents: shouldShow ? 'auto' : 'none',
               ...paneStyle,
-              borderRadius: studioViewport || mosaicEnabled ? '10px' : undefined,
-              border: studioViewport || mosaicEnabled ? '1px solid hsl(var(--border) / 0.35)' : undefined,
             }}
             data-tab-id={tab.id}
             data-active={tab.id === activeTabId ? 'true' : 'false'}

@@ -31,6 +31,7 @@ import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { getGitSnapshot, subscribeToGitUpdates } from '@/lib/git';
 import { useMosaicState } from '@/hooks/useMosaicState';
+import { webSurfaceManagerApi } from '@/lib/webSurfaceManager';
 
 export function BrowserShell() {
   const browser = useBrowserState();
@@ -40,6 +41,9 @@ export function BrowserShell() {
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
+  const [panelCloseOnOutsideClick, setPanelCloseOnOutsideClick] = useState(
+    () => getSettings().panelCloseOnOutsideClick
+  );
   const [isDockResizing, setIsDockResizing] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [notilusDevToolsOpen, setNotilusDevToolsOpen] = useState(false);
@@ -50,6 +54,7 @@ export function BrowserShell() {
   const mosaic = useMosaicState();
   const contentAreaRef = useRef<HTMLDivElement | null>(null);
   const sidebarPanelRef = useRef<HTMLDivElement | null>(null);
+  const sidebarRef = useRef<HTMLDivElement | null>(null);
   const [studioWebviewViewport, setStudioWebviewViewport] = useState<{
     width: number;
     height: number;
@@ -65,7 +70,9 @@ export function BrowserShell() {
 
   useEffect(() => {
     const refreshSettingsState = () => {
-      setAdBlockEnabled(getSettings().adBlock);
+      const settings = getSettings();
+      setAdBlockEnabled(settings.adBlock);
+      setPanelCloseOnOutsideClick(settings.panelCloseOnOutsideClick);
     };
 
     refreshSettingsState();
@@ -301,14 +308,53 @@ export function BrowserShell() {
     browser.setSidebarOpen(true);
   };
 
-  const handleOpenWebServiceInTab = (url: string, label: string) => {
-    browser.addTab(url, label);
-  };
+  const handleOpenWebPanelInTab = useCallback(
+    (service: WebServiceItem) => {
+      if (browser.isDesktopMode) {
+        webSurfaceManagerApi.requestPanelToTabTransfer(service.id, service.url);
+      }
+      browser.addTab(service.url, service.label);
+      browser.setSidebarOpen(false);
+      browser.setSidebarPanel(null);
+    },
+    [browser]
+  );
 
   const handleCloseSidebarPanel = () => {
     browser.setSidebarOpen(false);
     browser.setSidebarPanel(null);
   };
+
+  useEffect(() => {
+    if (!browser.isDesktopMode) return;
+    if (browser.sidebarPanel !== 'web-service' || !browser.sidebarOpen || !activeWebService) return;
+    const result = webSurfaceManagerApi.ensurePanelSurface(activeWebService.id, activeWebService.url);
+    if (result.closeTabId) {
+      browser.closeTab(result.closeTabId);
+    }
+  }, [
+    browser.isDesktopMode,
+    browser.sidebarOpen,
+    browser.sidebarPanel,
+    activeWebService?.id,
+    activeWebService?.url,
+    browser.closeTab,
+  ]);
+
+  useEffect(() => {
+    if (!panelCloseOnOutsideClick || !browser.sidebarOpen) return;
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (sidebarPanelRef.current?.contains(target)) return;
+      if (sidebarRef.current?.contains(target)) return;
+      browser.setSidebarOpen(false);
+      browser.setSidebarPanel(null);
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [panelCloseOnOutsideClick, browser.sidebarOpen, browser.setSidebarOpen, browser.setSidebarPanel]);
 
   const showCaptureToast = (filePath: string) => {
     toast({
@@ -438,10 +484,7 @@ export function BrowserShell() {
   const handleZoomChange = useCallback((newZoom: number) => {
     setZoom(newZoom);
     if (browser.isDesktopMode) {
-      const activeWebview = document.querySelector(
-        'webview[data-active="true"]'
-      ) as (HTMLElement & { setZoomFactor?: (factor: number) => void }) | null;
-      activeWebview?.setZoomFactor?.(Math.max(0.25, Math.min(5, newZoom / 100)));
+      webSurfaceManagerApi.setZoom(newZoom);
       return;
     }
     // In web mode apply CSS zoom
@@ -517,13 +560,15 @@ export function BrowserShell() {
       />
 
       <div className="flex flex-1 overflow-hidden relative">
-        <DevToolsSidebar
-          isOpen={browser.sidebarOpen}
-          activePanel={browser.sidebarPanel}
-          onToggle={handleSidebarToggle}
-          onOpenWebPanel={handleOpenWebPanel}
-          activeWebServiceUrl={activeWebService?.url ?? null}
-        />
+        <div ref={sidebarRef} className="relative z-40">
+          <DevToolsSidebar
+            isOpen={browser.sidebarOpen}
+            activePanel={browser.sidebarPanel}
+            onToggle={handleSidebarToggle}
+            onOpenWebPanel={handleOpenWebPanel}
+            activeWebServiceUrl={activeWebService?.url ?? null}
+          />
+        </div>
         <div
           className="absolute left-11 top-0 bottom-0 z-40"
           ref={sidebarPanelRef}
@@ -534,7 +579,7 @@ export function BrowserShell() {
             stats={stats}
             webService={activeWebService}
             onWidthChange={() => {}}
-            onOpenWebServiceInTab={handleOpenWebServiceInTab}
+            onOpenWebServiceInTab={handleOpenWebPanelInTab}
             onClosePanel={handleCloseSidebarPanel}
             onNavigate={browser.navigateTo}
             onOpenPanel={handleOpenPanel}

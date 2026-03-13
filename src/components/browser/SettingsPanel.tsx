@@ -327,6 +327,15 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
               <option value="google">Google</option>
               <option value="brave">Brave Search</option>
             </SelectRow>
+            <SettingRow
+              label="Close panels on outside click"
+              description="Close side panels when clicking outside them"
+            >
+              <Switch
+                checked={settings.panelCloseOnOutsideClick}
+                onCheckedChange={checked => updateSettings({ panelCloseOnOutsideClick: checked })}
+              />
+            </SettingRow>
           </Section>
 
           {/* Notifications */}

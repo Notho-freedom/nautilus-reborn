@@ -15,7 +15,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   DropdownMenu,
@@ -74,28 +74,23 @@ function NetworkSignal({ quality }: { quality: SystemStats['networkQuality'] }) 
   );
 }
 
-function StatusButton({
-  children,
-  onClick,
-  className,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-}) {
-  return (
+const StatusButton = forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  ({ children, className, type, ...props }, ref) => (
     <button
-      type="button"
-      onClick={onClick}
+      ref={ref}
+      type={type ?? 'button'}
       className={cn(
         'inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground',
         className
       )}
+      {...props}
     >
       {children}
     </button>
-  );
-}
+  )
+);
+
+StatusButton.displayName = 'StatusButton';
 
 export function StatusBar({
   stats,

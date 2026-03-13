@@ -28,7 +28,7 @@ interface SidebarPanelProps {
   stats: SystemStats;
   webService: WebServiceItem | null;
   onWidthChange?: (width: number) => void;
-  onOpenWebServiceInTab: (url: string, label: string) => void;
+  onOpenWebServiceInTab: (service: WebServiceItem) => void;
   onClosePanel: () => void;
   onNavigate: (url: string) => void;
   onOpenPanel?: (panel: string) => void;

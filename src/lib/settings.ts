@@ -41,6 +41,7 @@ export interface BrowserSettings {
   notificationsEnabled: boolean;
   enabledWebServices: WebServiceId[];
   wallpaperInterval: number;
+  panelCloseOnOutsideClick: boolean;
 }
 
 const SETTINGS_KEY = 'notilus_settings';
@@ -63,6 +64,7 @@ const DEFAULT_SETTINGS: BrowserSettings = {
   notificationsEnabled: true,
   enabledWebServices: [...WEB_SERVICE_IDS],
   wallpaperInterval: 30,
+  panelCloseOnOutsideClick: false,
 };
 
 const THEME_PRIMARY: Record<AccentThemeId, string> = {
@@ -123,6 +125,10 @@ function sanitizeSettings(candidate: Partial<BrowserSettings>): BrowserSettings 
 
   if (typeof settings.wallpaperInterval !== 'number' || settings.wallpaperInterval < 5) {
     settings.wallpaperInterval = DEFAULT_SETTINGS.wallpaperInterval;
+  }
+
+  if (typeof settings.panelCloseOnOutsideClick !== 'boolean') {
+    settings.panelCloseOnOutsideClick = DEFAULT_SETTINGS.panelCloseOnOutsideClick;
   }
 
   return settings;
