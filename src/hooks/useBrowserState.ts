@@ -388,6 +388,7 @@ export function useBrowserState() {
   }, [desktopMode]);
 
   const closeTab = useCallback((id: string) => {
+    playTabClose();
     const closedTab = tabs.find(tab => tab.id === id);
     if (closedTab) {
       setRecentlyClosedTabs(prev =>
