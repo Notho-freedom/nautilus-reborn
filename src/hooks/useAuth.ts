@@ -160,7 +160,7 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState<GitHubCredentials>(() => getGitHubConnectionConfig());
   const [isSupabaseGitHubSession, setIsSupabaseGitHubSession] = useState(false);
-  const [githubAvatarUrl, setGitHubAvatarUrl] = useState('');
+  const [githubAvatarUrl, setGitHubAvatarUrl] = useState(() => readCachedProfile()?.avatarUrl ?? '');
   const [isGitHubAuthFlowPending, setIsGitHubAuthFlowPending] = useState(false);
 
   useEffect(() => {
