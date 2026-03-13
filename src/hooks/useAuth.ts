@@ -123,6 +123,30 @@ async function upsertProfileCredentials(
   }
 }
 
+const PROFILE_CACHE_KEY = 'notilus_profile_cache';
+
+interface CachedProfile {
+  avatarUrl: string;
+  username: string;
+  updatedAt: string;
+}
+
+function readCachedProfile(): CachedProfile | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CachedProfile;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedProfile(profile: CachedProfile) {
+  try {
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
+  } catch { /* noop */ }
+}
+
 function resolveOAuthRedirect(): string {
   const configured = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_URL;
   if (typeof configured === 'string' && configured.trim()) {
@@ -136,7 +160,7 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState<GitHubCredentials>(() => getGitHubConnectionConfig());
   const [isSupabaseGitHubSession, setIsSupabaseGitHubSession] = useState(false);
-  const [githubAvatarUrl, setGitHubAvatarUrl] = useState('');
+  const [githubAvatarUrl, setGitHubAvatarUrl] = useState(() => readCachedProfile()?.avatarUrl ?? '');
   const [isGitHubAuthFlowPending, setIsGitHubAuthFlowPending] = useState(false);
 
   useEffect(() => {
@@ -178,9 +202,19 @@ export function useAuth() {
 
       setCredentials(merged);
       setIsSupabaseGitHubSession(Boolean(sessionCredentials.token || sessionCredentials.username));
-      setGitHubAvatarUrl(resolveGitHubAvatarUrl(signedUser, merged.username));
+      const avatarUrl = resolveGitHubAvatarUrl(signedUser, merged.username);
+      setGitHubAvatarUrl(avatarUrl);
       setIsGitHubAuthFlowPending(false);
       updateGitHubConnectionConfig(merged);
+
+      // Cache profile locally for instant hydration
+      if (avatarUrl || merged.username) {
+        writeCachedProfile({
+          avatarUrl,
+          username: merged.username,
+          updatedAt: new Date().toISOString(),
+        });
+      }
 
       if (sessionCredentials.token || sessionCredentials.username) {
         void upsertProfileCredentials(signedUser, merged);

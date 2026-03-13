@@ -106,6 +106,12 @@ export function useBackendLab() {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
 
+  const pollJobRef = useRef<(
+    jobId: string,
+    jobKey: BackendLabJobKey,
+    onComplete: (result: unknown) => void
+  ) => Promise<void>>();
+
   const markLoading = useCallback((key: keyof BackendLabLoadingState, value: boolean) => {
     setLoading(previous => ({
       ...previous,
@@ -184,7 +190,7 @@ export function useBackendLab() {
         setError('Unable to queue server scan job.');
         return;
       }
-      await pollJob(job.jobId, 'scanServers', result => {
+      await pollJobRef.current?.(job.jobId, 'scanServers', result => {
         const servers = Array.isArray(result) ? (result as DiscoveredServer[]) : [];
         setServers(servers);
       });
@@ -194,7 +200,7 @@ export function useBackendLab() {
     } finally {
       markLoading('scanning', false);
     }
-  }, [markLoading, pollJob]);
+  }, [markLoading]);
 
   const discoverRoutes = useCallback(async (serverId: string) => {
     try {
@@ -217,7 +223,7 @@ export function useBackendLab() {
         return [];
       }
       let output: DiscoveredRoute[] = [];
-      await pollJob(job.jobId, 'discoverRoutes', result => {
+      await pollJobRef.current?.(job.jobId, 'discoverRoutes', result => {
         output = Array.isArray(result) ? (result as DiscoveredRoute[]) : [];
         setRoutes(previous => {
           const filtered = previous.filter(route => route.server_id !== serverId);
@@ -230,7 +236,7 @@ export function useBackendLab() {
       setError(cause instanceof Error ? cause.message : 'Route discovery failed');
       return [];
     }
-  }, [pollJob]);
+  }, []);
 
   const runQuickTest = useCallback(
     async (payload: { method: string; url: string; body?: string; headers?: Record<string, string> }) => {
@@ -276,7 +282,7 @@ export function useBackendLab() {
         return null;
       }
       let output: { vulnerabilities?: Vulnerability[] } | null = null;
-      await pollJob(job.jobId, 'runSecurityScan', result => {
+      await pollJobRef.current?.(job.jobId, 'runSecurityScan', result => {
         output = (result as { vulnerabilities?: Vulnerability[] }) ?? null;
         setVulnerabilities(output?.vulnerabilities ?? []);
       });
@@ -288,7 +294,7 @@ export function useBackendLab() {
     } finally {
       markLoading('runningSecurityScan', false);
     }
-  }, [markLoading, pollJob, servers]);
+  }, [markLoading, servers]);
 
   const runLoadTest = useCallback(
     async (payload: {
@@ -315,7 +321,7 @@ export function useBackendLab() {
           return null;
         }
         let output: LoadTestResult | null = null;
-        await pollJob(job.jobId, 'runLoadTest', result => {
+        await pollJobRef.current?.(job.jobId, 'runLoadTest', result => {
           output = (result as LoadTestResult) ?? null;
           if (output) {
             setLoadTests(previous => [output as LoadTestResult, ...previous].slice(0, 50));
@@ -330,7 +336,7 @@ export function useBackendLab() {
         markLoading('runningLoadTest', false);
       }
     },
-    [markLoading, pollJob]
+    [markLoading]
   );
 
   const replayCapture = useCallback(async (captureId: string) => {
@@ -402,6 +408,8 @@ export function useBackendLab() {
     },
     []
   );
+
+  pollJobRef.current = pollJob;
 
   const stopSidecar = useCallback(async () => {
     const next = await desktopStopBackendLab();

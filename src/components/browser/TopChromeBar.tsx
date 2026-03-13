@@ -1,10 +1,11 @@
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, LayoutGrid, Layers, Loader2, Minus, Pin, Plus, Search, Square, X, XCircle } from 'lucide-react';
+import { Copy, EyeOff, LayoutGrid, Layers, Loader2, Minus, Pin, Plus, Search, Shield, Square, X, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BrowserTab, RecentlyClosedTab } from '@/hooks/useBrowserState';
 import { computeTabWidth, getTabDisplayMode, getTabIconSize } from '@/lib/tabLayout';
 import { extractDisplayDomain, extractDomainGroup } from '@/lib/urlDisplay';
 import { groupTabsByDomain, getDomainColor, getDomainColorBg, type TabGroup } from '@/lib/tabGrouping';
+import { playGroupExpand, playGroupCollapse, playDropOnTab } from '@/lib/sounds';
 import {
   desktopCloseWindow,
   desktopGetWindowState,
@@ -29,8 +30,11 @@ interface TopChromeBarProps {
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
   onAddTab: () => void;
+  onAddPrivateTab?: () => void;
   onDuplicateTab?: (id: string) => void;
   onTogglePinTab: (id: string) => void;
+  onReorderTabs?: (fromIndex: number, toIndex: number) => void;
+  onMoveTabToIndex?: (tabId: string, toIndex: number) => void;
   recentlyClosedTabs: RecentlyClosedTab[];
   onReopenClosedTab: (id: string) => void;
   onClearClosedTabs: () => void;
@@ -50,6 +54,9 @@ function TabIcon({ tab, size }: { tab: BrowserTab; size: number }) {
   const faviconUrl = getFaviconUrl(tab.url);
   if (tab.isLoading) {
     return <Loader2 size={size} className="text-primary animate-spin shrink-0" />;
+  }
+  if (tab.isPrivate) {
+    return <EyeOff size={size} className="text-muted-foreground shrink-0" />;
   }
   if (faviconUrl && !faviconError) {
     return (
@@ -90,8 +97,11 @@ export function TopChromeBar({
   onSelectTab,
   onCloseTab,
   onAddTab,
+  onAddPrivateTab,
   onDuplicateTab,
   onTogglePinTab,
+  onReorderTabs,
+  onMoveTabToIndex,
   recentlyClosedTabs,
   onReopenClosedTab,
   onClearClosedTabs,
@@ -103,6 +113,8 @@ export function TopChromeBar({
   const [tabsAreaWidth, setTabsAreaWidth] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dragTabId, setDragTabId] = useState<string | null>(null);
+  const [dragOverTabId, setDragOverTabId] = useState<string | null>(null);
   const tabsAreaRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -169,7 +181,7 @@ export function TopChromeBar({
       } else if (expandedGroup === item.group.domain) {
         count += item.group.tabs.length;
       } else {
-        count += 1; // group chip
+        count += 1;
       }
     }
     return count;
@@ -223,6 +235,57 @@ export function TopChromeBar({
     setContextMenu({ tabId, x: event.clientX, y: event.clientY });
   };
 
+  // DnD handlers
+  const handleDragStart = (event: React.DragEvent, tabId: string) => {
+    setDragTabId(tabId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', tabId);
+  };
+
+  const handleDragOver = (event: React.DragEvent, tabId: string) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDragOverTabId(tabId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverTabId(null);
+  };
+
+  const handleDrop = (event: React.DragEvent, targetTabId: string) => {
+    event.preventDefault();
+    setDragOverTabId(null);
+
+    if (!dragTabId || dragTabId === targetTabId) {
+      setDragTabId(null);
+      return;
+    }
+
+    const allTabs = tabs;
+    const fromIndex = allTabs.findIndex(t => t.id === dragTabId);
+    const toIndex = allTabs.findIndex(t => t.id === targetTabId);
+
+    if (fromIndex >= 0 && toIndex >= 0) {
+      // Check if same domain - if so, this creates/merges into a group
+      const fromDomain = extractDomainGroup(allTabs[fromIndex].url);
+      const toDomain = extractDomainGroup(allTabs[toIndex].url);
+
+      if (fromDomain !== toDomain) {
+        // Move tab next to target to create visual grouping
+        playDropOnTab();
+      }
+
+      onReorderTabs?.(fromIndex, toIndex);
+    }
+
+    setDragTabId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragTabId(null);
+    setDragOverTabId(null);
+  };
+
   const WindowButton = ({
     label,
     onClick,
@@ -248,6 +311,58 @@ export function TopChromeBar({
       </button>
     </ActionHint>
   );
+
+  const renderSingleTab = (tab: BrowserTab, extraStyle?: React.CSSProperties) => {
+    const isActive = tab.id === activeTabId;
+    const showClose = displayMode !== 'icon-only';
+    const isDragging = dragTabId === tab.id;
+    const isDragOver = dragOverTabId === tab.id;
+
+    return (
+      <button
+        key={tab.id}
+        data-testid={`tab-button-${tab.id}`}
+        draggable
+        onDragStart={event => handleDragStart(event, tab.id)}
+        onDragOver={event => handleDragOver(event, tab.id)}
+        onDragLeave={handleDragLeave}
+        onDrop={event => handleDrop(event, tab.id)}
+        onDragEnd={handleDragEnd}
+        style={{ ...noDragStyle, width: `${tabWidth}px`, ...extraStyle }}
+        onClick={() => onSelectTab(tab.id)}
+        onContextMenu={event => handleContext(event, tab.id)}
+        className={cn(
+          'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0',
+          isActive
+            ? 'bg-card border border-border text-foreground'
+            : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
+          displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : '',
+          tab.isPrivate ? 'border-dashed' : '',
+          isDragging ? 'opacity-40 scale-95' : '',
+          isDragOver ? 'ring-2 ring-primary/50 scale-105' : '',
+        )}
+      >
+        {isActive && !tab.isPrivate && (
+          <div className="absolute bottom-0 left-2 right-2 h-[2px] notilus-gradient rounded-t" />
+        )}
+        {isActive && tab.isPrivate && (
+          <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-muted-foreground/50 rounded-t" />
+        )}
+        <TabIcon tab={tab} size={iconSize} />
+        {displayMode !== 'icon-only' && (
+          <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
+        )}
+        {showClose && (
+          <span
+            onClick={event => { event.stopPropagation(); onCloseTab(tab.id); }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-primary/10 rounded-sm p-0.5 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+          >
+            <X size={10} />
+          </span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
@@ -295,41 +410,7 @@ export function TopChromeBar({
           <div className="flex items-center gap-1 h-8">
             {groupedItems.map(item => {
               if (item.kind === 'single') {
-                const tab = item.tab;
-                const isActive = tab.id === activeTabId;
-                const showClose = displayMode !== 'icon-only';
-                return (
-                  <button
-                    key={tab.id}
-                    data-testid={`tab-button-${tab.id}`}
-                    style={{ ...noDragStyle, width: `${tabWidth}px` }}
-                    onClick={() => onSelectTab(tab.id)}
-                    onContextMenu={event => handleContext(event, tab.id)}
-                    className={cn(
-                      'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0',
-                      isActive
-                        ? 'bg-card border border-border text-foreground'
-                        : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
-                      displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : ''
-                    )}
-                  >
-                    {isActive && (
-                      <div className="absolute bottom-0 left-2 right-2 h-[2px] notilus-gradient rounded-t" />
-                    )}
-                    <TabIcon tab={tab} size={iconSize} />
-                    {displayMode !== 'icon-only' && (
-                      <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
-                    )}
-                    {showClose && (
-                      <span
-                        onClick={event => { event.stopPropagation(); onCloseTab(tab.id); }}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-primary/10 rounded-sm p-0.5 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
-                      >
-                        <X size={10} />
-                      </span>
-                    )}
-                  </button>
-                );
+                return renderSingleTab(item.tab);
               }
 
               // Group chip or expanded group
@@ -347,7 +428,27 @@ export function TopChromeBar({
                     <button
                       data-testid={`tab-group-${group.domain}`}
                       style={{ ...noDragStyle, width: `${tabWidth}px`, backgroundColor: bgColor }}
-                      onClick={() => setExpandedGroup(group.domain)}
+                      onClick={() => {
+                        setExpandedGroup(group.domain);
+                        playGroupExpand();
+                      }}
+                      onDragOver={event => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDrop={event => {
+                        event.preventDefault();
+                        if (dragTabId) {
+                          // Drop on group = move next to first tab in group
+                          const targetIndex = tabs.findIndex(t => t.id === group.tabs[0].id);
+                          if (targetIndex >= 0) {
+                            onMoveTabToIndex?.(dragTabId, targetIndex);
+                            playDropOnTab();
+                          }
+                        }
+                        setDragTabId(null);
+                        setDragOverTabId(null);
+                      }}
                       className={cn(
                         'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0 hover:scale-[1.03]',
                         groupHasActive
@@ -398,14 +499,23 @@ export function TopChromeBar({
                   {group.tabs.map(tab => {
                     const isActive = tab.id === activeTabId;
                     const showClose = displayMode !== 'icon-only';
+                    const isDragging = dragTabId === tab.id;
+                    const isDragOver = dragOverTabId === tab.id;
                     return (
                       <button
                         key={tab.id}
                         data-testid={`tab-button-${tab.id}`}
+                        draggable
+                        onDragStart={event => handleDragStart(event, tab.id)}
+                        onDragOver={event => handleDragOver(event, tab.id)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={event => handleDrop(event, tab.id)}
+                        onDragEnd={handleDragEnd}
                         style={{ ...noDragStyle, width: `${tabWidth}px` }}
                         onClick={() => {
                           onSelectTab(tab.id);
                           setExpandedGroup(null);
+                          playGroupCollapse();
                         }}
                         onContextMenu={event => handleContext(event, tab.id)}
                         className={cn(
@@ -413,7 +523,9 @@ export function TopChromeBar({
                           isActive
                             ? 'bg-card border border-border text-foreground'
                             : 'text-muted-foreground hover:bg-card/50 hover:text-foreground',
-                          displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : ''
+                          displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : '',
+                          isDragging ? 'opacity-40 scale-95' : '',
+                          isDragOver ? 'ring-2 ring-primary/50 scale-105' : '',
                         )}
                       >
                         {isActive && (
@@ -440,7 +552,10 @@ export function TopChromeBar({
                   {/* Collapse button */}
                   <button
                     style={noDragStyle}
-                    onClick={() => setExpandedGroup(null)}
+                    onClick={() => {
+                      setExpandedGroup(null);
+                      playGroupCollapse();
+                    }}
                     className="flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-card/50 transition-colors duration-200 shrink-0"
                   >
                     <Layers size={10} />
@@ -449,16 +564,28 @@ export function TopChromeBar({
               );
             })}
 
-            <ActionHint label="New tab">
-              <button
-                style={noDragStyle}
-                onClick={onAddTab}
-                aria-label="New tab"
-                className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-200 shrink-0"
-              >
-                <Plus size={14} />
-              </button>
-            </ActionHint>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <ActionHint label="New tab">
+                <button
+                  style={noDragStyle}
+                  onClick={onAddTab}
+                  aria-label="New tab"
+                  className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-200 shrink-0"
+                >
+                  <Plus size={14} />
+                </button>
+              </ActionHint>
+              <ActionHint label="New private tab">
+                <button
+                  style={noDragStyle}
+                  onClick={onAddPrivateTab}
+                  aria-label="New private tab"
+                  className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-foreground transition-colors duration-200 shrink-0"
+                >
+                  <EyeOff size={12} />
+                </button>
+              </ActionHint>
+            </div>
           </div>
         </div>
 
@@ -550,7 +677,10 @@ export function TopChromeBar({
                     >
                       <TabIcon tab={tab} size={12} />
                       <div className="min-w-0">
-                        <div className="text-xs font-body text-foreground truncate">{tab.title}</div>
+                        <div className="text-xs font-body text-foreground truncate flex items-center gap-1">
+                          {tab.title}
+                          {tab.isPrivate && <EyeOff size={10} className="text-muted-foreground shrink-0" />}
+                        </div>
                         <div className="text-[10px] font-body text-muted-foreground truncate">
                           {extractDisplayDomain(tab.url)}
                         </div>
@@ -626,6 +756,11 @@ export function TopChromeBar({
                 icon: Pin,
                 label: contextTab?.isPinned ? 'Unpin Tab' : 'Pin Tab',
                 action: () => onTogglePinTab(contextMenu.tabId),
+              },
+              {
+                icon: EyeOff,
+                label: 'New Private Tab',
+                action: () => onAddPrivateTab?.(),
               },
               {
                 icon: XCircle,

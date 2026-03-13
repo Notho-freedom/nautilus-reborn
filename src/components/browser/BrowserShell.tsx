@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { playBookmark } from '@/lib/sounds';
 import { useBrowserState } from '@/hooks/useBrowserState';
 import { useSystemMonitor } from '@/hooks/useSystemMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -391,11 +392,14 @@ export function BrowserShell() {
         onSelectTab={browser.setActiveTabId}
         onCloseTab={browser.closeTab}
         onAddTab={() => browser.addTab()}
+        onAddPrivateTab={() => browser.addPrivateTab()}
         onDuplicateTab={(id) => {
           const tab = browser.tabs.find(t => t.id === id);
           if (tab) browser.addTab(tab.url, tab.title);
         }}
         onTogglePinTab={browser.togglePinTab}
+        onReorderTabs={browser.reorderTabs}
+        onMoveTabToIndex={browser.moveTabToIndex}
         recentlyClosedTabs={browser.recentlyClosedTabs}
         onReopenClosedTab={browser.reopenClosedTab}
         onClearClosedTabs={browser.clearClosedTabs}
@@ -414,6 +418,7 @@ export function BrowserShell() {
         onToggleBookmark={() => {
           if (!browser.activeTab) return;
           const nextState = toggleBookmark(browser.activeTab.url, browser.activeTab.title);
+          playBookmark();
           setActiveTabBookmarked(nextState);
         }}
         onTogglePin={() => {

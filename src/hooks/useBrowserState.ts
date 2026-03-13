@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { BrowserSnapshot, DevToolsDockState, TabDescriptor } from '../../shared/browser-contract';
 import { addHistoryItem } from '@/lib/history';
+import { playTabOpen, playTabClose, playTabSwitch, playPrivateMode } from '@/lib/sounds';
 import {
   desktopActivateTab,
   desktopCloseDevTools,
@@ -207,14 +208,17 @@ function readPersistedTabs(): { tabs: BrowserTab[]; activeTabId: string } | null
 
 function writePersistedTabs(tabs: BrowserTab[], activeTabId: string): void {
   if (typeof window === 'undefined') return;
-  const serialized: SerializedTab[] = tabs.map(t => ({
+  // Don't persist private tabs
+  const publicTabs = tabs.filter(t => !t.isPrivate);
+  const serialized: SerializedTab[] = publicTabs.map(t => ({
     id: t.id,
     title: t.title,
     url: t.url,
     kind: t.kind,
   }));
   window.localStorage.setItem(TABS_KEY, JSON.stringify(serialized));
-  window.localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+  const resolvedActive = publicTabs.some(t => t.id === activeTabId) ? activeTabId : publicTabs[0]?.id ?? '';
+  window.localStorage.setItem(ACTIVE_TAB_KEY, resolvedActive);
 }
 
 export function useBrowserState() {
@@ -350,6 +354,7 @@ export function useBrowserState() {
   }, [localTabs, localActiveTabId, desktopMode]);
 
   const setActiveTabId = useCallback((id: string) => {
+    playTabSwitch();
     if (desktopMode) {
       void desktopActivateTab({ tabId: id });
       return;
@@ -357,29 +362,37 @@ export function useBrowserState() {
     setLocalActiveTabId(id);
   }, [desktopMode]);
 
-  const addTab = useCallback((url = 'notilus://speed-dial', title = 'New Tab') => {
+  const addTab = useCallback((url = 'notilus://speed-dial', title = 'New Tab', options?: { isPrivate?: boolean }) => {
     const normalizedUrl = normalizeUrl(url);
     const resolvedTitle = resolveTitle(normalizedUrl, title);
+    const isPrivate = options?.isPrivate ?? false;
+
+    if (isPrivate) {
+      playPrivateMode();
+    } else {
+      playTabOpen();
+    }
 
     if (desktopMode) {
       void desktopCreateTab({ url: normalizedUrl });
-      if (!isInternalUrl(normalizedUrl)) {
+      if (!isInternalUrl(normalizedUrl) && !isPrivate) {
         addHistoryItem(normalizedUrl, resolvedTitle);
       }
       return;
     }
 
     const id = `tab-${Date.now()}`;
-    const newTab: BrowserTab = { id, title: resolvedTitle, url: normalizedUrl };
+    const newTab: BrowserTab = { id, title: resolvedTitle, url: normalizedUrl, isPrivate };
     setLocalTabs(prev => [...prev, newTab]);
     setLocalActiveTabId(id);
 
-    if (!isInternalUrl(normalizedUrl)) {
+    if (!isInternalUrl(normalizedUrl) && !isPrivate) {
       addHistoryItem(normalizedUrl, resolvedTitle);
     }
   }, [desktopMode]);
 
   const closeTab = useCallback((id: string) => {
+    playTabClose();
     const closedTab = tabs.find(tab => tab.id === id);
     if (closedTab) {
       setRecentlyClosedTabs(prev =>
@@ -446,10 +459,11 @@ export function useBrowserState() {
   const navigateTo = useCallback((url: string) => {
     const normalizedUrl = normalizeUrl(url);
     const title = resolveTitle(normalizedUrl);
+    const isPrivateTab = activeTab?.isPrivate ?? false;
 
     if (desktopMode) {
       void desktopNavigate({ tabId: activeTab?.id, url: normalizedUrl });
-      if (!isInternalUrl(normalizedUrl)) {
+      if (!isInternalUrl(normalizedUrl) && !isPrivateTab) {
         addHistoryItem(normalizedUrl, title);
       }
       return;
@@ -457,7 +471,7 @@ export function useBrowserState() {
 
     if (activeTab) {
       updateTabUrl(activeTab.id, normalizedUrl, title);
-      if (!isInternalUrl(normalizedUrl)) {
+      if (!isInternalUrl(normalizedUrl) && !isPrivateTab) {
         addHistoryItem(normalizedUrl, title);
       }
     }
@@ -575,6 +589,34 @@ export function useBrowserState() {
     setRecentlyClosedTabs([]);
   }, []);
 
+  const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
+    if (desktopMode) return;
+    setLocalTabs(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }, [desktopMode]);
+
+  const moveTabToIndex = useCallback((tabId: string, toIndex: number) => {
+    if (desktopMode) return;
+    setLocalTabs(prev => {
+      const fromIndex = prev.findIndex(t => t.id === tabId);
+      if (fromIndex < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(Math.min(toIndex, next.length), 0, moved);
+      return next;
+    });
+  }, [desktopMode]);
+
+  const addPrivateTab = useCallback((url?: string, title?: string) => {
+    addTab(url, title, { isPrivate: true });
+  }, [addTab]);
+
   return {
     isDesktopMode: desktopMode,
     isExternalActiveTab: Boolean(activeTab?.kind === 'external'),
@@ -595,6 +637,7 @@ export function useBrowserState() {
     recentlyClosedTabs,
     setActiveTabId,
     addTab,
+    addPrivateTab,
     closeTab,
     updateTabUrl,
     navigateTo,
@@ -617,5 +660,7 @@ export function useBrowserState() {
     reopenClosedTab,
     removeClosedTab,
     clearClosedTabs,
+    reorderTabs,
+    moveTabToIndex,
   };
 }
