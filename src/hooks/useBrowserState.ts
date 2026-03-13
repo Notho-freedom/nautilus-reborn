@@ -351,6 +351,7 @@ export function useBrowserState() {
   }, [localTabs, localActiveTabId, desktopMode]);
 
   const setActiveTabId = useCallback((id: string) => {
+    playTabSwitch();
     if (desktopMode) {
       void desktopActivateTab({ tabId: id });
       return;
