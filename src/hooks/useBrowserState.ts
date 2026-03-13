@@ -459,10 +459,11 @@ export function useBrowserState() {
   const navigateTo = useCallback((url: string) => {
     const normalizedUrl = normalizeUrl(url);
     const title = resolveTitle(normalizedUrl);
+    const isPrivateTab = activeTab?.isPrivate ?? false;
 
     if (desktopMode) {
       void desktopNavigate({ tabId: activeTab?.id, url: normalizedUrl });
-      if (!isInternalUrl(normalizedUrl)) {
+      if (!isInternalUrl(normalizedUrl) && !isPrivateTab) {
         addHistoryItem(normalizedUrl, title);
       }
       return;
@@ -470,7 +471,7 @@ export function useBrowserState() {
 
     if (activeTab) {
       updateTabUrl(activeTab.id, normalizedUrl, title);
-      if (!isInternalUrl(normalizedUrl)) {
+      if (!isInternalUrl(normalizedUrl) && !isPrivateTab) {
         addHistoryItem(normalizedUrl, title);
       }
     }
