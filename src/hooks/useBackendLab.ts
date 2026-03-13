@@ -106,6 +106,12 @@ export function useBackendLab() {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
 
+  const pollJobRef = useRef<(
+    jobId: string,
+    jobKey: BackendLabJobKey,
+    onComplete: (result: unknown) => void
+  ) => Promise<void>>();
+
   const markLoading = useCallback((key: keyof BackendLabLoadingState, value: boolean) => {
     setLoading(previous => ({
       ...previous,
