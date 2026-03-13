@@ -190,7 +190,7 @@ export function useBackendLab() {
         setError('Unable to queue server scan job.');
         return;
       }
-      await pollJob(job.jobId, 'scanServers', result => {
+      await pollJobRef.current?.(job.jobId, 'scanServers', result => {
         const servers = Array.isArray(result) ? (result as DiscoveredServer[]) : [];
         setServers(servers);
       });
@@ -200,7 +200,7 @@ export function useBackendLab() {
     } finally {
       markLoading('scanning', false);
     }
-  }, [markLoading, pollJob]);
+  }, [markLoading]);
 
   const discoverRoutes = useCallback(async (serverId: string) => {
     try {
