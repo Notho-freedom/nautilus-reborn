@@ -9,6 +9,8 @@ interface RegisterSystemIpcOptions {
 
 function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.systemGetMetrics);
+  ipcMain.removeHandler(BrowserIpcChannels.systemSubscribe);
+  ipcMain.removeHandler(BrowserIpcChannels.systemUnsubscribe);
 }
 
 export function registerSystemIpc({
@@ -22,5 +24,19 @@ export function registerSystemIpc({
       console.info(`[ipc] ${BrowserIpcChannels.systemGetMetrics}`);
     }
     return systemMetricsManager.getSnapshot();
+  });
+
+  ipcMain.handle(BrowserIpcChannels.systemSubscribe, () => {
+    if (debug) {
+      console.info(`[ipc] ${BrowserIpcChannels.systemSubscribe}`);
+    }
+    systemMetricsManager.subscribe();
+  });
+
+  ipcMain.handle(BrowserIpcChannels.systemUnsubscribe, () => {
+    if (debug) {
+      console.info(`[ipc] ${BrowserIpcChannels.systemUnsubscribe}`);
+    }
+    systemMetricsManager.unsubscribe();
   });
 }

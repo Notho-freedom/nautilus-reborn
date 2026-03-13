@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { SystemMetricsSnapshot } from '../../shared/system-contract';
 import {
   desktopGetSystemMetrics,
+  desktopSubscribeSystemMetrics,
+  desktopUnsubscribeSystemMetrics,
   isDesktopRuntime,
   onDesktopSystemMetricsChanged,
 } from '@/lib/electronBridge';
@@ -119,6 +121,7 @@ export function useSystemMonitor() {
   useEffect(() => {
     if (isDesktopRuntime()) {
       let mounted = true;
+      void desktopSubscribeSystemMetrics();
       void desktopGetSystemMetrics().then(snapshot => {
         if (!mounted || !snapshot) return;
         setStats(mapDesktopSnapshot(snapshot));
@@ -132,6 +135,7 @@ export function useSystemMonitor() {
       return () => {
         mounted = false;
         unsubscribe();
+        void desktopUnsubscribeSystemMetrics();
       };
     }
 

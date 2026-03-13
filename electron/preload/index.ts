@@ -99,6 +99,10 @@ const api: BrowserDesktopApi = {
   startBackendLab: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabStart),
   stopBackendLab: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabStop),
   restartBackendLab: () => ipcRenderer.invoke(BrowserIpcChannels.backendLabRestart),
+  enqueueBackendLabJob: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.backendLabEnqueueJob, payload),
+  getBackendLabJob: payload =>
+    ipcRenderer.invoke(BrowserIpcChannels.backendLabGetJob, payload),
   onBackendLabStateChanged: listener => {
     const handler = (_event: Electron.IpcRendererEvent, state: Parameters<typeof listener>[0]) => {
       listener(state);
@@ -109,6 +113,8 @@ const api: BrowserDesktopApi = {
     };
   },
   getSystemMetrics: () => ipcRenderer.invoke(BrowserIpcChannels.systemGetMetrics),
+  subscribeSystemMetrics: () => ipcRenderer.invoke(BrowserIpcChannels.systemSubscribe),
+  unsubscribeSystemMetrics: () => ipcRenderer.invoke(BrowserIpcChannels.systemUnsubscribe),
   onSystemMetricsChanged: listener => {
     const handler = (
       _event: Electron.IpcRendererEvent,

@@ -1,9 +1,11 @@
 import { ipcMain } from 'electron';
 import { BrowserIpcChannels } from '../../../shared/browser-contract';
 import { BackendSidecarManager } from '../backend-sidecar-manager';
+import { BackendLabQueueManager } from '../backend-lab-queue-manager';
 
 interface RegisterBackendLabIpcOptions {
   backendLabManager: BackendSidecarManager;
+  queueManager: BackendLabQueueManager;
   debug: boolean;
   onStateChanged: (state: ReturnType<BackendSidecarManager['getState']>) => void;
 }
@@ -13,10 +15,13 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.backendLabStart);
   ipcMain.removeHandler(BrowserIpcChannels.backendLabStop);
   ipcMain.removeHandler(BrowserIpcChannels.backendLabRestart);
+  ipcMain.removeHandler(BrowserIpcChannels.backendLabEnqueueJob);
+  ipcMain.removeHandler(BrowserIpcChannels.backendLabGetJob);
 }
 
 export function registerBackendLabIpc({
   backendLabManager,
+  queueManager,
   debug,
   onStateChanged,
 }: RegisterBackendLabIpcOptions) {
@@ -52,5 +57,15 @@ export function registerBackendLabIpc({
     const state = await backendLabManager.restart();
     onStateChanged(state);
     return state;
+  });
+
+  ipcMain.handle(BrowserIpcChannels.backendLabEnqueueJob, async (_event, payload) => {
+    log(BrowserIpcChannels.backendLabEnqueueJob, payload);
+    return queueManager.enqueueJob(payload);
+  });
+
+  ipcMain.handle(BrowserIpcChannels.backendLabGetJob, async (_event, payload) => {
+    log(BrowserIpcChannels.backendLabGetJob, payload);
+    return queueManager.getJob(payload.jobId);
   });
 }

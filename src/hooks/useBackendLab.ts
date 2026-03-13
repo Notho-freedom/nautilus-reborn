@@ -29,6 +29,8 @@ import {
   createBackendLabConsoleSocket,
 } from '@/lib/backendLabClient';
 import {
+  desktopEnqueueBackendLabJob,
+  desktopGetBackendLabJob,
   desktopGetBackendLabState,
   desktopRestartBackendLab,
   desktopStartBackendLab,
@@ -36,6 +38,7 @@ import {
   isDesktopRuntime,
   onDesktopBackendLabStateChanged,
 } from '@/lib/electronBridge';
+import type { BackendLabJobStatus } from '../../shared/browser-contract';
 
 interface BackendLabLoadingState {
   refreshing: boolean;
@@ -46,6 +49,10 @@ interface BackendLabLoadingState {
   clearingCaptures: boolean;
   clearingConsole: boolean;
 }
+
+type BackendLabJobKey = 'scanServers' | 'discoverRoutes' | 'runSecurityScan' | 'runLoadTest';
+
+type BackendLabJobState = Record<BackendLabJobKey, BackendLabJobStatus | null>;
 
 const EMPTY_LOADING_STATE: BackendLabLoadingState = {
   refreshing: false,
@@ -89,6 +96,12 @@ export function useBackendLab() {
   const [captures, setCaptures] = useState<CapturedRequest[]>([]);
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [consoleLogs, setConsoleLogs] = useState<ConsoleLogEntry[]>([]);
+  const [jobStatus, setJobStatus] = useState<BackendLabJobState>({
+    scanServers: null,
+    discoverRoutes: null,
+    runSecurityScan: null,
+    runLoadTest: null,
+  });
 
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -155,34 +168,69 @@ export function useBackendLab() {
   const scanServers = useCallback(async () => {
     markLoading('scanning', true);
     try {
-      const nextServers = await backendLabScanServers();
-      setServers(nextServers);
-      const routesByServer = await Promise.all(
-        nextServers.map(server => backendLabDiscoverRoutes(server.id).catch(() => [] as DiscoveredRoute[]))
-      );
-      setRoutes(routesByServer.flat());
+      if (!isDesktopRuntime()) {
+        const nextServers = await backendLabScanServers();
+        setServers(nextServers);
+        const routesByServer = await Promise.all(
+          nextServers.map(server => backendLabDiscoverRoutes(server.id).catch(() => [] as DiscoveredRoute[]))
+        );
+        setRoutes(routesByServer.flat());
+        setError(null);
+        return;
+      }
+
+      const job = await desktopEnqueueBackendLabJob({ type: 'scanServers' });
+      if (!job) {
+        setError('Unable to queue server scan job.');
+        return;
+      }
+      await pollJob(job.jobId, 'scanServers', result => {
+        const servers = Array.isArray(result) ? (result as DiscoveredServer[]) : [];
+        setServers(servers);
+      });
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Server scan failed');
     } finally {
       markLoading('scanning', false);
     }
-  }, [markLoading]);
+  }, [markLoading, pollJob]);
 
   const discoverRoutes = useCallback(async (serverId: string) => {
     try {
-      const discovered = await backendLabDiscoverRoutes(serverId);
-      setRoutes(previous => {
-        const filtered = previous.filter(route => route.server_id !== serverId);
-        return [...filtered, ...discovered];
+      if (!isDesktopRuntime()) {
+        const discovered = await backendLabDiscoverRoutes(serverId);
+        setRoutes(previous => {
+          const filtered = previous.filter(route => route.server_id !== serverId);
+          return [...filtered, ...discovered];
+        });
+        setError(null);
+        return discovered;
+      }
+
+      const job = await desktopEnqueueBackendLabJob({
+        type: 'discoverRoutes',
+        payload: { serverId },
+      });
+      if (!job) {
+        setError('Unable to queue route discovery.');
+        return [];
+      }
+      let output: DiscoveredRoute[] = [];
+      await pollJob(job.jobId, 'discoverRoutes', result => {
+        output = Array.isArray(result) ? (result as DiscoveredRoute[]) : [];
+        setRoutes(previous => {
+          const filtered = previous.filter(route => route.server_id !== serverId);
+          return [...filtered, ...output];
+        });
       });
       setError(null);
-      return discovered;
+      return output;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Route discovery failed');
       return [];
     }
-  }, []);
+  }, [pollJob]);
 
   const runQuickTest = useCallback(
     async (payload: { method: string; url: string; body?: string; headers?: Record<string, string> }) => {
@@ -211,19 +259,36 @@ export function useBackendLab() {
   const runSecurityScan = useCallback(async () => {
     markLoading('runningSecurityScan', true);
     try {
-      const result = await backendLabRunSecurityScan({
-        serverIds: servers.map(server => server.id),
+      if (!isDesktopRuntime()) {
+        const result = await backendLabRunSecurityScan({
+          serverIds: servers.map(server => server.id),
+        });
+        setVulnerabilities(result.vulnerabilities);
+        setError(null);
+        return result;
+      }
+      const job = await desktopEnqueueBackendLabJob({
+        type: 'runSecurityScan',
+        payload: { serverIds: servers.map(server => server.id) },
       });
-      setVulnerabilities(result.vulnerabilities);
+      if (!job) {
+        setError('Unable to queue security scan.');
+        return null;
+      }
+      let output: { vulnerabilities?: Vulnerability[] } | null = null;
+      await pollJob(job.jobId, 'runSecurityScan', result => {
+        output = (result as { vulnerabilities?: Vulnerability[] }) ?? null;
+        setVulnerabilities(output?.vulnerabilities ?? []);
+      });
       setError(null);
-      return result;
+      return output;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Security scan failed');
       return null;
     } finally {
       markLoading('runningSecurityScan', false);
     }
-  }, [markLoading, servers]);
+  }, [markLoading, pollJob, servers]);
 
   const runLoadTest = useCallback(
     async (payload: {
@@ -235,10 +300,29 @@ export function useBackendLab() {
     }) => {
       markLoading('runningLoadTest', true);
       try {
-        const result = await backendLabRunLoadTest(payload);
-        setLoadTests(previous => [result, ...previous].slice(0, 50));
+        if (!isDesktopRuntime()) {
+          const result = await backendLabRunLoadTest(payload);
+          setLoadTests(previous => [result, ...previous].slice(0, 50));
+          setError(null);
+          return result;
+        }
+        const job = await desktopEnqueueBackendLabJob({
+          type: 'runLoadTest',
+          payload,
+        });
+        if (!job) {
+          setError('Unable to queue load test.');
+          return null;
+        }
+        let output: LoadTestResult | null = null;
+        await pollJob(job.jobId, 'runLoadTest', result => {
+          output = (result as LoadTestResult) ?? null;
+          if (output) {
+            setLoadTests(previous => [output as LoadTestResult, ...previous].slice(0, 50));
+          }
+        });
         setError(null);
-        return result;
+        return output;
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Load test failed');
         return null;
@@ -246,7 +330,7 @@ export function useBackendLab() {
         markLoading('runningLoadTest', false);
       }
     },
-    [markLoading]
+    [markLoading, pollJob]
   );
 
   const replayCapture = useCallback(async (captureId: string) => {
@@ -291,6 +375,33 @@ export function useBackendLab() {
     const next = await desktopStartBackendLab();
     if (next) setSidecarState(next);
   }, []);
+
+  const pollJob = useCallback(
+    async (
+      jobId: string,
+      jobKey: BackendLabJobKey,
+      onComplete: (result: unknown) => void
+    ) => {
+      const maxIterations = 180;
+      for (let i = 0; i < maxIterations; i += 1) {
+        const status = await desktopGetBackendLabJob({ jobId });
+        if (status) {
+          setJobStatus(previous => ({ ...previous, [jobKey]: status }));
+          if (status.status === 'completed') {
+            onComplete(status.result);
+            return;
+          }
+          if (status.status === 'failed') {
+            setError(status.error ?? 'Backend job failed');
+            return;
+          }
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      setError('Backend job timed out');
+    },
+    []
+  );
 
   const stopSidecar = useCallback(async () => {
     const next = await desktopStopBackendLab();
@@ -406,6 +517,7 @@ export function useBackendLab() {
     backendReachable,
     loading,
     error,
+    jobStatus,
     servers,
     routes,
     routesByServer,

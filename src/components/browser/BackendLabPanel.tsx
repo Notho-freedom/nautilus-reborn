@@ -25,6 +25,7 @@ import type {
   TestResult,
   Vulnerability,
 } from '@/types/backendLab';
+import type { BackendLabJobStatus } from '../../../shared/browser-contract';
 
 interface BackendLabPanelProps {
   onClose?: () => void;
@@ -175,6 +176,23 @@ function LoadTestItem({ result }: { result: LoadTestResult }) {
   );
 }
 
+function JobStatusBadge({ status }: { status: BackendLabJobStatus | null }) {
+  if (!status) return null;
+  const tone =
+    status.status === 'completed'
+      ? 'bg-green-500/15 text-green-400'
+      : status.status === 'failed'
+        ? 'bg-red-500/15 text-red-400'
+        : status.status === 'running'
+          ? 'bg-blue-500/15 text-blue-300'
+          : 'bg-muted text-muted-foreground';
+  return (
+    <span className={cn('rounded px-1.5 py-0.5 text-[9px] uppercase', tone)}>
+      {status.status}
+    </span>
+  );
+}
+
 function CaptureItem({
   capture,
   onReplay,
@@ -230,6 +248,7 @@ function BackendLabContent({ embedded }: { embedded: boolean }) {
   const [loadUsers, setLoadUsers] = useState(10);
   const [loadDuration, setLoadDuration] = useState(30);
   const [loadRamp, setLoadRamp] = useState(5);
+  const jobStatus = lab.jobStatus;
 
   const filteredRoutes = useMemo(() => {
     if (!selectedServerId) return lab.routes;
@@ -396,6 +415,7 @@ function BackendLabContent({ embedded }: { embedded: boolean }) {
                 <RefreshCw size={12} />
                 Scan
               </button>
+              <JobStatusBadge status={jobStatus.scanServers} />
             </div>
             {lab.servers.map(server => (
               <div key={server.id} className="rounded border border-border/35 bg-card/50 p-2">
@@ -406,6 +426,7 @@ function BackendLabContent({ embedded }: { embedded: boolean }) {
                   <button
                     type="button"
                     onClick={() => {
+                      setSelectedServerId(server.id);
                       void lab.discoverRoutes(server.id);
                     }}
                     className="ml-auto rounded px-2 py-1 text-[10px] text-primary transition-colors hover:bg-primary/10"
@@ -413,6 +434,12 @@ function BackendLabContent({ embedded }: { embedded: boolean }) {
                     Discover routes
                   </button>
                 </div>
+                {selectedServerId === server.id ? (
+                  <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <JobStatusBadge status={jobStatus.discoverRoutes} />
+                    <span>Route discovery</span>
+                  </div>
+                ) : null}
               </div>
             ))}
             {lab.servers.length === 0 ? <div className="text-muted-foreground">No servers discovered.</div> : null}
@@ -514,6 +541,7 @@ function BackendLabContent({ embedded }: { embedded: boolean }) {
               <Shield size={12} />
               Run security scan
             </button>
+            <JobStatusBadge status={jobStatus.runSecurityScan} />
             {lab.vulnerabilities.map(vulnerability => (
               <VulnerabilityItem key={vulnerability.id} vulnerability={vulnerability} />
             ))}
@@ -583,6 +611,7 @@ function BackendLabContent({ embedded }: { embedded: boolean }) {
                 Run
               </button>
             </form>
+            <JobStatusBadge status={jobStatus.runLoadTest} />
             {lab.loadTests.map(result => (
               <LoadTestItem key={result.id} result={result} />
             ))}

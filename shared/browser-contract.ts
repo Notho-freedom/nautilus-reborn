@@ -223,6 +223,32 @@ export interface BackendLabSidecarState {
   restartAttempts: number;
 }
 
+export type BackendLabJobType =
+  | 'scanServers'
+  | 'discoverRoutes'
+  | 'runSecurityScan'
+  | 'runLoadTest';
+
+export interface BackendLabJobRequest {
+  type: BackendLabJobType;
+  payload?: Record<string, unknown>;
+}
+
+export interface BackendLabJobResponse {
+  jobId: string;
+}
+
+export interface BackendLabJobStatusRequest {
+  jobId: string;
+}
+
+export interface BackendLabJobStatus {
+  jobId: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  result?: unknown;
+  error?: string;
+}
+
 export interface StudioViewportRequest {
   width: number;
   height: number;
@@ -313,10 +339,14 @@ export interface BrowserDesktopApi {
   startBackendLab: () => Promise<BackendLabSidecarState>;
   stopBackendLab: () => Promise<BackendLabSidecarState>;
   restartBackendLab: () => Promise<BackendLabSidecarState>;
+  enqueueBackendLabJob: (payload: BackendLabJobRequest) => Promise<BackendLabJobResponse>;
+  getBackendLabJob: (payload: BackendLabJobStatusRequest) => Promise<BackendLabJobStatus>;
   onBackendLabStateChanged: (
     listener: (snapshot: BackendLabSidecarState) => void
   ) => () => void;
   getSystemMetrics: () => Promise<SystemMetricsSnapshot>;
+  subscribeSystemMetrics: () => Promise<void>;
+  unsubscribeSystemMetrics: () => Promise<void>;
   onSystemMetricsChanged: (listener: (snapshot: SystemMetricsSnapshot) => void) => () => void;
   studioResizeWindow: (payload: StudioViewportRequest) => Promise<void>;
   studioSetWebviewViewport: (payload: StudioWebviewViewportRequest | null) => Promise<void>;
@@ -389,8 +419,12 @@ export const BrowserIpcChannels = {
   backendLabStart: 'backend-lab:start',
   backendLabStop: 'backend-lab:stop',
   backendLabRestart: 'backend-lab:restart',
+  backendLabEnqueueJob: 'backend-lab:enqueue-job',
+  backendLabGetJob: 'backend-lab:get-job',
   backendLabStateChanged: 'backend-lab:state-changed',
   systemGetMetrics: 'system:get-metrics',
+  systemSubscribe: 'system:subscribe',
+  systemUnsubscribe: 'system:unsubscribe',
   systemMetricsChanged: 'system:metrics-changed',
   studioResizeWindow: 'studio:resize-window',
   studioSetWebviewViewport: 'studio:set-webview-viewport',

@@ -1,5 +1,9 @@
 import type {
   BackendLabSidecarState,
+  BackendLabJobRequest,
+  BackendLabJobResponse,
+  BackendLabJobStatus,
+  BackendLabJobStatusRequest,
   BrowserDesktopApi,
   DevToolsDockState,
   DevToolsDockWidthRequest,
@@ -389,6 +393,22 @@ export async function desktopRestartBackendLab(): Promise<BackendLabSidecarState
   return bridge.restartBackendLab();
 }
 
+export async function desktopEnqueueBackendLabJob(
+  payload: BackendLabJobRequest
+): Promise<BackendLabJobResponse | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.enqueueBackendLabJob(payload);
+}
+
+export async function desktopGetBackendLabJob(
+  payload: BackendLabJobStatusRequest
+): Promise<BackendLabJobStatus | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.getBackendLabJob(payload);
+}
+
 export function onDesktopBackendLabStateChanged(
   listener: (snapshot: BackendLabSidecarState) => void
 ): () => void {
@@ -401,6 +421,18 @@ export async function desktopGetSystemMetrics(): Promise<SystemMetricsSnapshot |
   const bridge = getDesktopBridge();
   if (!bridge) return null;
   return bridge.getSystemMetrics();
+}
+
+export async function desktopSubscribeSystemMetrics(): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.subscribeSystemMetrics();
+}
+
+export async function desktopUnsubscribeSystemMetrics(): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.unsubscribeSystemMetrics();
 }
 
 export function onDesktopSystemMetricsChanged(

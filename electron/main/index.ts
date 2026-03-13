@@ -13,6 +13,7 @@ import { registerTerminalIpc } from './ipc/terminal-ipc';
 import { registerWindowIpc } from './ipc/window-ipc';
 import { DownloadManager } from './download-manager';
 import { BackendSidecarManager } from './backend-sidecar-manager';
+import { BackendLabQueueManager } from './backend-lab-queue-manager';
 import { BrowserImportManager } from './browser-import-manager';
 import { GitManager } from './git-manager';
 import { NetworkLayer } from './network-layer';
@@ -34,6 +35,7 @@ let downloadManager: DownloadManager | null = null;
 let gitManager: GitManager | null = null;
 let browserImportManager: BrowserImportManager | null = null;
 let backendLabManager: BackendSidecarManager | null = null;
+let backendLabQueueManager: BackendLabQueueManager | null = null;
 let studioManager: StudioManager | null = null;
 let systemMetricsManager: SystemMetricsManager | null = null;
 let terminalManager: TerminalManager | null = null;
@@ -180,8 +182,12 @@ function createDesktopWindow() {
     browserImportManager,
     debug: DEBUG_IPC,
   });
+  backendLabQueueManager = new BackendLabQueueManager({
+    debug: DEBUG_IPC,
+  });
   registerBackendLabIpc({
     backendLabManager,
+    queueManager: backendLabQueueManager,
     debug: DEBUG_IPC,
     onStateChanged: state => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -196,7 +202,6 @@ function createDesktopWindow() {
     },
   });
   registerSystemIpc({ systemMetricsManager, debug: DEBUG_IPC });
-  systemMetricsManager.start();
 
   studioManager = new StudioManager(mainWindow, tabManager, DEBUG_IPC, payload => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -276,9 +281,34 @@ function createDesktopWindow() {
   mainWindow.on('enter-full-screen', syncDevToolsLayout);
   mainWindow.on('leave-full-screen', syncDevToolsLayout);
 
+  mainWindow.on('blur', () => {
+    systemMetricsManager?.setBackground(true);
+  });
+
+  mainWindow.on('focus', () => {
+    systemMetricsManager?.setBackground(false);
+  });
+
+  mainWindow.on('minimize', () => {
+    systemMetricsManager?.setBackground(true);
+  });
+
+  mainWindow.on('restore', () => {
+    systemMetricsManager?.setBackground(false);
+  });
+
+  mainWindow.on('show', () => {
+    systemMetricsManager?.setBackground(false);
+  });
+
+  mainWindow.on('hide', () => {
+    systemMetricsManager?.setBackground(true);
+  });
+
   mainWindow.on('closed', () => {
     systemMetricsManager?.stop();
     backendLabManager?.dispose();
+    backendLabQueueManager?.dispose();
     terminalManager?.dispose();
     mainWindow = null;
     tabManager = null;
@@ -286,6 +316,7 @@ function createDesktopWindow() {
     gitManager = null;
     browserImportManager = null;
     backendLabManager = null;
+    backendLabQueueManager = null;
     studioManager = null;
     systemMetricsManager = null;
     terminalManager = null;
