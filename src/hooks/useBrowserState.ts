@@ -585,6 +585,34 @@ export function useBrowserState() {
     setRecentlyClosedTabs([]);
   }, []);
 
+  const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
+    if (desktopMode) return;
+    setLocalTabs(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }, [desktopMode]);
+
+  const moveTabToIndex = useCallback((tabId: string, toIndex: number) => {
+    if (desktopMode) return;
+    setLocalTabs(prev => {
+      const fromIndex = prev.findIndex(t => t.id === tabId);
+      if (fromIndex < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(Math.min(toIndex, next.length), 0, moved);
+      return next;
+    });
+  }, [desktopMode]);
+
+  const addPrivateTab = useCallback((url?: string, title?: string) => {
+    addTab(url, title, { isPrivate: true });
+  }, [addTab]);
+
   return {
     isDesktopMode: desktopMode,
     isExternalActiveTab: Boolean(activeTab?.kind === 'external'),
@@ -605,6 +633,7 @@ export function useBrowserState() {
     recentlyClosedTabs,
     setActiveTabId,
     addTab,
+    addPrivateTab,
     closeTab,
     updateTabUrl,
     navigateTo,
@@ -627,5 +656,7 @@ export function useBrowserState() {
     reopenClosedTab,
     removeClosedTab,
     clearClosedTabs,
+    reorderTabs,
+    moveTabToIndex,
   };
 }
