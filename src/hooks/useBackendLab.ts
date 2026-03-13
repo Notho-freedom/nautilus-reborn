@@ -321,7 +321,7 @@ export function useBackendLab() {
           return null;
         }
         let output: LoadTestResult | null = null;
-        await pollJob(job.jobId, 'runLoadTest', result => {
+        await pollJobRef.current?.(job.jobId, 'runLoadTest', result => {
           output = (result as LoadTestResult) ?? null;
           if (output) {
             setLoadTests(previous => [output as LoadTestResult, ...previous].slice(0, 50));
@@ -336,7 +336,7 @@ export function useBackendLab() {
         markLoading('runningLoadTest', false);
       }
     },
-    [markLoading, pollJob]
+    [markLoading]
   );
 
   const replayCapture = useCallback(async (captureId: string) => {

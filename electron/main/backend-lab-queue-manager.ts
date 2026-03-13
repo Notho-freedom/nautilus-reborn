@@ -295,11 +295,11 @@ export class BackendLabQueueManager {
         Authorization: `Bearer ${this.restToken}`,
       },
     });
-    const json = await response.json().catch(() => ({}));
+    const json = await response.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;
     if (!response.ok) {
-      throw new Error(json?.error ?? `Upstash command failed: ${cmd}`);
+      throw new Error((json?.error as string) ?? `Upstash command failed: ${cmd}`);
     }
-    return json?.result ?? null;
+    return (json?.result as unknown) ?? null;
   }
 
   private resolveBackendBaseUrl(): string {
