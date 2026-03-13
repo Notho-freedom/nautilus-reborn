@@ -282,7 +282,7 @@ export function useBackendLab() {
         return null;
       }
       let output: { vulnerabilities?: Vulnerability[] } | null = null;
-      await pollJob(job.jobId, 'runSecurityScan', result => {
+      await pollJobRef.current?.(job.jobId, 'runSecurityScan', result => {
         output = (result as { vulnerabilities?: Vulnerability[] }) ?? null;
         setVulnerabilities(output?.vulnerabilities ?? []);
       });
@@ -294,7 +294,7 @@ export function useBackendLab() {
     } finally {
       markLoading('runningSecurityScan', false);
     }
-  }, [markLoading, pollJob, servers]);
+  }, [markLoading, servers]);
 
   const runLoadTest = useCallback(
     async (payload: {
