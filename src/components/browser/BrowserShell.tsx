@@ -391,11 +391,14 @@ export function BrowserShell() {
         onSelectTab={browser.setActiveTabId}
         onCloseTab={browser.closeTab}
         onAddTab={() => browser.addTab()}
+        onAddPrivateTab={() => browser.addPrivateTab()}
         onDuplicateTab={(id) => {
           const tab = browser.tabs.find(t => t.id === id);
           if (tab) browser.addTab(tab.url, tab.title);
         }}
         onTogglePinTab={browser.togglePinTab}
+        onReorderTabs={browser.reorderTabs}
+        onMoveTabToIndex={browser.moveTabToIndex}
         recentlyClosedTabs={browser.recentlyClosedTabs}
         onReopenClosedTab={browser.reopenClosedTab}
         onClearClosedTabs={browser.clearClosedTabs}
