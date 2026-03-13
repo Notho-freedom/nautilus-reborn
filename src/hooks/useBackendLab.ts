@@ -409,6 +409,8 @@ export function useBackendLab() {
     []
   );
 
+  pollJobRef.current = pollJob;
+
   const stopSidecar = useCallback(async () => {
     const next = await desktopStopBackendLab();
     if (next) setSidecarState(next);
