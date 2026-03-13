@@ -29,11 +29,7 @@ import {
   setMosaicTileTab,
   splitMosaicTile,
 } from '@/lib/mosaic';
-import {
-  addBlockedHostFromUrl,
-  loadBlockedHosts,
-  shouldUseNativeView,
-} from '@/lib/nativeViewBlocklist';
+// no blacklist: runtime auto-switch only
 import {
   MOSAIC_TILE_LABELS,
   type DropZone,
@@ -138,7 +134,15 @@ function normalizeComparableUrl(rawUrl: string): string {
   }
 }
 
-// native-view blocklist helpers are imported from lib/nativeViewBlocklist
+function getOrigin(url: string): string | null {
+  if (!url) return null;
+  if (url.startsWith('notilus://')) return url;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
 
 function extractPopupUrl(rawEvent: Event): string | null {
   const event = rawEvent as unknown as Record<string, unknown>;
@@ -354,8 +358,7 @@ export function DesktopWebviewLayer({
   const domReadyTabsRef = useRef(new Set<string>());
   const initialSrcByTabId = useRef(new Map<string, string>());
   const nativeRequestedTabsRef = useRef(new Set<string>());
-  const blockedHostsRef = useRef(loadBlockedHosts());
-  const nativeReasonRef = useRef(new Map<string, 'blocked'>());
+  const autoSwitchByTabIdRef = useRef(new Map<string, { origin: string; reason: 'blocked' }>());
   const [extensionsRevision, setExtensionsRevision] = useState(0);
   const [dragSourceTileId, setDragSourceTileId] = useState<string | null>(null);
   const [dragTarget, setDragTarget] = useState<{ tileId: string; zone: DropZone } | null>(null);
@@ -454,26 +457,16 @@ export function DesktopWebviewLayer({
   useEffect(() => subscribeToExtensionsUpdates(() => setExtensionsRevision(prev => prev + 1)), []);
 
   useEffect(() => {
-    const blockedHosts = blockedHostsRef.current;
     for (const tab of tabs) {
       if (tab.kind !== 'external') continue;
-      const shouldNative = shouldUseNativeView(tab.url, blockedHosts);
-
-      if (shouldNative && tab.renderMode !== 'native') {
-        if (nativeRequestedTabsRef.current.has(tab.id)) continue;
-        nativeRequestedTabsRef.current.add(tab.id);
-        nativeReasonRef.current.set(tab.id, 'blocked');
-        void desktopSetTabRenderMode({ tabId: tab.id, mode: 'native' });
-        continue;
-      }
-
-      if (!shouldNative && tab.renderMode === 'native') {
-        const reason = nativeReasonRef.current.get(tab.id);
-        if (reason !== 'blocked') continue;
-        nativeReasonRef.current.delete(tab.id);
-        nativeRequestedTabsRef.current.delete(tab.id);
-        void desktopSetTabRenderMode({ tabId: tab.id, mode: 'webview' });
-      }
+      if (tab.renderMode !== 'native') continue;
+      const autoSwitch = autoSwitchByTabIdRef.current.get(tab.id);
+      if (!autoSwitch) continue;
+      const currentOrigin = getOrigin(tab.url);
+      if (!currentOrigin || currentOrigin === autoSwitch.origin) continue;
+      autoSwitchByTabIdRef.current.delete(tab.id);
+      nativeRequestedTabsRef.current.delete(tab.id);
+      void desktopSetTabRenderMode({ tabId: tab.id, mode: 'webview' });
     }
   }, [tabs]);
 
@@ -495,7 +488,7 @@ export function DesktopWebviewLayer({
       domReadyTabsRef.current.delete(tabId);
       initialSrcByTabId.current.delete(tabId);
       nativeRequestedTabsRef.current.delete(tabId);
-      nativeReasonRef.current.delete(tabId);
+      autoSwitchByTabIdRef.current.delete(tabId);
     }
 
     for (const tab of externalTabs) {
@@ -603,9 +596,15 @@ export function DesktopWebviewLayer({
           upperDescription.includes(signature)
         );
         if (isMainFrame && blockedByResponse) {
-          const blockedHosts = blockedHostsRef.current;
-          blockedHostsRef.current = addBlockedHostFromUrl(tab.url, blockedHosts);
-          nativeReasonRef.current.set(tab.id, 'blocked');
+          if (nativeRequestedTabsRef.current.has(tab.id)) {
+            void emitRuntime();
+            return;
+          }
+          nativeRequestedTabsRef.current.add(tab.id);
+          const origin = getOrigin(tab.url);
+          if (origin) {
+            autoSwitchByTabIdRef.current.set(tab.id, { origin, reason: 'blocked' });
+          }
           void desktopSetTabRenderMode({ tabId: tab.id, mode: 'native' });
         }
         void emitRuntime();
@@ -656,6 +655,7 @@ export function DesktopWebviewLayer({
       runtimeExtensionSignatureRef.current.clear();
       domReadyTabsRef.current.clear();
       initialSrcByTabId.current.clear();
+      autoSwitchByTabIdRef.current.clear();
     };
   }, []);
 

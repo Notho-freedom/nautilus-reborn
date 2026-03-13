@@ -12,7 +12,6 @@ import {
   desktopGoBack,
   desktopGoForward,
   desktopNavigate,
-  desktopSetTabRenderMode,
   onDesktopDevToolsDockStateChanged,
   desktopOpenDevTools,
   desktopReload,
@@ -21,7 +20,6 @@ import {
   isDesktopRuntime,
   onDesktopStateChanged,
 } from '@/lib/electronBridge';
-import { shouldUseNativeView } from '@/lib/nativeViewBlocklist';
 
 export interface BrowserTab {
   id: string;
@@ -378,15 +376,7 @@ export function useBrowserState() {
     }
 
     if (desktopMode) {
-      void desktopCreateTab({ url: normalizedUrl }).then(snapshot => {
-        if (!snapshot) return;
-        if (!isInternalUrl(normalizedUrl) && shouldUseNativeView(normalizedUrl)) {
-          const tabId = snapshot.activeTabId;
-          if (tabId) {
-            void desktopSetTabRenderMode({ tabId, mode: 'native' });
-          }
-        }
-      });
+      void desktopCreateTab({ url: normalizedUrl });
       if (!isInternalUrl(normalizedUrl) && !isPrivate) {
         addHistoryItem(normalizedUrl, resolvedTitle);
       }
@@ -474,9 +464,6 @@ export function useBrowserState() {
     const isPrivateTab = activeTab?.isPrivate ?? false;
 
     if (desktopMode) {
-      if (activeTab && !isInternalUrl(normalizedUrl) && shouldUseNativeView(normalizedUrl)) {
-        void desktopSetTabRenderMode({ tabId: activeTab.id, mode: 'native' });
-      }
       void desktopNavigate({ tabId: activeTab?.id, url: normalizedUrl });
       if (!isInternalUrl(normalizedUrl) && !isPrivateTab) {
         addHistoryItem(normalizedUrl, title);
