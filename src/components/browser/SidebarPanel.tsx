@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { SystemMonitor } from './SystemMonitor';
 import { TerminalPanel } from './TerminalPanel';
 import { LighthousePanel } from './LighthousePanel';
@@ -108,9 +109,37 @@ export function SidebarPanel({
   onSignInWithGitHub,
 }: SidebarPanelProps) {
   const [width, setWidth] = useState(() => readPanelWidth());
+  const [renderedPanels, setRenderedPanels] = useState<string[]>([]);
+  const [renderedWebServices, setRenderedWebServices] = useState<WebServiceItem[]>([]);
   const isResizing = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
+
+  useEffect(() => {
+    if (!panel || panel === 'web-service') return;
+    setRenderedPanels(prev => (prev.includes(panel) ? prev : [...prev, panel]));
+  }, [panel]);
+
+  useEffect(() => {
+    if (panel !== 'web-service' || !webService) return;
+    setRenderedWebServices(prev => {
+      const existingIndex = prev.findIndex(item => item.id === webService.id);
+      if (existingIndex < 0) {
+        return [...prev, webService];
+      }
+      const existing = prev[existingIndex];
+      if (
+        existing.url === webService.url &&
+        existing.label === webService.label &&
+        existing.fallbackIcon === webService.fallbackIcon
+      ) {
+        return prev;
+      }
+      const next = [...prev];
+      next[existingIndex] = webService;
+      return next;
+    });
+  }, [panel, webService]);
 
   useEffect(() => {
     window.localStorage.setItem(PANEL_WIDTH_KEY, String(width));
@@ -152,69 +181,102 @@ export function SidebarPanel({
     document.addEventListener('mouseup', handleMouseUp);
   }, [width]);
 
-  if (!panel) return null;
+  const hasRenderedPanels = renderedPanels.length > 0 || renderedWebServices.length > 0;
+  if (!panel && !hasRenderedPanels) return null;
 
-  if (panel === 'web-service') {
-    return (
-      <div
-        className="h-full border-r border-border bg-card overflow-hidden flex flex-col animate-slide-in-left shadow-xl relative"
-        style={{ width: `${Math.max(width, 360)}px` }}
-      >
-        <WebServicePanel
-          service={webService}
-          onOpenInTab={onOpenWebServiceInTab}
+  const isVisible = Boolean(panel);
+  const activeWebServiceId = panel === 'web-service' ? webService?.id ?? null : null;
+  const panelWidth = panel === 'web-service' ? Math.max(width, 360) : width;
+  const wrapperWidth = isVisible ? panelWidth : 0;
+
+  const renderPanelContent = (panelId: string) => {
+    const Component = PANEL_MAP[panelId];
+    const isBookmarksPanel = panelId === 'bookmarks';
+    const isHistoryPanel = panelId === 'history';
+    const isGitHubPanel = panelId === 'github';
+    const isFlouPanel = panelId === 'flou';
+
+    if (!Component) {
+      return (
+        <div className="p-3">
+          <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest mb-3">{panelId}</h3>
+          <p className="text-xs font-body text-muted-foreground">Panel content coming soon.</p>
+        </div>
+      );
+    }
+
+    if (panelId === 'monitor') {
+      return <Component stats={stats} onClose={onClosePanel} />;
+    }
+    if (isGitHubPanel) {
+      return (
+        <Component
+          onNavigate={onNavigate}
           onClose={onClosePanel}
+          onCreateTab={onCreateTab}
+          githubToken={githubToken}
+          githubUsername={githubUsername}
+          isGitHubOAuth={isGitHubOAuth}
+          onSaveGitHubCredentials={onSaveGitHubCredentials}
+          onSignInWithGitHub={onSignInWithGitHub}
         />
+      );
+    }
+    if (isBookmarksPanel || isHistoryPanel || isFlouPanel) {
+      return <Component onNavigate={onNavigate} onClose={onClosePanel} />;
+    }
+    return <Component onClose={onClosePanel} />;
+  };
+
+  return (
+    <div
+      className={cn(
+        'h-full border-r bg-card overflow-hidden flex flex-col shadow-xl relative',
+        panel === 'github' ? 'notilus-github-scope border-secondary/45' : 'border-border',
+        isVisible ? 'pointer-events-auto' : 'pointer-events-none'
+      )}
+      style={{ width: `${wrapperWidth}px` }}
+    >
+      {renderedPanels.map(panelId => {
+        const isActive = panel === panelId;
+        return (
+          <div
+            key={`panel-${panelId}`}
+            className={cn(
+              'absolute inset-0 flex flex-col transition-opacity duration-200',
+              isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            )}
+          >
+            {renderPanelContent(panelId)}
+          </div>
+        );
+      })}
+
+      {renderedWebServices.map(service => {
+        const isActive = panel === 'web-service' && activeWebServiceId === service.id;
+        return (
+          <div
+            key={`web-service-${service.id}`}
+            className={cn(
+              'absolute inset-0 flex flex-col transition-opacity duration-200',
+              isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            )}
+          >
+            <WebServicePanel
+              service={service}
+              onOpenInTab={onOpenWebServiceInTab}
+              onClose={onClosePanel}
+            />
+          </div>
+        );
+      })}
+
+      {isVisible && (
         <div
           className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors"
           onMouseDown={handleMouseDown}
         />
-      </div>
-    );
-  }
-
-  const Component = PANEL_MAP[panel];
-  const isBookmarksPanel = panel === 'bookmarks';
-  const isHistoryPanel = panel === 'history';
-  const isGitHubPanel = panel === 'github';
-  const isFlouPanel = panel === 'flou';
-
-  return (
-    <div
-      className={`h-full border-r bg-card overflow-hidden flex flex-col animate-slide-in-left shadow-xl relative ${
-        isGitHubPanel ? 'notilus-github-scope border-secondary/45' : 'border-border'
-      }`}
-      style={{ width: `${width}px` }}
-    >
-      {Component ? (
-        panel === 'monitor' ? (
-          <Component stats={stats} onClose={onClosePanel} />
-        ) : isGitHubPanel ? (
-          <Component
-            onNavigate={onNavigate}
-            onClose={onClosePanel}
-            onCreateTab={onCreateTab}
-            githubToken={githubToken}
-            githubUsername={githubUsername}
-            isGitHubOAuth={isGitHubOAuth}
-            onSaveGitHubCredentials={onSaveGitHubCredentials}
-            onSignInWithGitHub={onSignInWithGitHub}
-          />
-        ) : isBookmarksPanel || isHistoryPanel || isFlouPanel ? (
-          <Component onNavigate={onNavigate} onClose={onClosePanel} />
-        ) : (
-          <Component onClose={onClosePanel} />
-        )
-      ) : (
-        <div className="p-3">
-          <h3 className="text-xs font-display font-semibold text-primary uppercase tracking-widest mb-3">{panel}</h3>
-          <p className="text-xs font-body text-muted-foreground">Panel content coming soon.</p>
-        </div>
       )}
-      <div
-        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors"
-        onMouseDown={handleMouseDown}
-      />
     </div>
   );
 }

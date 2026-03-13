@@ -12,6 +12,7 @@ export interface SidebarPanelShellProps {
   title: string;
   icon?: React.ElementType;
   titleIcon?: ReactNode;
+  isActive?: boolean;
   searchable?: boolean;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
@@ -31,6 +32,7 @@ export function SidebarPanelShell({
   title,
   icon: Icon,
   titleIcon,
+  isActive,
   searchable = false,
   searchValue = '',
   onSearchChange,
@@ -46,7 +48,7 @@ export function SidebarPanelShell({
   contentClassName,
 }: SidebarPanelShellProps) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-panel-active={isActive ? 'true' : 'false'}>
       {/* Header */}
       <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-0">

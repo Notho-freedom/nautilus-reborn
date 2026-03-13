@@ -524,26 +524,28 @@ export function BrowserShell() {
           onOpenWebPanel={handleOpenWebPanel}
           activeWebServiceUrl={activeWebService?.url ?? null}
         />
-        {browser.sidebarOpen && (
-          <div className="absolute left-11 top-0 bottom-0 z-40" ref={sidebarPanelRef}>
-            <SidebarPanel
-              panel={browser.sidebarPanel}
-              stats={stats}
-              webService={activeWebService}
-              onWidthChange={() => {}}
-              onOpenWebServiceInTab={handleOpenWebServiceInTab}
-              onClosePanel={handleCloseSidebarPanel}
-              onNavigate={browser.navigateTo}
-              onOpenPanel={handleOpenPanel}
-              onCreateTab={browser.addTab}
-              githubToken={auth.credentials.token}
-              githubUsername={auth.credentials.username}
-              isGitHubOAuth={auth.isSupabaseGitHubSession}
-              onSaveGitHubCredentials={auth.saveCredentials}
-              onSignInWithGitHub={handleSignInWithGitHub}
-            />
-          </div>
-        )}
+        <div
+          className="absolute left-11 top-0 bottom-0 z-40"
+          ref={sidebarPanelRef}
+          style={{ pointerEvents: browser.sidebarOpen ? 'auto' : 'none' }}
+        >
+          <SidebarPanel
+            panel={browser.sidebarPanel}
+            stats={stats}
+            webService={activeWebService}
+            onWidthChange={() => {}}
+            onOpenWebServiceInTab={handleOpenWebServiceInTab}
+            onClosePanel={handleCloseSidebarPanel}
+            onNavigate={browser.navigateTo}
+            onOpenPanel={handleOpenPanel}
+            onCreateTab={browser.addTab}
+            githubToken={auth.credentials.token}
+            githubUsername={auth.credentials.username}
+            isGitHubOAuth={auth.isSupabaseGitHubSession}
+            onSaveGitHubCredentials={auth.saveCredentials}
+            onSignInWithGitHub={handleSignInWithGitHub}
+          />
+        </div>
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {browser.isDesktopMode && browser.isExternalActiveTab && browser.devToolsDockState.isOpen && (
             <div
