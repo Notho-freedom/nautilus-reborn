@@ -123,6 +123,30 @@ async function upsertProfileCredentials(
   }
 }
 
+const PROFILE_CACHE_KEY = 'notilus_profile_cache';
+
+interface CachedProfile {
+  avatarUrl: string;
+  username: string;
+  updatedAt: string;
+}
+
+function readCachedProfile(): CachedProfile | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CachedProfile;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedProfile(profile: CachedProfile) {
+  try {
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
+  } catch { /* noop */ }
+}
+
 function resolveOAuthRedirect(): string {
   const configured = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_URL;
   if (typeof configured === 'string' && configured.trim()) {
