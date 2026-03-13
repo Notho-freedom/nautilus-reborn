@@ -202,9 +202,19 @@ export function useAuth() {
 
       setCredentials(merged);
       setIsSupabaseGitHubSession(Boolean(sessionCredentials.token || sessionCredentials.username));
-      setGitHubAvatarUrl(resolveGitHubAvatarUrl(signedUser, merged.username));
+      const avatarUrl = resolveGitHubAvatarUrl(signedUser, merged.username);
+      setGitHubAvatarUrl(avatarUrl);
       setIsGitHubAuthFlowPending(false);
       updateGitHubConnectionConfig(merged);
+
+      // Cache profile locally for instant hydration
+      if (avatarUrl || merged.username) {
+        writeCachedProfile({
+          avatarUrl,
+          username: merged.username,
+          updatedAt: new Date().toISOString(),
+        });
+      }
 
       if (sessionCredentials.token || sessionCredentials.username) {
         void upsertProfileCredentials(signedUser, merged);
