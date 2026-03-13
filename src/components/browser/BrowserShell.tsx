@@ -23,6 +23,7 @@ import {
 import { addFlouPage } from '@/lib/flou';
 import { studioCaptureFullPage, studioCaptureViewport } from '@/lib/studio';
 import {
+  desktopSetViewportBounds,
   desktopStudioGetWebviewViewport,
   onDesktopStudioWebviewViewportChanged,
 } from '@/lib/electronBridge';
@@ -47,6 +48,8 @@ export function BrowserShell() {
   const [notilusDevToolsHeight, setNotilusDevToolsHeight] = useState(250);
   const [gitBranch, setGitBranch] = useState(() => getGitSnapshot().branch);
   const mosaic = useMosaicState();
+  const contentAreaRef = useRef<HTMLDivElement | null>(null);
+  const sidebarPanelRef = useRef<HTMLDivElement | null>(null);
   const [studioWebviewViewport, setStudioWebviewViewport] = useState<{
     width: number;
     height: number;
@@ -104,6 +107,75 @@ export function BrowserShell() {
       unsubscribe();
     };
   }, [browser.isDesktopMode]);
+
+  useEffect(() => {
+    if (!browser.isDesktopMode) return;
+
+    if (browser.activeTab?.renderMode !== 'native') {
+      void desktopSetViewportBounds({ x: 0, y: 0, width: 0, height: 0 });
+      return;
+    }
+
+    const target = contentAreaRef.current;
+    if (!target) return;
+
+    const computeBounds = () => {
+      const rect = target.getBoundingClientRect();
+      let left = rect.left;
+      let top = rect.top;
+      let width = rect.width;
+      let height = rect.height;
+
+      if (browser.sidebarOpen && sidebarPanelRef.current) {
+        const panelRect = sidebarPanelRef.current.getBoundingClientRect();
+        const adjustedLeft = Math.max(left, panelRect.right);
+        width = Math.max(0, rect.right - adjustedLeft);
+        left = adjustedLeft;
+      }
+
+      if (notilusDevToolsOpen && !notilusDevToolsDetached) {
+        height = Math.max(0, height - notilusDevToolsHeight);
+      }
+
+      if (studioWebviewViewport) {
+        const desiredWidth = Math.min(width, studioWebviewViewport.width);
+        const desiredHeight = Math.min(height, studioWebviewViewport.height);
+        left = left + (width - desiredWidth) / 2;
+        top = top + (height - desiredHeight) / 2;
+        width = desiredWidth;
+        height = desiredHeight;
+      }
+
+      void desktopSetViewportBounds({
+        x: Math.round(left),
+        y: Math.round(top),
+        width: Math.round(width),
+        height: Math.round(height),
+      });
+    };
+
+    computeBounds();
+    const observer = new ResizeObserver(computeBounds);
+    observer.observe(target);
+    window.addEventListener('resize', computeBounds);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', computeBounds);
+    };
+  }, [
+    browser.isDesktopMode,
+    browser.activeTab?.renderMode,
+    browser.activeTabId,
+    browser.sidebarOpen,
+    browser.devToolsDockState.isOpen,
+    browser.devToolsDockState.width,
+    notilusDevToolsOpen,
+    notilusDevToolsDetached,
+    notilusDevToolsHeight,
+    studioWebviewViewport?.width,
+    studioWebviewViewport?.height,
+  ]);
 
   const toggleDevToolsPanel = useCallback(() => {
     const externalDesktopMode = browser.isDesktopMode && browser.isExternalActiveTab;
@@ -453,7 +525,7 @@ export function BrowserShell() {
           activeWebServiceUrl={activeWebService?.url ?? null}
         />
         {browser.sidebarOpen && (
-          <div className="absolute left-11 top-0 bottom-0 z-40">
+          <div className="absolute left-11 top-0 bottom-0 z-40" ref={sidebarPanelRef}>
             <SidebarPanel
               panel={browser.sidebarPanel}
               stats={stats}
@@ -481,7 +553,7 @@ export function BrowserShell() {
               style={{ backgroundColor: isDockResizing ? 'hsl(var(--primary) / 0.35)' : undefined }}
             />
           )}
-          <div className="flex-1 flex overflow-hidden" data-content-area>
+          <div className="flex-1 flex overflow-hidden" data-content-area ref={contentAreaRef}>
             <ContentArea
               url={browser.activeTab?.url || 'notilus://speed-dial'}
               onNavigate={browser.navigateTo}

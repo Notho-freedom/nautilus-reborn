@@ -251,6 +251,13 @@ export class DevToolsDockManager {
     const children = mainWindow.contentView.children;
     for (const child of children) {
       if (hostView && child === hostView) continue;
+      const candidate = child as View & { webContents?: WebContents };
+      if (candidate.webContents?.id === mainWindow.webContents.id) {
+        return child;
+      }
+    }
+    for (const child of children) {
+      if (hostView && child === hostView) continue;
       return child;
     }
     return null;

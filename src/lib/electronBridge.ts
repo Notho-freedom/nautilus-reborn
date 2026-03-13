@@ -11,7 +11,9 @@ import type {
   DownloadActionRequest,
   DownloadsSnapshot,
   SetPinnedTabsRequest,
+  TabRenderModeRequest,
   TabRuntimeUpdateRequest,
+  ViewportBounds,
   TabWebContentsBindRequest,
   TabWebContentsUnbindRequest,
   GitCommitRequest,
@@ -165,6 +167,14 @@ export async function desktopSetPinnedTabs(
   await bridge.setPinnedTabs(payload);
 }
 
+export async function desktopSetTabRenderMode(
+  payload: TabRenderModeRequest
+): Promise<BrowserSnapshot | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.setTabRenderMode(payload);
+}
+
 export async function desktopBindTabWebContents(
   payload: TabWebContentsBindRequest
 ): Promise<void> {
@@ -187,6 +197,12 @@ export async function desktopUpdateTabRuntime(
   const bridge = getDesktopBridge();
   if (!bridge) return null;
   return bridge.updateTabRuntime(payload);
+}
+
+export async function desktopSetViewportBounds(payload: ViewportBounds): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.setViewportBounds(payload);
 }
 
 export function onDesktopStateChanged(

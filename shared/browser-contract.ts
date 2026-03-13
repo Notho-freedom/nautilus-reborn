@@ -10,12 +10,14 @@ import type {
 } from './terminal-contract';
 
 export type TabKind = 'internal' | 'external';
+export type TabRenderMode = 'webview' | 'native';
 
 export interface TabDescriptor {
   id: string;
   title: string;
   url: string;
   kind: TabKind;
+  renderMode?: TabRenderMode;
   isLoading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
@@ -96,6 +98,18 @@ export interface TabRuntimeUpdateRequest {
   isLoading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
+}
+
+export interface TabRenderModeRequest {
+  tabId: string;
+  mode: TabRenderMode;
+}
+
+export interface ViewportBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface DevToolsCloseRequest {
@@ -306,9 +320,11 @@ export interface BrowserDesktopApi {
   setDevToolsDockWidth: (payload: DevToolsDockWidthRequest) => Promise<DevToolsDockState>;
   getDevToolsDockState: () => Promise<DevToolsDockState>;
   setPinnedTabs: (payload: SetPinnedTabsRequest) => Promise<void>;
+  setTabRenderMode: (payload: TabRenderModeRequest) => Promise<BrowserSnapshot>;
   bindTabWebContents: (payload: TabWebContentsBindRequest) => Promise<void>;
   unbindTabWebContents: (payload: TabWebContentsUnbindRequest) => Promise<void>;
   updateTabRuntime: (payload: TabRuntimeUpdateRequest) => Promise<BrowserSnapshot>;
+  setViewportBounds: (payload: ViewportBounds) => Promise<void>;
   onStateChanged: (listener: (snapshot: BrowserSnapshot) => void) => () => void;
   onDevToolsDockStateChanged: (listener: (state: DevToolsDockState) => void) => () => void;
   minimizeWindow: () => Promise<void>;
@@ -389,6 +405,7 @@ export const BrowserIpcChannels = {
   tabBindWebContents: 'browser:tab-bind-webcontents',
   tabUnbindWebContents: 'browser:tab-unbind-webcontents',
   tabRuntimeUpdate: 'browser:tab-runtime-update',
+  tabSetRenderMode: 'browser:tab-set-render-mode',
   stateChanged: 'browser:state-changed',
   devToolsDockStateChanged: 'browser:devtools-dock-state-changed',
   windowMinimize: 'window:minimize',
@@ -426,6 +443,7 @@ export const BrowserIpcChannels = {
   systemSubscribe: 'system:subscribe',
   systemUnsubscribe: 'system:unsubscribe',
   systemMetricsChanged: 'system:metrics-changed',
+  setViewportBounds: 'browser:set-viewport-bounds',
   studioResizeWindow: 'studio:resize-window',
   studioSetWebviewViewport: 'studio:set-webview-viewport',
   studioGetWebviewViewport: 'studio:get-webview-viewport',

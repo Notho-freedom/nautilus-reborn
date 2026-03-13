@@ -3,6 +3,7 @@ import type {
   DevToolsDockWidthRequest,
   NavigateRequest,
   SetPinnedTabsRequest,
+  TabRenderModeRequest,
   TabActivateRequest,
   TabActionRequest,
   TabRuntimeUpdateRequest,
@@ -10,6 +11,7 @@ import type {
   TabWebContentsUnbindRequest,
   TabCloseRequest,
   TabCreateRequest,
+  ViewportBounds,
 } from '../../../shared/browser-contract';
 import { BrowserIpcChannels } from '../../../shared/browser-contract';
 import { TabManager } from '../tab-manager';
@@ -36,6 +38,8 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.tabBindWebContents);
   ipcMain.removeHandler(BrowserIpcChannels.tabUnbindWebContents);
   ipcMain.removeHandler(BrowserIpcChannels.tabRuntimeUpdate);
+  ipcMain.removeHandler(BrowserIpcChannels.tabSetRenderMode);
+  ipcMain.removeHandler(BrowserIpcChannels.setViewportBounds);
 }
 
 export function registerBrowserIpc({
@@ -142,6 +146,22 @@ export function registerBrowserIpc({
     (_event, payload: TabRuntimeUpdateRequest) => {
       log(BrowserIpcChannels.tabRuntimeUpdate, payload);
       return tabManager.updateTabRuntime(payload);
+    }
+  );
+
+  ipcMain.handle(
+    BrowserIpcChannels.tabSetRenderMode,
+    (_event, payload: TabRenderModeRequest) => {
+      log(BrowserIpcChannels.tabSetRenderMode, payload);
+      return tabManager.setTabRenderMode(payload.tabId, payload.mode);
+    }
+  );
+
+  ipcMain.handle(
+    BrowserIpcChannels.setViewportBounds,
+    (_event, payload: ViewportBounds) => {
+      log(BrowserIpcChannels.setViewportBounds, payload);
+      tabManager.setViewportBounds(payload);
     }
   );
 }

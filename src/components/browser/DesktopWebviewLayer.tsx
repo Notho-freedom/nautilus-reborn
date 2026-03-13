@@ -11,6 +11,7 @@ import {
 import type { BrowserTab } from '@/hooks/useBrowserState';
 import {
   desktopBindTabWebContents,
+  desktopSetTabRenderMode,
   desktopUnbindTabWebContents,
   desktopUpdateTabRuntime,
 } from '@/lib/electronBridge';
@@ -28,6 +29,11 @@ import {
   setMosaicTileTab,
   splitMosaicTile,
 } from '@/lib/mosaic';
+import {
+  addBlockedHostFromUrl,
+  loadBlockedHosts,
+  shouldUseNativeView,
+} from '@/lib/nativeViewBlocklist';
 import {
   MOSAIC_TILE_LABELS,
   type DropZone,
@@ -90,6 +96,13 @@ const TILE_TYPE_OPTIONS: MosaicTileType[] = [
   'empty',
 ];
 
+const BLOCKED_ERROR_SIGNATURES = [
+  'ERR_BLOCKED_BY_RESPONSE',
+  'ERR_BLOCKED_BY_CLIENT',
+  'ERR_BLOCKED_BY_CSP',
+  'ERR_BLOCKED_BY_X_FRAME_OPTIONS',
+];
+
 function deriveTitle(url: string): string {
   try {
     return new URL(url).hostname;
@@ -124,6 +137,8 @@ function normalizeComparableUrl(rawUrl: string): string {
     return rawUrl;
   }
 }
+
+// native-view blocklist helpers are imported from lib/nativeViewBlocklist
 
 function extractPopupUrl(rawEvent: Event): string | null {
   const event = rawEvent as unknown as Record<string, unknown>;
@@ -277,7 +292,10 @@ export function DesktopWebviewLayer({
   mosaicState,
   mosaicRootTile,
 }: DesktopWebviewLayerProps) {
-  const externalTabs = useMemo(() => tabs.filter(tab => tab.kind === 'external'), [tabs]);
+  const externalTabs = useMemo(
+    () => tabs.filter(tab => tab.kind === 'external' && tab.renderMode !== 'native'),
+    [tabs]
+  );
   const preferredTabIds = useMemo(() => {
     const activeIndex = externalTabs.findIndex(tab => tab.id === activeTabId);
     if (activeIndex < 0) return externalTabs.map(tab => tab.id);
@@ -335,6 +353,9 @@ export function DesktopWebviewLayer({
   const runtimeExtensionSignatureRef = useRef(new Map<string, string>());
   const domReadyTabsRef = useRef(new Set<string>());
   const initialSrcByTabId = useRef(new Map<string, string>());
+  const nativeRequestedTabsRef = useRef(new Set<string>());
+  const blockedHostsRef = useRef(loadBlockedHosts());
+  const nativeReasonRef = useRef(new Map<string, 'blocked'>());
   const [extensionsRevision, setExtensionsRevision] = useState(0);
   const [dragSourceTileId, setDragSourceTileId] = useState<string | null>(null);
   const [dragTarget, setDragTarget] = useState<{ tileId: string; zone: DropZone } | null>(null);
@@ -433,6 +454,30 @@ export function DesktopWebviewLayer({
   useEffect(() => subscribeToExtensionsUpdates(() => setExtensionsRevision(prev => prev + 1)), []);
 
   useEffect(() => {
+    const blockedHosts = blockedHostsRef.current;
+    for (const tab of tabs) {
+      if (tab.kind !== 'external') continue;
+      const shouldNative = shouldUseNativeView(tab.url, blockedHosts);
+
+      if (shouldNative && tab.renderMode !== 'native') {
+        if (nativeRequestedTabsRef.current.has(tab.id)) continue;
+        nativeRequestedTabsRef.current.add(tab.id);
+        nativeReasonRef.current.set(tab.id, 'blocked');
+        void desktopSetTabRenderMode({ tabId: tab.id, mode: 'native' });
+        continue;
+      }
+
+      if (!shouldNative && tab.renderMode === 'native') {
+        const reason = nativeReasonRef.current.get(tab.id);
+        if (reason !== 'blocked') continue;
+        nativeReasonRef.current.delete(tab.id);
+        nativeRequestedTabsRef.current.delete(tab.id);
+        void desktopSetTabRenderMode({ tabId: tab.id, mode: 'webview' });
+      }
+    }
+  }, [tabs]);
+
+  useEffect(() => {
     const activeTabIds = new Set(externalTabs.map(tab => tab.id));
 
     for (const tab of externalTabs) {
@@ -449,6 +494,8 @@ export function DesktopWebviewLayer({
       runtimeSignatureRef.current.delete(tabId);
       domReadyTabsRef.current.delete(tabId);
       initialSrcByTabId.current.delete(tabId);
+      nativeRequestedTabsRef.current.delete(tabId);
+      nativeReasonRef.current.delete(tabId);
     }
 
     for (const tab of externalTabs) {
@@ -543,6 +590,27 @@ export function DesktopWebviewLayer({
         onCreateTab(targetUrl);
       };
 
+      const handleFailLoad = (event: Event) => {
+        const detail = event as unknown as {
+          errorDescription?: string;
+          errorCode?: number;
+          isMainFrame?: boolean;
+        };
+        const isMainFrame = detail.isMainFrame !== false;
+        const description = typeof detail.errorDescription === 'string' ? detail.errorDescription : '';
+        const upperDescription = description.toUpperCase();
+        const blockedByResponse = BLOCKED_ERROR_SIGNATURES.some(signature =>
+          upperDescription.includes(signature)
+        );
+        if (isMainFrame && blockedByResponse) {
+          const blockedHosts = blockedHostsRef.current;
+          blockedHostsRef.current = addBlockedHostFromUrl(tab.url, blockedHosts);
+          nativeReasonRef.current.set(tab.id, 'blocked');
+          void desktopSetTabRenderMode({ tabId: tab.id, mode: 'native' });
+        }
+        void emitRuntime();
+      };
+
       const listeners: Array<[string, EventListener]> = [
         ['dom-ready', () => void handleDomReady()],
         ['did-start-loading', () => void emitRuntime()],
@@ -556,7 +624,7 @@ export function DesktopWebviewLayer({
         ['did-navigate', () => void emitRuntime()],
         ['did-navigate-in-page', () => void emitRuntime()],
         ['page-title-updated', () => void emitRuntime()],
-        ['did-fail-load', () => void emitRuntime()],
+        ['did-fail-load', handleFailLoad],
         ['new-window', handlePopup],
         ['did-create-window', handlePopup],
       ];

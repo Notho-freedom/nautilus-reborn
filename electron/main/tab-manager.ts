@@ -2,6 +2,7 @@ import {
   Menu,
   clipboard,
   webContents,
+  WebContentsView,
   type BrowserWindow,
   type MenuItemConstructorOptions,
   type WebContents,
@@ -10,9 +11,11 @@ import type {
   BrowserSnapshot,
   DevToolsDockState,
   NavigateRequest,
+  TabRenderMode,
   TabActionRequest,
   TabDescriptor,
   TabRuntimeUpdateRequest,
+  ViewportBounds,
 } from '../../shared/browser-contract';
 import { DevToolsDockManager } from './devtools-dock-manager';
 
@@ -29,6 +32,7 @@ interface TabManagerOptions {
 
 const INTERNAL_PREFIX = 'notilus://';
 const DEFAULT_INTERNAL_URL = 'notilus://speed-dial';
+const SHARED_WEBVIEW_PARTITION = 'persist:notilus-default';
 
 function isInternalUrl(url: string): boolean {
   return url.startsWith(INTERNAL_PREFIX);
@@ -76,6 +80,9 @@ export class TabManager {
   private sequence = 1;
   private pinnedTabIds = new Set<string>();
   private readonly webContentsByTabId = new Map<string, number>();
+  private readonly nativeViewsByTabId = new Map<string, WebContentsView>();
+  private readonly nativeViewCleanupByTabId = new Map<string, () => void>();
+  private viewportBounds: ViewportBounds | null = null;
   private readonly contextMenuByWebContentsId = new Map<
     number,
     { tabId: string; cleanup: () => void }
@@ -110,6 +117,7 @@ export class TabManager {
       title: deriveTitle(url),
       url,
       kind: isInternalUrl(url) ? 'internal' : 'external',
+      renderMode: isInternalUrl(url) ? undefined : 'webview',
       isLoading: !isInternalUrl(url),
       canGoBack: false,
       canGoForward: false,
@@ -134,6 +142,7 @@ export class TabManager {
     this.order.splice(closingIndex, 1);
     this.pinnedTabIds.delete(tabId);
     this.webContentsByTabId.delete(tabId);
+    this.destroyNativeView(tabId);
     this.detachContextMenuForTab(tabId);
     if (closingActiveTab) {
       this.devToolsDock.close();
@@ -184,26 +193,41 @@ export class TabManager {
         url,
         title: deriveTitle(url),
         kind: 'internal',
+        renderMode: undefined,
         isLoading: false,
         canGoBack: false,
         canGoForward: false,
       };
       this.webContentsByTabId.delete(targetId);
+      this.destroyNativeView(targetId);
       this.log('tab:navigate', `${targetId} -> ${url}`);
       this.activateTabInternal(targetId);
       this.notifyStateChanged();
       return this.getSnapshot();
     }
 
+    const renderMode: TabRenderMode =
+      tab.descriptor.renderMode === 'native' ? 'native' : 'webview';
     tab.descriptor = {
       ...tab.descriptor,
       kind: 'external',
+      renderMode,
       url,
       title: deriveTitle(url),
       isLoading: true,
       canGoBack: tab.descriptor.canGoBack ?? false,
       canGoForward: tab.descriptor.canGoForward ?? false,
     };
+
+    if (renderMode === 'native') {
+      this.ensureNativeView(targetId, url);
+      const view = this.nativeViewsByTabId.get(targetId);
+      if (view && !view.webContents.isDestroyed()) {
+        view.webContents.loadURL(url).catch(() => {
+          // Ignore navigation failures; renderer will retry.
+        });
+      }
+    }
 
     this.log('tab:navigate', `${targetId} -> ${url}`);
     this.activateTabInternal(targetId);
@@ -245,12 +269,6 @@ export class TabManager {
     const target = this.resolveTargetTab(request.tabId);
     const targetWebContents = this.resolveWebContents(target?.descriptor.id);
     if (!targetWebContents) return;
-    const webContentsType =
-      typeof targetWebContents.getType === 'function' ? targetWebContents.getType() : 'webview';
-    if (webContentsType !== 'webview') {
-      this.log('tab:open-devtools:skip-non-webview', `${target?.descriptor.id ?? 'unknown'}`);
-      return;
-    }
     const dockAttached = this.devToolsDock.openFor(targetWebContents);
     if (!dockAttached) {
       this.log('tab:open-devtools:fallback', target!.descriptor.id);
@@ -300,6 +318,7 @@ export class TabManager {
     const tab = this.tabs.get(tabId);
     if (!tab) return;
     if (tab.descriptor.kind !== 'external') return;
+    if (tab.descriptor.renderMode === 'native') return;
 
     const targetWebContents = webContents.fromId(webContentsId);
     if (!targetWebContents || targetWebContents.isDestroyed()) {
@@ -308,6 +327,9 @@ export class TabManager {
     }
 
     this.webContentsByTabId.set(tabId, webContentsId);
+    if (!tab.descriptor.renderMode) {
+      tab.descriptor = { ...tab.descriptor, renderMode: 'webview' };
+    }
     this.attachContextMenuForTab(tabId, targetWebContents);
     this.refreshTabFromWebContents(tabId, targetWebContents);
     this.log('tab:bind-webcontents', `${tabId} -> ${webContentsId}`);
@@ -325,6 +347,7 @@ export class TabManager {
     const tab = this.tabs.get(payload.tabId);
     if (!tab) return this.getSnapshot();
     if (tab.descriptor.kind !== 'external') return this.getSnapshot();
+    if (tab.descriptor.renderMode === 'native') return this.getSnapshot();
 
     const url = normalizeRuntimeUrl(payload.url, tab.descriptor.url);
     const title = payload.title.trim() || deriveTitle(url);
@@ -332,6 +355,7 @@ export class TabManager {
     tab.descriptor = {
       ...tab.descriptor,
       kind: 'external',
+      renderMode: tab.descriptor.renderMode ?? 'webview',
       url,
       title,
       isLoading: Boolean(payload.isLoading),
@@ -369,6 +393,29 @@ export class TabManager {
     this.pinnedTabIds = new Set(tabIds.filter(tabId => validIds.has(tabId)));
   }
 
+  setTabRenderMode(tabId: string, mode: TabRenderMode): BrowserSnapshot {
+    const tab = this.tabs.get(tabId);
+    if (!tab) return this.getSnapshot();
+    if (tab.descriptor.kind !== 'external') return this.getSnapshot();
+
+    const nextMode: TabRenderMode = mode === 'native' ? 'native' : 'webview';
+    if (tab.descriptor.renderMode === nextMode) return this.getSnapshot();
+
+    if (nextMode === 'native') {
+      this.webContentsByTabId.delete(tabId);
+      this.detachContextMenuForTab(tabId);
+      tab.descriptor = { ...tab.descriptor, renderMode: 'native' };
+      this.ensureNativeView(tabId, tab.descriptor.url);
+    } else {
+      this.destroyNativeView(tabId);
+      tab.descriptor = { ...tab.descriptor, renderMode: 'webview' };
+    }
+
+    this.syncNativeViews();
+    this.notifyStateChanged();
+    return this.getSnapshot();
+  }
+
   getDevToolsDockState(): DevToolsDockState {
     return this.devToolsDock.getState();
   }
@@ -379,6 +426,154 @@ export class TabManager {
 
   syncDevToolsLayout(): void {
     this.devToolsDock.syncLayout();
+    this.syncNativeViews();
+  }
+
+  setViewportBounds(bounds: ViewportBounds): void {
+    this.viewportBounds = bounds;
+    this.syncNativeViews();
+  }
+
+  private ensureNativeView(tabId: string, url: string): void {
+    const existing = this.nativeViewsByTabId.get(tabId);
+    if (existing && !existing.webContents.isDestroyed()) {
+      return;
+    }
+
+    if (existing) {
+      this.destroyNativeView(tabId);
+    }
+
+    let view: WebContentsView;
+    try {
+      view = new WebContentsView({
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: true,
+          webSecurity: true,
+          partition: SHARED_WEBVIEW_PARTITION,
+        },
+      });
+    } catch (error) {
+      this.log('native-view-create-failed', String(error));
+      return;
+    }
+
+    view.setVisible(false);
+    this.nativeViewsByTabId.set(tabId, view);
+
+    const targetWebContents = view.webContents;
+    this.attachContextMenuForTab(tabId, targetWebContents);
+
+    const onUpdate = () => {
+      this.refreshTabFromNativeView(tabId, targetWebContents);
+      this.notifyStateChanged();
+    };
+
+    const onDestroyed = () => {
+      this.destroyNativeView(tabId);
+    };
+
+    targetWebContents.on('did-start-loading', onUpdate);
+    targetWebContents.on('did-stop-loading', onUpdate);
+    targetWebContents.on('did-navigate', onUpdate);
+    targetWebContents.on('did-navigate-in-page', onUpdate);
+    targetWebContents.on('page-title-updated', onUpdate);
+    targetWebContents.on('did-fail-load', onUpdate);
+    targetWebContents.once('destroyed', onDestroyed);
+
+    targetWebContents.setWindowOpenHandler(details => {
+      if (details?.url) {
+        this.createTab(details.url);
+      }
+      return { action: 'deny' };
+    });
+
+    const cleanup = () => {
+      targetWebContents.removeListener('did-start-loading', onUpdate);
+      targetWebContents.removeListener('did-stop-loading', onUpdate);
+      targetWebContents.removeListener('did-navigate', onUpdate);
+      targetWebContents.removeListener('did-navigate-in-page', onUpdate);
+      targetWebContents.removeListener('page-title-updated', onUpdate);
+      targetWebContents.removeListener('did-fail-load', onUpdate);
+      targetWebContents.removeListener('destroyed', onDestroyed);
+    };
+    this.nativeViewCleanupByTabId.set(tabId, cleanup);
+
+    const mainWindow = this.options.getMainWindow();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      this.attachNativeView(mainWindow, view);
+    }
+
+    targetWebContents
+      .loadURL(url)
+      .catch(() => {
+        // Ignore navigation failures; renderer will retry.
+      });
+  }
+
+  private destroyNativeView(tabId: string): void {
+    const cleanup = this.nativeViewCleanupByTabId.get(tabId);
+    if (cleanup) {
+      cleanup();
+      this.nativeViewCleanupByTabId.delete(tabId);
+    }
+
+    const view = this.nativeViewsByTabId.get(tabId);
+    if (!view) return;
+    this.nativeViewsByTabId.delete(tabId);
+    this.detachContextMenuForTab(tabId);
+
+    const mainWindow = this.options.getMainWindow();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.contentView.children.includes(view)) {
+        mainWindow.contentView.removeChildView(view);
+      }
+    }
+
+    try {
+      view.webContents.destroy();
+    } catch {
+      // ignore
+    }
+  }
+
+  private syncNativeViews(): void {
+    const mainWindow = this.options.getMainWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+
+    const bounds = this.viewportBounds;
+    for (const [tabId, view] of this.nativeViewsByTabId.entries()) {
+      if (view.webContents.isDestroyed()) {
+        this.destroyNativeView(tabId);
+        continue;
+      }
+
+      const descriptor = this.tabs.get(tabId)?.descriptor;
+      const shouldShow =
+        descriptor?.kind === 'external' &&
+        descriptor.renderMode === 'native' &&
+        this.activeTabId === tabId &&
+        bounds &&
+        bounds.width > 0 &&
+        bounds.height > 0;
+
+      if (!shouldShow) {
+        view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+        view.setVisible(false);
+        continue;
+      }
+
+      this.attachNativeView(mainWindow, view);
+      view.setBounds({
+        x: Math.max(0, Math.round(bounds.x)),
+        y: Math.max(0, Math.round(bounds.y)),
+        width: Math.max(0, Math.round(bounds.width)),
+        height: Math.max(0, Math.round(bounds.height)),
+      });
+      view.setVisible(true);
+    }
   }
 
   private resolveTargetTab(tabId?: string): ManagedTab | null {
@@ -403,6 +598,7 @@ export class TabManager {
     tab.descriptor = {
       ...tab.descriptor,
       kind: 'external',
+      renderMode: tab.descriptor.renderMode ?? 'webview',
       url: currentUrl,
       title: currentTitle || deriveTitle(currentUrl),
       isLoading: targetWebContents.isLoading(),
@@ -411,13 +607,48 @@ export class TabManager {
     };
   }
 
+  private refreshTabFromNativeView(tabId: string, targetWebContents: WebContents): void {
+    const tab = this.tabs.get(tabId);
+    if (!tab) return;
+    if (tab.descriptor.kind !== 'external') return;
+
+    const currentUrl = normalizeRuntimeUrl(targetWebContents.getURL(), tab.descriptor.url);
+    const currentTitle = targetWebContents.getTitle().trim();
+    tab.descriptor = {
+      ...tab.descriptor,
+      kind: 'external',
+      renderMode: 'native',
+      url: currentUrl,
+      title: currentTitle || deriveTitle(currentUrl),
+      isLoading: targetWebContents.isLoading(),
+      canGoBack: targetWebContents.canGoBack(),
+      canGoForward: targetWebContents.canGoForward(),
+    };
+  }
+
+  private attachNativeView(mainWindow: BrowserWindow, view: WebContentsView): void {
+    const contentView = mainWindow.contentView;
+    const attached = contentView.children.includes(view);
+    if (!attached) {
+      contentView.addChildView(view);
+    }
+  }
+
   private activateTabInternal(tabId: string): void {
     this.activeTabId = tabId;
+    this.syncNativeViews();
     this.log('tab:activate', tabId);
   }
 
   private resolveWebContents(tabId?: string): WebContents | null {
     if (!tabId) return null;
+    const nativeView = this.nativeViewsByTabId.get(tabId);
+    if (nativeView) {
+      if (!nativeView.webContents.isDestroyed()) {
+        return nativeView.webContents;
+      }
+      this.destroyNativeView(tabId);
+    }
     const targetId = this.webContentsByTabId.get(tabId);
     if (!targetId) return null;
     const targetWebContents = webContents.fromId(targetId);
