@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { BrowserSnapshot, DevToolsDockState, TabDescriptor } from '../../shared/browser-contract';
 import { addHistoryItem } from '@/lib/history';
+import { playTabOpen, playTabClose, playTabSwitch, playPrivateMode } from '@/lib/sounds';
 import {
   desktopActivateTab,
   desktopCloseDevTools,
