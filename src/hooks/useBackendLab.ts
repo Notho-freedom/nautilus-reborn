@@ -223,7 +223,7 @@ export function useBackendLab() {
         return [];
       }
       let output: DiscoveredRoute[] = [];
-      await pollJob(job.jobId, 'discoverRoutes', result => {
+      await pollJobRef.current?.(job.jobId, 'discoverRoutes', result => {
         output = Array.isArray(result) ? (result as DiscoveredRoute[]) : [];
         setRoutes(previous => {
           const filtered = previous.filter(route => route.server_id !== serverId);
@@ -236,7 +236,7 @@ export function useBackendLab() {
       setError(cause instanceof Error ? cause.message : 'Route discovery failed');
       return [];
     }
-  }, [pollJob]);
+  }, []);
 
   const runQuickTest = useCallback(
     async (payload: { method: string; url: string; body?: string; headers?: Record<string, string> }) => {
