@@ -208,14 +208,17 @@ function readPersistedTabs(): { tabs: BrowserTab[]; activeTabId: string } | null
 
 function writePersistedTabs(tabs: BrowserTab[], activeTabId: string): void {
   if (typeof window === 'undefined') return;
-  const serialized: SerializedTab[] = tabs.map(t => ({
+  // Don't persist private tabs
+  const publicTabs = tabs.filter(t => !t.isPrivate);
+  const serialized: SerializedTab[] = publicTabs.map(t => ({
     id: t.id,
     title: t.title,
     url: t.url,
     kind: t.kind,
   }));
   window.localStorage.setItem(TABS_KEY, JSON.stringify(serialized));
-  window.localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+  const resolvedActive = publicTabs.some(t => t.id === activeTabId) ? activeTabId : publicTabs[0]?.id ?? '';
+  window.localStorage.setItem(ACTIVE_TAB_KEY, resolvedActive);
 }
 
 export function useBrowserState() {
