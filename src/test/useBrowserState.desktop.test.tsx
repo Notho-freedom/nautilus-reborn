@@ -26,6 +26,7 @@ describe('useBrowserState desktop mode', () => {
     bridge = {
       getState: vi.fn().mockResolvedValue(initialSnapshot),
       createTab: vi.fn().mockResolvedValue(initialSnapshot),
+      openWindowWithTabs: vi.fn().mockResolvedValue(undefined),
       closeTab: vi.fn().mockResolvedValue(initialSnapshot),
       activateTab: vi.fn().mockResolvedValue(initialSnapshot),
       navigate: vi.fn().mockResolvedValue(initialSnapshot),

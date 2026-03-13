@@ -12,45 +12,41 @@ function getWindowState(window: BrowserWindow): WindowState {
   return { isMaximized: window.isMaximized() };
 }
 
-export function registerWindowIpc(window: BrowserWindow, debug: boolean) {
+export function registerWindowIpc(debug: boolean) {
   const log = (channel: string) => {
     if (!debug) return;
     console.info(`[ipc] ${channel}`);
   };
 
-  const emitState = () => {
-    if (window.isDestroyed()) return;
-    window.webContents.send(BrowserIpcChannels.windowStateChanged, getWindowState(window));
-  };
-
   removeExistingHandlers();
 
-  ipcMain.handle(BrowserIpcChannels.windowMinimize, () => {
+  ipcMain.handle(BrowserIpcChannels.windowMinimize, event => {
     log(BrowserIpcChannels.windowMinimize);
-    window.minimize();
+    const target = BrowserWindow.fromWebContents(event.sender);
+    target?.minimize();
   });
 
-  ipcMain.handle(BrowserIpcChannels.windowToggleMaximize, () => {
+  ipcMain.handle(BrowserIpcChannels.windowToggleMaximize, event => {
     log(BrowserIpcChannels.windowToggleMaximize);
-    if (window.isMaximized()) {
-      window.unmaximize();
+    const target = BrowserWindow.fromWebContents(event.sender);
+    if (!target) return;
+    if (target.isMaximized()) {
+      target.unmaximize();
     } else {
-      window.maximize();
+      target.maximize();
     }
   });
 
-  ipcMain.handle(BrowserIpcChannels.windowClose, () => {
+  ipcMain.handle(BrowserIpcChannels.windowClose, event => {
     log(BrowserIpcChannels.windowClose);
-    window.close();
+    const target = BrowserWindow.fromWebContents(event.sender);
+    target?.close();
   });
 
-  ipcMain.handle(BrowserIpcChannels.windowGetState, () => {
+  ipcMain.handle(BrowserIpcChannels.windowGetState, event => {
     log(BrowserIpcChannels.windowGetState);
-    return getWindowState(window);
+    const target = BrowserWindow.fromWebContents(event.sender);
+    if (!target) return { isMaximized: false };
+    return getWindowState(target);
   });
-
-  window.on('maximize', emitState);
-  window.on('unmaximize', emitState);
-  window.on('enter-full-screen', emitState);
-  window.on('leave-full-screen', emitState);
 }

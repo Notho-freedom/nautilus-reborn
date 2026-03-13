@@ -15,7 +15,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo, type ButtonHTMLAttributes } from 'react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   DropdownMenu,
@@ -74,7 +74,7 @@ function NetworkSignal({ quality }: { quality: SystemStats['networkQuality'] }) 
   );
 }
 
-const StatusButton = forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+const StatusButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ children, className, type, ...props }, ref) => (
     <button
       ref={ref}

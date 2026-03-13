@@ -691,7 +691,10 @@ class WebSurfaceManager {
   }
 
   private isSurfaceAttached(surface: WebSurface) {
-    return surface.domReady && (surface.webview.isConnected || !!surface.webview.parentElement);
+    if (!surface.domReady) return false;
+    const webviewConnected = surface.webview.isConnected;
+    const parentConnected = surface.webview.parentElement?.isConnected ?? false;
+    return webviewConnected || parentConnected;
   }
 
   private applyZoomFactor(surface: WebSurface, factor: number) {

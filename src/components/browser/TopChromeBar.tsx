@@ -1,5 +1,5 @@
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, LayoutGrid, Layers, Loader2, Minus, Pin, Plus, Search, Square, VenetianMask, X, XCircle, Zap } from 'lucide-react';
+import { Copy, FolderPlus, LayoutGrid, Layers, Loader2, Minus, Pin, Plus, Search, Square, VenetianMask, X, XCircle, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BrowserTab, RecentlyClosedTab } from '@/hooks/useBrowserState';
 import { computeTabWidth, getTabDisplayMode, getTabIconSize } from '@/lib/tabLayout';
@@ -31,6 +31,7 @@ interface TopChromeBarProps {
   onCloseTab: (id: string) => void;
   onAddTab: () => void;
   onAddPrivateTab?: () => void;
+  onSaveWorkspace?: () => void;
   onDuplicateTab?: (id: string) => void;
   onTogglePinTab: (id: string) => void;
   onReorderTabs?: (fromIndex: number, toIndex: number) => void;
@@ -109,6 +110,7 @@ export function TopChromeBar({
   onCloseTab,
   onAddTab,
   onAddPrivateTab,
+  onSaveWorkspace,
   onDuplicateTab,
   onTogglePinTab,
   onReorderTabs,
@@ -120,6 +122,7 @@ export function TopChromeBar({
   const desktopMode = isDesktopRuntime();
   const [isMaximized, setIsMaximized] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ tabId: string; x: number; y: number } | null>(null);
+  const [stripMenu, setStripMenu] = useState<{ x: number; y: number } | null>(null);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [tabsAreaWidth, setTabsAreaWidth] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -245,10 +248,10 @@ export function TopChromeBar({
     event.preventDefault();
     setContextMenu({ tabId, x: event.clientX, y: event.clientY });
   };
-  const handlePrivateTabContext = (event: React.MouseEvent) => {
+  const handleStripContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    onAddPrivateTab?.();
+    setStripMenu({ x: event.clientX, y: event.clientY });
   };
 
   // DnD handlers
@@ -427,7 +430,7 @@ export function TopChromeBar({
             className="flex items-center gap-1 h-8"
             onContextMenu={event => {
               if (event.target !== event.currentTarget) return;
-              handlePrivateTabContext(event);
+              handleStripContextMenu(event);
             }}
           >
             {groupedItems.map(item => {
@@ -591,7 +594,7 @@ export function TopChromeBar({
                 <button
                   style={noDragStyle}
                   onClick={onAddTab}
-                  onContextMenu={handlePrivateTabContext}
+                  onContextMenu={handleStripContextMenu}
                   aria-label="New tab"
                   className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-200 shrink-0"
                 >
@@ -796,6 +799,44 @@ export function TopChromeBar({
                 {item.label}
               </button>
             ))}
+          </div>
+        </>
+      )}
+
+      {stripMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-50"
+            onClick={() => setStripMenu(null)}
+          />
+          <div
+            className="fixed z-50 glass rounded-lg border border-border py-1 min-w-[200px] shadow-lg"
+            style={{ left: stripMenu.x, top: stripMenu.y }}
+          >
+            {onAddPrivateTab && (
+              <button
+                onClick={() => {
+                  onAddPrivateTab();
+                  setStripMenu(null);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-body text-foreground hover:bg-muted/50 transition-colors duration-fast"
+              >
+                <VenetianMask size={13} className="text-muted-foreground" />
+                New Private Tab
+              </button>
+            )}
+            {onSaveWorkspace && (
+              <button
+                onClick={() => {
+                  onSaveWorkspace();
+                  setStripMenu(null);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-body text-foreground hover:bg-muted/50 transition-colors duration-fast"
+              >
+                <FolderPlus size={13} className="text-muted-foreground" />
+                Save session as workspace
+              </button>
+            )}
           </div>
         </>
       )}

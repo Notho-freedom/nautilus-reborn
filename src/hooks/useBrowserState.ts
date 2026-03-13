@@ -2,11 +2,13 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { BrowserSnapshot, DevToolsDockState, TabDescriptor } from '../../shared/browser-contract';
 import { addHistoryItem } from '@/lib/history';
 import { playTabOpen, playTabClose, playTabSwitch, playPrivateMode } from '@/lib/sounds';
+import type { WorkspaceTab } from '@/lib/workspaces';
 import {
   desktopActivateTab,
   desktopCloseDevTools,
   desktopCloseTab,
   desktopCreateTab,
+  desktopOpenWindowWithTabs,
   desktopGetDevToolsDockState,
   desktopGetState,
   desktopGoBack,
@@ -35,6 +37,7 @@ export interface BrowserTab {
   kind?: 'internal' | 'external';
   renderMode?: 'webview' | 'native';
 }
+
 
 export interface BrowserState {
   tabs: BrowserTab[];
@@ -318,7 +321,7 @@ export function useBrowserState() {
 
   const baseTabs = desktopMode && desktopSnapshot ? desktopTabs : localTabs;
   const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
-  const tabs = useMemo(
+  const computedTabs = useMemo(
     () =>
       baseTabs.map(tab => ({
         ...tab,
@@ -327,7 +330,7 @@ export function useBrowserState() {
     [baseTabs, pinnedSet]
   );
   const activeTabId = desktopMode && desktopSnapshot ? desktopSnapshot.activeTabId ?? '' : localActiveTabId;
-  const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0] || DEFAULT_TAB;
+  const activeTab = computedTabs.find(t => t.id === activeTabId) || computedTabs[0] || DEFAULT_TAB;
   const lastHistoryRef = useRef(new Map<string, string>());
 
   useEffect(() => {
@@ -411,9 +414,82 @@ export function useBrowserState() {
     }
   }, [desktopMode]);
 
+  const openUrlsInCurrentWindow = useCallback((entries: WorkspaceTab[]) => {
+    const filtered = entries.filter(entry => entry?.url);
+    if (filtered.length === 0) return;
+
+    if (desktopMode) {
+      const run = async () => {
+        const newlyPinned: string[] = [];
+        for (const entry of filtered) {
+          const snapshot = await desktopCreateTab({ url: entry.url });
+          const createdId = snapshot?.activeTabId;
+          if (entry.pinned && createdId) {
+            newlyPinned.push(createdId);
+          }
+        }
+        if (newlyPinned.length > 0) {
+          setPinnedTabIds(prev => {
+            const next = Array.from(new Set([...prev, ...newlyPinned]));
+            void desktopSetPinnedTabs({ tabIds: next });
+            return next;
+          });
+        }
+      };
+      void run();
+      return;
+    }
+
+    const createdIds: string[] = [];
+    const newPinned: string[] = [];
+
+    setLocalTabs(prev => {
+      const next = [...prev];
+      for (const entry of filtered) {
+        const normalizedUrl = normalizeUrl(entry.url);
+        const id = `tab-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+        createdIds.push(id);
+        if (entry.pinned) {
+          newPinned.push(id);
+        }
+        next.push({
+          id,
+          url: normalizedUrl,
+          title: resolveTitle(normalizedUrl, entry.title),
+          isPrivate: false,
+        });
+      }
+      return next;
+    });
+
+    if (createdIds.length > 0) {
+      setLocalActiveTabId(createdIds[createdIds.length - 1]);
+    }
+    if (newPinned.length > 0) {
+      setPinnedTabIds(prev => Array.from(new Set([...prev, ...newPinned])));
+    }
+  }, [desktopMode, desktopCreateTab, desktopSetPinnedTabs]);
+
+  const openUrlsInNewWindow = useCallback((entries: WorkspaceTab[]) => {
+    const filtered = entries.filter(entry => entry?.url);
+    if (filtered.length === 0) return;
+    if (!desktopMode) {
+      openUrlsInCurrentWindow(filtered);
+      return;
+    }
+    void desktopOpenWindowWithTabs({
+      tabs: filtered.map(entry => ({
+        url: entry.url,
+        title: entry.title,
+        pinned: entry.pinned,
+      })),
+      activeIndex: 0,
+    });
+  }, [desktopMode, openUrlsInCurrentWindow]);
+
   const closeTab = useCallback((id: string) => {
     playTabClose();
-    const closedTab = tabs.find(tab => tab.id === id);
+    const closedTab = computedTabs.find(tab => tab.id === id);
     if (closedTab) {
       setRecentlyClosedTabs(prev =>
         pushRecentlyClosed(prev, {
@@ -461,7 +537,7 @@ export function useBrowserState() {
       return next;
     });
     setPinnedTabIds(prev => prev.filter(tabId => tabId !== id));
-  }, [desktopMode, localActiveTabId, pinnedTabIds, tabs]);
+  }, [desktopMode, localActiveTabId, pinnedTabIds, computedTabs]);
 
   const updateTabUrl = useCallback((id: string, url: string, title?: string) => {
     const normalizedUrl = normalizeUrl(url);
@@ -568,18 +644,18 @@ export function useBrowserState() {
   }, [desktopMode, activeTab]);
 
   const nextTab = useCallback(() => {
-    if (!tabs.length) return;
-    const idx = tabs.findIndex(t => t.id === activeTabId);
-    const next = tabs[(idx + 1) % tabs.length];
+    if (!computedTabs.length) return;
+    const idx = computedTabs.findIndex(t => t.id === activeTabId);
+    const next = computedTabs[(idx + 1) % computedTabs.length];
     if (next) setActiveTabId(next.id);
-  }, [tabs, activeTabId, setActiveTabId]);
+  }, [computedTabs, activeTabId, setActiveTabId]);
 
   const prevTab = useCallback(() => {
-    if (!tabs.length) return;
-    const idx = tabs.findIndex(t => t.id === activeTabId);
-    const prev = tabs[(idx - 1 + tabs.length) % tabs.length];
+    if (!computedTabs.length) return;
+    const idx = computedTabs.findIndex(t => t.id === activeTabId);
+    const prev = computedTabs[(idx - 1 + computedTabs.length) % computedTabs.length];
     if (prev) setActiveTabId(prev.id);
-  }, [tabs, activeTabId, setActiveTabId]);
+  }, [computedTabs, activeTabId, setActiveTabId]);
 
   const togglePinTab = useCallback((id: string) => {
     setPinnedTabIds(prev => {
@@ -611,7 +687,7 @@ export function useBrowserState() {
 
   const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
     if (desktopMode) {
-      const tabId = tabs[fromIndex]?.id;
+      const tabId = computedTabs[fromIndex]?.id;
       if (!tabId) return;
       void desktopMoveTab({ tabId, toIndex });
       return;
@@ -648,7 +724,7 @@ export function useBrowserState() {
   return {
     isDesktopMode: desktopMode,
     isExternalActiveTab: Boolean(activeTab?.kind === 'external'),
-    tabs,
+    tabs: computedTabs,
     activeTabId: activeTabId || activeTab?.id || '',
     activeTab,
     sidebarOpen,
@@ -690,5 +766,7 @@ export function useBrowserState() {
     clearClosedTabs,
     reorderTabs,
     moveTabToIndex,
+    openUrlsInCurrentWindow,
+    openUrlsInNewWindow,
   };
 }

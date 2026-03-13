@@ -63,6 +63,11 @@ export interface TabCreateRequest {
   isPrivate?: boolean;
 }
 
+export interface OpenWindowWithTabsRequest {
+  tabs: { url: string; title?: string; pinned?: boolean }[];
+  activeIndex?: number;
+}
+
 export interface TabCloseRequest {
   tabId: string;
 }
@@ -316,6 +321,7 @@ export interface StudioRecordingSnapshot {
 export interface BrowserDesktopApi {
   getState: () => Promise<BrowserSnapshot>;
   createTab: (payload: TabCreateRequest) => Promise<BrowserSnapshot>;
+  openWindowWithTabs: (payload: OpenWindowWithTabsRequest) => Promise<void>;
   closeTab: (payload: TabCloseRequest) => Promise<BrowserSnapshot>;
   activateTab: (payload: TabActivateRequest) => Promise<BrowserSnapshot>;
   moveTab: (payload: TabMoveRequest) => Promise<BrowserSnapshot>;
@@ -399,6 +405,7 @@ export interface BrowserDesktopApi {
 export const BrowserIpcChannels = {
   getState: 'browser:get-state',
   tabCreate: 'browser:tab-create',
+  openWindowWithTabs: 'browser:open-window-with-tabs',
   tabClose: 'browser:tab-close',
   tabActivate: 'browser:tab-activate',
   tabMove: 'browser:tab-move',

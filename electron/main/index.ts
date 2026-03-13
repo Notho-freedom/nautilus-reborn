@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
-import { BrowserIpcChannels } from '../../shared/browser-contract';
+import { BrowserIpcChannels, type OpenWindowWithTabsRequest } from '../../shared/browser-contract';
 import { registerBrowserIpc } from './ipc/browser-ipc';
 import { registerBrowserImportIpc } from './ipc/browser-import-ipc';
 import { registerBackendLabIpc } from './ipc/backend-lab-ipc';
@@ -55,6 +55,9 @@ let studioManager: StudioManager | null = null;
 let systemMetricsManager: SystemMetricsManager | null = null;
 let terminalManager: TerminalManager | null = null;
 let tabSessionStore: TabSessionStore | null = null;
+const windowControllers = new Map<number, { window: BrowserWindow; tabManager: TabManager; isPrimary: boolean }>();
+const windows = new Set<BrowserWindow>();
+const focusedWindows = new Set<number>();
 
 if (!SINGLE_INSTANCE_LOCK) {
   app.quit();
@@ -85,17 +88,38 @@ function resolveExternalPreloadPath(): string {
   return join(__dirname, '../preload/external.js');
 }
 
-function broadcastState() {
-  if (!mainWindow || mainWindow.isDestroyed() || !tabManager) return;
-  mainWindow.webContents.send(BrowserIpcChannels.stateChanged, tabManager.getSnapshot());
+function broadcast(channel: string, payload?: unknown) {
+  for (const win of windows) {
+    if (win.isDestroyed()) continue;
+    win.webContents.send(channel, payload);
+  }
 }
 
-function createDesktopWindow() {
-  const preloadPath = resolvePreloadPath();
-  const externalPreloadPath = resolveExternalPreloadPath();
-  mainWindow = createMainWindow({ preloadPath });
+function getControllerForSender(senderId: number) {
+  const direct = windowControllers.get(senderId);
+  if (direct) return direct;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    return windowControllers.get(mainWindow.webContents.id) ?? null;
+  }
+  return null;
+}
 
-  mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
+function attachWindowStateEvents(window: BrowserWindow) {
+  const emitState = () => {
+    if (window.isDestroyed()) return;
+    window.webContents.send(BrowserIpcChannels.windowStateChanged, {
+      isMaximized: window.isMaximized(),
+    });
+  };
+
+  window.on('maximize', emitState);
+  window.on('unmaximize', emitState);
+  window.on('enter-full-screen', emitState);
+  window.on('leave-full-screen', emitState);
+}
+
+function configureWebviewSecurity(window: BrowserWindow, externalPreloadPath: string) {
+  window.webContents.on('will-attach-webview', (event, webPreferences, params) => {
     const sourceUrl = typeof params.src === 'string' ? params.src.trim() : '';
     const requestedPartition = typeof params.partition === 'string' ? params.partition : '';
     const blocked =
@@ -124,7 +148,17 @@ function createDesktopWindow() {
       webPreferences.partition = SHARED_WEBVIEW_PARTITION;
     }
   });
+}
 
+function updateBackgroundState() {
+  if (!systemMetricsManager) return;
+  systemMetricsManager.setBackground(focusedWindows.size === 0);
+}
+
+let networkLayerReady = false;
+
+function ensureNetworkLayer() {
+  if (networkLayerReady) return;
   const networkLayer = new NetworkLayer(session.defaultSession, DEBUG_IPC);
   networkLayer.setup();
   const webviewSession = session.fromPartition(SHARED_WEBVIEW_PARTITION);
@@ -132,88 +166,47 @@ function createDesktopWindow() {
     const webviewNetworkLayer = new NetworkLayer(webviewSession, DEBUG_IPC);
     webviewNetworkLayer.setup();
   }
+  networkLayerReady = true;
+}
 
-  tabManager = new TabManager({
-    debug: DEBUG_IPC,
-    getMainWindow: () => mainWindow,
-    onStateChanged: snapshot => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.stateChanged, snapshot);
-      if (tabManager) {
-        tabSessionStore?.schedule(tabManager.exportSession());
-      }
-    },
-    onDevToolsDockStateChanged: state => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.devToolsDockStateChanged, state);
-    },
-  });
+let globalManagersReady = false;
 
-  mainWindow.webContents.on('before-input-event', (event, input) => {
-    const key = typeof input.key === 'string' ? input.key.toUpperCase() : '';
-    const isDevToolsShortcut =
-      key === 'F12' || ((input.control || input.meta) && input.shift && key === 'I');
-    if (!isDevToolsShortcut) return;
-
-    event.preventDefault();
-
-    if (!tabManager?.hasActiveExternalTab()) {
-      return;
-    }
-
-    const dockOpen = tabManager.getDevToolsDockState().isOpen;
-    if (dockOpen) {
-      tabManager.closeDevTools({});
-    } else {
-      tabManager.openDevTools({});
-    }
-  });
+function ensureGlobalManagers() {
+  if (globalManagersReady) return;
+  ensureNetworkLayer();
 
   downloadManager = new DownloadManager(
     session.defaultSession,
     snapshot => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.downloadsStateChanged, snapshot);
+      broadcast(BrowserIpcChannels.downloadsStateChanged, snapshot);
     },
     DEBUG_IPC
   );
   downloadManager.setup();
-
-  registerBrowserIpc({
-    tabManager,
-    debug: DEBUG_IPC,
-  });
   registerDownloadIpc({ downloadManager, debug: DEBUG_IPC });
-  registerWindowIpc(mainWindow, DEBUG_IPC);
-  gitManager = new GitManager(DEBUG_IPC);
-  browserImportManager = new BrowserImportManager({ debug: DEBUG_IPC });
-  backendLabManager = new BackendSidecarManager({
-    debug: DEBUG_IPC,
-    onStateChanged: state => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.backendLabStateChanged, state);
-    },
-  });
 
-  tabSessionStore = new TabSessionStore();
-  const restored = tabSessionStore.load();
-  if (restored && tabManager) {
-    tabManager.restoreSession(restored);
-  } else {
-    tabManager.createTab(INITIAL_URL);
-  }
+  gitManager = new GitManager(DEBUG_IPC);
   registerGitIpc({
     gitManager,
     debug: DEBUG_IPC,
     onStateChanged: snapshot => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
+      broadcast(BrowserIpcChannels.gitStateChanged, snapshot);
     },
   });
+
+  browserImportManager = new BrowserImportManager({ debug: DEBUG_IPC });
   registerBrowserImportIpc({
     browserImportManager,
     debug: DEBUG_IPC,
   });
+
+  backendLabManager = new BackendSidecarManager({
+    debug: DEBUG_IPC,
+    onStateChanged: state => {
+      broadcast(BrowserIpcChannels.backendLabStateChanged, state);
+    },
+  });
+
   backendLabQueueManager = new BackendLabQueueManager({
     debug: DEBUG_IPC,
   });
@@ -222,136 +215,234 @@ function createDesktopWindow() {
     queueManager: backendLabQueueManager,
     debug: DEBUG_IPC,
     onStateChanged: state => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.backendLabStateChanged, state);
+      broadcast(BrowserIpcChannels.backendLabStateChanged, state);
     },
   });
+
   systemMetricsManager = new SystemMetricsManager({
     debug: DEBUG_IPC,
     onChanged: snapshot => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.systemMetricsChanged, snapshot);
+      broadcast(BrowserIpcChannels.systemMetricsChanged, snapshot);
     },
   });
   registerSystemIpc({ systemMetricsManager, debug: DEBUG_IPC });
 
-  studioManager = new StudioManager(mainWindow, tabManager, DEBUG_IPC, payload => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    mainWindow.webContents.send(BrowserIpcChannels.studioWebviewViewportChanged, payload);
-  });
-  registerStudioIpc({ studioManager, debug: DEBUG_IPC });
-
   terminalManager = new TerminalManager({
     debug: DEBUG_IPC,
     onData: payload => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.terminalData, payload);
+      broadcast(BrowserIpcChannels.terminalData, payload);
     },
     onExit: payload => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send(BrowserIpcChannels.terminalExit, payload);
+      broadcast(BrowserIpcChannels.terminalExit, payload);
     },
   });
   registerTerminalIpc({ terminalManager, debug: DEBUG_IPC });
-  tabManager.createTab(INITIAL_URL);
 
-  mainWindow.webContents.on('did-finish-load', () => {
-    broadcastState();
-    if (tabManager && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(
+  tabSessionStore = new TabSessionStore();
+
+  registerBrowserIpc({
+    getTabManagerForSender: senderId => getControllerForSender(senderId)?.tabManager ?? null,
+    openWindowWithTabs,
+    debug: DEBUG_IPC,
+  });
+  registerWindowIpc(DEBUG_IPC);
+
+  globalManagersReady = true;
+}
+
+function buildTabsInManager(
+  manager: TabManager,
+  tabs: OpenWindowWithTabsRequest['tabs'],
+  activeIndex?: number
+) {
+  const createdIds: string[] = [];
+  tabs.forEach(tab => {
+    const snapshot = manager.createTab(tab.url);
+    if (snapshot.activeTabId) {
+      createdIds.push(snapshot.activeTabId);
+    }
+  });
+
+  const pinnedIds = createdIds.filter((id, index) => tabs[index]?.pinned);
+  if (pinnedIds.length > 0) {
+    manager.setPinnedTabs(pinnedIds);
+  }
+
+  if (typeof activeIndex === 'number' && createdIds[activeIndex]) {
+    manager.activateTab(createdIds[activeIndex]);
+  }
+}
+
+function createWindowController(options?: {
+  tabs?: OpenWindowWithTabsRequest['tabs'];
+  activeIndex?: number;
+  restoreSession?: boolean;
+  isPrimary?: boolean;
+}) {
+  const preloadPath = resolvePreloadPath();
+  const externalPreloadPath = resolveExternalPreloadPath();
+  const window = createMainWindow({ preloadPath });
+  configureWebviewSecurity(window, externalPreloadPath);
+  windows.add(window);
+
+  const isPrimary = options?.isPrimary ?? false;
+  const manager = new TabManager({
+    debug: DEBUG_IPC,
+    getMainWindow: () => window,
+    onStateChanged: snapshot => {
+      if (window.isDestroyed()) return;
+      window.webContents.send(BrowserIpcChannels.stateChanged, snapshot);
+      if (isPrimary) {
+        tabSessionStore?.schedule(manager.exportSession());
+      }
+    },
+    onDevToolsDockStateChanged: state => {
+      if (window.isDestroyed()) return;
+      window.webContents.send(BrowserIpcChannels.devToolsDockStateChanged, state);
+    },
+  });
+
+  if (isPrimary && !studioManager) {
+    studioManager = new StudioManager(window, manager, DEBUG_IPC, payload => {
+      broadcast(BrowserIpcChannels.studioWebviewViewportChanged, payload);
+    });
+    registerStudioIpc({ studioManager, debug: DEBUG_IPC });
+  }
+
+  window.webContents.on('before-input-event', (event, input) => {
+    const key = typeof input.key === 'string' ? input.key.toUpperCase() : '';
+    const isDevToolsShortcut =
+      key === 'F12' || ((input.control || input.meta) && input.shift && key === 'I');
+    if (!isDevToolsShortcut) return;
+
+    event.preventDefault();
+
+    if (!manager.hasActiveExternalTab()) {
+      return;
+    }
+
+    const dockOpen = manager.getDevToolsDockState().isOpen;
+    if (dockOpen) {
+      manager.closeDevTools({});
+    } else {
+      manager.openDevTools({});
+    }
+  });
+
+  windowControllers.set(window.webContents.id, { window, tabManager: manager, isPrimary });
+  if (isPrimary) {
+    mainWindow = window;
+    tabManager = manager;
+  }
+
+  attachWindowStateEvents(window);
+
+  const windowId = window.webContents.id;
+  const markFocused = () => {
+    focusedWindows.add(windowId);
+    updateBackgroundState();
+  };
+  const markBlurred = () => {
+    focusedWindows.delete(windowId);
+    updateBackgroundState();
+  };
+
+  window.on('focus', markFocused);
+  window.on('blur', markBlurred);
+  window.on('minimize', markBlurred);
+  window.on('restore', markFocused);
+  window.on('show', markFocused);
+  window.on('hide', markBlurred);
+
+  if (options?.restoreSession && tabSessionStore) {
+    const restored = tabSessionStore.load();
+    if (restored) {
+      manager.restoreSession(restored);
+    } else {
+      manager.createTab(INITIAL_URL);
+    }
+  } else if (options?.tabs && options.tabs.length > 0) {
+    buildTabsInManager(manager, options.tabs, options.activeIndex);
+  } else {
+    manager.createTab(INITIAL_URL);
+  }
+
+  window.webContents.on('did-finish-load', () => {
+    if (!window.isDestroyed()) {
+      window.webContents.send(BrowserIpcChannels.stateChanged, manager.getSnapshot());
+      window.webContents.send(
         BrowserIpcChannels.devToolsDockStateChanged,
-        tabManager.getDevToolsDockState()
+        manager.getDevToolsDockState()
       );
-    }
-    if (downloadManager && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(
-        BrowserIpcChannels.downloadsStateChanged,
-        downloadManager.getSnapshot()
-      );
-    }
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(BrowserIpcChannels.windowStateChanged, {
-        isMaximized: mainWindow.isMaximized(),
+      window.webContents.send(BrowserIpcChannels.windowStateChanged, {
+        isMaximized: window.isMaximized(),
       });
-    }
-    if (gitManager && mainWindow && !mainWindow.isDestroyed()) {
-      void gitManager.refresh().then(snapshot => {
-        if (!mainWindow || mainWindow.isDestroyed()) return;
-        mainWindow.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
-      });
-    }
-    if (backendLabManager && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(
-        BrowserIpcChannels.backendLabStateChanged,
-        backendLabManager.getState()
-      );
-    }
-    if (systemMetricsManager && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(
-        BrowserIpcChannels.systemMetricsChanged,
-        systemMetricsManager.getSnapshot()
-      );
-    }
-    if (studioManager && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(
-        BrowserIpcChannels.studioWebviewViewportChanged,
-        studioManager.getWebviewViewport()
-      );
+      if (downloadManager) {
+        window.webContents.send(
+          BrowserIpcChannels.downloadsStateChanged,
+          downloadManager.getSnapshot()
+        );
+      }
+      if (gitManager) {
+        window.webContents.send(
+          BrowserIpcChannels.gitStateChanged,
+          gitManager.getSnapshot()
+        );
+      }
+      if (backendLabManager) {
+        window.webContents.send(
+          BrowserIpcChannels.backendLabStateChanged,
+          backendLabManager.getState()
+        );
+      }
+      if (systemMetricsManager) {
+        window.webContents.send(
+          BrowserIpcChannels.systemMetricsChanged,
+          systemMetricsManager.getSnapshot()
+        );
+      }
+      if (studioManager) {
+        window.webContents.send(
+          BrowserIpcChannels.studioWebviewViewportChanged,
+          studioManager.getWebviewViewport()
+        );
+      }
     }
   });
 
   const syncDevToolsLayout = () => {
-    tabManager?.syncDevToolsLayout();
+    manager.syncDevToolsLayout();
   };
 
-  mainWindow.on('resize', syncDevToolsLayout);
-  mainWindow.on('move', syncDevToolsLayout);
-  mainWindow.on('maximize', syncDevToolsLayout);
-  mainWindow.on('unmaximize', syncDevToolsLayout);
-  mainWindow.on('restore', syncDevToolsLayout);
-  mainWindow.on('minimize', syncDevToolsLayout);
-  mainWindow.on('enter-full-screen', syncDevToolsLayout);
-  mainWindow.on('leave-full-screen', syncDevToolsLayout);
+  window.on('resize', syncDevToolsLayout);
+  window.on('move', syncDevToolsLayout);
+  window.on('maximize', syncDevToolsLayout);
+  window.on('unmaximize', syncDevToolsLayout);
+  window.on('restore', syncDevToolsLayout);
+  window.on('minimize', syncDevToolsLayout);
+  window.on('enter-full-screen', syncDevToolsLayout);
+  window.on('leave-full-screen', syncDevToolsLayout);
 
-  mainWindow.on('blur', () => {
-    systemMetricsManager?.setBackground(true);
+  window.on('closed', () => {
+    windows.delete(window);
+    windowControllers.delete(window.webContents.id);
+    focusedWindows.delete(windowId);
+    updateBackgroundState();
+
+    if (isPrimary) {
+      mainWindow = null;
+      tabManager = null;
+      studioManager = null;
+    }
   });
 
-  mainWindow.on('focus', () => {
-    systemMetricsManager?.setBackground(false);
-  });
+  return { window, tabManager: manager, isPrimary };
+}
 
-  mainWindow.on('minimize', () => {
-    systemMetricsManager?.setBackground(true);
-  });
-
-  mainWindow.on('restore', () => {
-    systemMetricsManager?.setBackground(false);
-  });
-
-  mainWindow.on('show', () => {
-    systemMetricsManager?.setBackground(false);
-  });
-
-  mainWindow.on('hide', () => {
-    systemMetricsManager?.setBackground(true);
-  });
-
-  mainWindow.on('closed', () => {
-    systemMetricsManager?.stop();
-    backendLabManager?.dispose();
-    backendLabQueueManager?.dispose();
-    terminalManager?.dispose();
-    mainWindow = null;
-    tabManager = null;
-    downloadManager = null;
-    gitManager = null;
-    browserImportManager = null;
-    backendLabManager = null;
-    backendLabQueueManager = null;
-    studioManager = null;
-    systemMetricsManager = null;
-    terminalManager = null;
+function openWindowWithTabs(payload: OpenWindowWithTabsRequest) {
+  createWindowController({
+    tabs: payload.tabs,
+    activeIndex: payload.activeIndex,
   });
 }
 
@@ -359,22 +450,31 @@ function createDesktopWindow() {
 app.whenReady().then(() => {
   app.setAppUserModelId('com.notilus.reborn');
   configureUserAgent();
-
-  createDesktopWindow();
+  ensureGlobalManagers();
+  createWindowController({ restoreSession: true, isPrimary: true });
 
   app.on('activate', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) {
-      createDesktopWindow();
+    if (windows.size === 0) {
+      createWindowController({ restoreSession: true, isPrimary: true });
     }
   });
 });
 
 app.on('second-instance', () => {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  if (mainWindow.isMinimized()) {
-    mainWindow.restore();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    mainWindow.focus();
+    return;
   }
-  mainWindow.focus();
+  const anyWindow = Array.from(windows).find(win => !win.isDestroyed());
+  if (anyWindow) {
+    if (anyWindow.isMinimized()) {
+      anyWindow.restore();
+    }
+    anyWindow.focus();
+  }
 });
 
 app.on('before-quit', () => {

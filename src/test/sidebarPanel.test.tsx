@@ -33,9 +33,13 @@ describe('SidebarPanel web service integration', () => {
           url: 'https://music.youtube.com',
           fallbackIcon: Music,
         }}
+        currentTabs={[]}
         onOpenWebServiceInTab={vi.fn()}
         onClosePanel={vi.fn()}
         onNavigate={vi.fn()}
+        onOpenUrlsInCurrentWindow={vi.fn()}
+        onOpenUrlsInNewWindow={vi.fn()}
+        onSaveWorkspace={vi.fn()}
       />
     );
 

@@ -1,7 +1,7 @@
 import {
   Activity, Terminal, Code2, BookOpen, GitBranch,
   Gauge, Settings, ChevronLeft, ChevronRight,
-  Star, Clock, Download, Puzzle,
+  Star, Clock, Download, Puzzle, Folder,
   FileText, Wrench, RefreshCw,
   Youtube, MessageCircle, Bot, Send, Music,
   MonitorSmartphone, Github, type LucideIcon
@@ -24,6 +24,7 @@ const SIDEBAR_ITEMS = [
   { id: 'bookmarks', icon: Star, label: 'Favorites' },
   { id: 'history', icon: Clock, label: 'History' },
   { id: 'downloads', icon: Download, label: 'Downloads' },
+  { id: 'workspaces', icon: Folder, label: 'Workspaces' },
   { type: 'separator' as const },
   { id: 'monitor', icon: Activity, label: 'System Monitor' },
   { id: 'terminal', icon: Terminal, label: 'Terminal' },

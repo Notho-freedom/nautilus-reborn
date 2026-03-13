@@ -47,6 +47,7 @@ import type {
   TabCloseRequest,
   TabCreateRequest,
   TabMoveRequest,
+  OpenWindowWithTabsRequest,
   WindowState,
 } from '../../shared/browser-contract';
 import type { SystemMetricsSnapshot } from '../../shared/system-contract';
@@ -72,6 +73,14 @@ export async function desktopCreateTab(
   const bridge = getDesktopBridge();
   if (!bridge) return null;
   return bridge.createTab(payload);
+}
+
+export async function desktopOpenWindowWithTabs(
+  payload: OpenWindowWithTabsRequest
+): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.openWindowWithTabs(payload);
 }
 
 export async function desktopCloseTab(

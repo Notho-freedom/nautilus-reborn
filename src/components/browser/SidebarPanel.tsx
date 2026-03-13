@@ -19,20 +19,27 @@ import { GitHubReposPanel } from './GitHubReposPanel';
 import { FlouPanel } from './FlouPanel';
 import { FrontendLabPanel } from './FrontendLabPanel';
 import { BackendLabPanel } from './BackendLabPanel';
+import { WorkspacesPanel } from './WorkspacesPanel';
 import { SystemStats } from '@/hooks/useSystemMonitor';
 import { WebServicePanel } from './WebServicePanel';
 import type { WebServiceItem } from './DevToolsSidebar';
+import type { WorkspaceTab } from '@/lib/workspaces';
+import type { BrowserTab } from '@/hooks/useBrowserState';
 
 interface SidebarPanelProps {
   panel: string | null;
   stats: SystemStats;
   webService: WebServiceItem | null;
+  currentTabs: BrowserTab[];
   onWidthChange?: (width: number) => void;
   onOpenWebServiceInTab: (service: WebServiceItem) => void;
   onClosePanel: () => void;
   onNavigate: (url: string) => void;
   onOpenPanel?: (panel: string) => void;
   onCreateTab?: (url: string, title?: string) => void;
+  onOpenUrlsInCurrentWindow: (tabs: WorkspaceTab[]) => void;
+  onOpenUrlsInNewWindow: (tabs: WorkspaceTab[]) => void;
+  onSaveWorkspace: () => void;
   githubToken?: string;
   githubUsername?: string;
   isGitHubOAuth?: boolean;
@@ -46,6 +53,10 @@ type GenericPanelProps = {
   onClose?: () => void;
   onOpenPanel?: (panel: string) => void;
   onCreateTab?: (url: string, title?: string) => void;
+  currentTabs?: BrowserTab[];
+  onOpenUrlsInCurrentWindow?: (tabs: WorkspaceTab[]) => void;
+  onOpenUrlsInNewWindow?: (tabs: WorkspaceTab[]) => void;
+  onSaveWorkspace?: () => void;
   githubToken?: string;
   githubUsername?: string;
   isGitHubOAuth?: boolean;
@@ -63,6 +74,7 @@ const PANEL_MAP: Record<string, React.ComponentType<GenericPanelProps>> = {
   bookmarks: BookmarksPanel,
   history: HistoryPanel,
   downloads: DownloadsPanel,
+  workspaces: WorkspacesPanel,
   extensions: ExtensionsPanel,
   docs: DocumentationPanel,
   mosaic: MosaicPanel,
@@ -96,12 +108,16 @@ export function SidebarPanel({
   panel,
   stats,
   webService,
+  currentTabs,
   onWidthChange,
   onOpenWebServiceInTab,
   onClosePanel,
   onNavigate,
   onOpenPanel,
   onCreateTab,
+  onOpenUrlsInCurrentWindow,
+  onOpenUrlsInNewWindow,
+  onSaveWorkspace,
   githubToken,
   githubUsername,
   isGitHubOAuth,
@@ -195,6 +211,7 @@ export function SidebarPanel({
     const isHistoryPanel = panelId === 'history';
     const isGitHubPanel = panelId === 'github';
     const isFlouPanel = panelId === 'flou';
+  const isWorkspacesPanel = panelId === 'workspaces';
 
     if (!Component) {
       return (
@@ -222,7 +239,28 @@ export function SidebarPanel({
         />
       );
     }
-    if (isBookmarksPanel || isHistoryPanel || isFlouPanel) {
+    if (isWorkspacesPanel) {
+      return (
+        <Component
+          currentTabs={currentTabs}
+          onOpenUrlsInCurrentWindow={onOpenUrlsInCurrentWindow}
+          onOpenUrlsInNewWindow={onOpenUrlsInNewWindow}
+          onSaveWorkspace={onSaveWorkspace}
+          onClose={onClosePanel}
+        />
+      );
+    }
+    if (isHistoryPanel) {
+      return (
+        <Component
+          onNavigate={onNavigate}
+          onClose={onClosePanel}
+          onOpenUrlsInCurrentWindow={onOpenUrlsInCurrentWindow}
+          onOpenUrlsInNewWindow={onOpenUrlsInNewWindow}
+        />
+      );
+    }
+    if (isBookmarksPanel || isFlouPanel) {
       return <Component onNavigate={onNavigate} onClose={onClosePanel} />;
     }
     return <Component onClose={onClosePanel} />;

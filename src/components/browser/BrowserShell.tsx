@@ -32,6 +32,8 @@ import { ToastAction } from '@/components/ui/toast';
 import { getGitSnapshot, subscribeToGitUpdates } from '@/lib/git';
 import { useMosaicState } from '@/hooks/useMosaicState';
 import { webSurfaceManagerApi } from '@/lib/webSurfaceManager';
+import { addWorkspace, type WorkspaceTab } from '@/lib/workspaces';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export function BrowserShell() {
   const browser = useBrowserState();
@@ -50,6 +52,8 @@ export function BrowserShell() {
   const [notilusMiniDevToolsOpen, setNotilusMiniDevToolsOpen] = useState(false);
   const [notilusDevToolsDetached, setNotilusDevToolsDetached] = useState(false);
   const [notilusDevToolsHeight, setNotilusDevToolsHeight] = useState(250);
+  const [workspaceDialogOpen, setWorkspaceDialogOpen] = useState(false);
+  const [workspaceName, setWorkspaceName] = useState('');
   const [gitBranch, setGitBranch] = useState(() => getGitSnapshot().branch);
   const mosaic = useMosaicState();
   const contentAreaRef = useRef<HTMLDivElement | null>(null);
@@ -481,6 +485,55 @@ export function BrowserShell() {
     browser.toggleSidebar(panel);
   }, [browser]);
 
+  const handleOpenUrlsInCurrentWindow = useCallback(
+    (tabs: WorkspaceTab[]) => {
+      browser.openUrlsInCurrentWindow(tabs);
+    },
+    [browser]
+  );
+
+  const handleOpenUrlsInNewWindow = useCallback(
+    (tabs: WorkspaceTab[]) => {
+      browser.openUrlsInNewWindow(tabs);
+    },
+    [browser]
+  );
+
+  const collectWorkspaceTabs = useCallback((): WorkspaceTab[] => {
+    return browser.tabs
+      .filter(tab => !tab.isPrivate)
+      .map(tab => ({
+        url: tab.url,
+        title: tab.title,
+        pinned: tab.isPinned,
+      }));
+  }, [browser.tabs]);
+
+  const openSaveWorkspaceDialog = useCallback(() => {
+    const defaultName = `Session ${new Date().toLocaleDateString()}`;
+    setWorkspaceName(defaultName);
+    setWorkspaceDialogOpen(true);
+  }, []);
+
+  const handleSaveWorkspace = useCallback(() => {
+    const tabs = collectWorkspaceTabs();
+    if (tabs.length === 0) {
+      toast({
+        title: 'No tabs to save',
+        description: 'Open at least one non-private tab to create a workspace.',
+      });
+      return;
+    }
+    const created = addWorkspace(workspaceName || `Session ${new Date().toLocaleDateString()}`, tabs);
+    if (created) {
+      toast({
+        title: 'Workspace saved',
+        description: created.name,
+      });
+    }
+    setWorkspaceDialogOpen(false);
+  }, [collectWorkspaceTabs, workspaceName]);
+
   const handleZoomChange = useCallback((newZoom: number) => {
     setZoom(newZoom);
     if (browser.isDesktopMode) {
@@ -518,6 +571,7 @@ export function BrowserShell() {
         recentlyClosedTabs={browser.recentlyClosedTabs}
         onReopenClosedTab={browser.reopenClosedTab}
         onClearClosedTabs={browser.clearClosedTabs}
+        onSaveWorkspace={openSaveWorkspaceDialog}
       />
       <NavigationBar
         url={browser.activeTab?.url || ''}
@@ -578,12 +632,16 @@ export function BrowserShell() {
             panel={browser.sidebarPanel}
             stats={stats}
             webService={activeWebService}
+            currentTabs={browser.tabs}
             onWidthChange={() => {}}
             onOpenWebServiceInTab={handleOpenWebPanelInTab}
             onClosePanel={handleCloseSidebarPanel}
             onNavigate={browser.navigateTo}
             onOpenPanel={handleOpenPanel}
             onCreateTab={browser.addTab}
+            onOpenUrlsInCurrentWindow={handleOpenUrlsInCurrentWindow}
+            onOpenUrlsInNewWindow={handleOpenUrlsInNewWindow}
+            onSaveWorkspace={openSaveWorkspaceDialog}
             githubToken={auth.credentials.token}
             githubUsername={auth.credentials.username}
             isGitHubOAuth={auth.isSupabaseGitHubSession}
@@ -661,6 +719,38 @@ export function BrowserShell() {
         onOpenPanel={handleOpenPanel}
         onToggleNotilusDevTools={toggleNotilusDevTools}
       />
+
+      <Dialog open={workspaceDialogOpen} onOpenChange={setWorkspaceDialogOpen}>
+        <DialogContent className="sm:max-w-sm glass border-border">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-display tracking-wider uppercase">
+              Save workspace
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <input
+              value={workspaceName}
+              onChange={event => setWorkspaceName(event.target.value)}
+              placeholder="Workspace name"
+              className="w-full h-9 rounded-md bg-notilus-surface-1 border border-border px-3 text-sm font-body text-foreground outline-none focus:border-primary/50"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setWorkspaceDialogOpen(false)}
+                className="h-8 px-3 rounded-md text-xs font-body text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveWorkspace}
+                className="h-8 px-3 rounded-md text-xs font-body text-primary-foreground notilus-gradient"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

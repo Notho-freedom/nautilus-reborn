@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import type {
   DevToolsDockWidthRequest,
   NavigateRequest,
+  OpenWindowWithTabsRequest,
   SetPinnedTabsRequest,
   TabRenderModeRequest,
   TabActivateRequest,
@@ -18,13 +19,15 @@ import { BrowserIpcChannels } from '../../../shared/browser-contract';
 import { TabManager } from '../tab-manager';
 
 interface RegisterBrowserIpcOptions {
-  tabManager: TabManager;
+  getTabManagerForSender: (senderId: number) => TabManager | null;
+  openWindowWithTabs: (payload: OpenWindowWithTabsRequest) => void;
   debug: boolean;
 }
 
 function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.getState);
   ipcMain.removeHandler(BrowserIpcChannels.tabCreate);
+  ipcMain.removeHandler(BrowserIpcChannels.openWindowWithTabs);
   ipcMain.removeHandler(BrowserIpcChannels.tabClose);
   ipcMain.removeHandler(BrowserIpcChannels.tabActivate);
   ipcMain.removeHandler(BrowserIpcChannels.tabMove);
@@ -45,7 +48,8 @@ function removeExistingHandlers() {
 }
 
 export function registerBrowserIpc({
-  tabManager,
+  getTabManagerForSender,
+  openWindowWithTabs,
   debug,
 }: RegisterBrowserIpcOptions) {
   const log = (channel: string, payload?: unknown) => {
@@ -56,118 +60,160 @@ export function registerBrowserIpc({
 
   removeExistingHandlers();
 
-  ipcMain.handle(BrowserIpcChannels.getState, () => {
+  ipcMain.handle(BrowserIpcChannels.getState, event => {
     log(BrowserIpcChannels.getState);
-    return tabManager.getSnapshot();
+    const tabManager = getTabManagerForSender(event.sender.id);
+    return tabManager?.getSnapshot() ?? { tabs: [], activeTabId: null };
   });
 
-  ipcMain.handle(BrowserIpcChannels.tabCreate, (_event, payload: TabCreateRequest = {}) => {
+  ipcMain.handle(BrowserIpcChannels.tabCreate, (event, payload: TabCreateRequest = {}) => {
     log(BrowserIpcChannels.tabCreate, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.createTab(payload.url, { isPrivate: payload.isPrivate });
   });
 
-  ipcMain.handle(BrowserIpcChannels.tabClose, (_event, payload: TabCloseRequest) => {
+  ipcMain.handle(BrowserIpcChannels.openWindowWithTabs, (_event, payload: OpenWindowWithTabsRequest) => {
+    log(BrowserIpcChannels.openWindowWithTabs, payload);
+    openWindowWithTabs(payload);
+  });
+
+  ipcMain.handle(BrowserIpcChannels.tabClose, (event, payload: TabCloseRequest) => {
     log(BrowserIpcChannels.tabClose, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.closeTab(payload.tabId);
   });
 
-  ipcMain.handle(BrowserIpcChannels.tabActivate, (_event, payload: TabActivateRequest) => {
+  ipcMain.handle(BrowserIpcChannels.tabActivate, (event, payload: TabActivateRequest) => {
     log(BrowserIpcChannels.tabActivate, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.activateTab(payload.tabId);
   });
 
-  ipcMain.handle(BrowserIpcChannels.tabMove, (_event, payload: TabMoveRequest) => {
+  ipcMain.handle(BrowserIpcChannels.tabMove, (event, payload: TabMoveRequest) => {
     log(BrowserIpcChannels.tabMove, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.moveTab(payload.tabId, payload.toIndex);
   });
 
-  ipcMain.handle(BrowserIpcChannels.navigate, (_event, payload: NavigateRequest) => {
+  ipcMain.handle(BrowserIpcChannels.navigate, (event, payload: NavigateRequest) => {
     log(BrowserIpcChannels.navigate, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.navigate(payload);
   });
 
-  ipcMain.handle(BrowserIpcChannels.goBack, (_event, payload: TabActionRequest = {}) => {
+  ipcMain.handle(BrowserIpcChannels.goBack, (event, payload: TabActionRequest = {}) => {
     log(BrowserIpcChannels.goBack, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.goBack(payload);
   });
 
-  ipcMain.handle(BrowserIpcChannels.goForward, (_event, payload: TabActionRequest = {}) => {
+  ipcMain.handle(BrowserIpcChannels.goForward, (event, payload: TabActionRequest = {}) => {
     log(BrowserIpcChannels.goForward, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.goForward(payload);
   });
 
-  ipcMain.handle(BrowserIpcChannels.reload, (_event, payload: TabActionRequest = {}) => {
+  ipcMain.handle(BrowserIpcChannels.reload, (event, payload: TabActionRequest = {}) => {
     log(BrowserIpcChannels.reload, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.reload(payload);
   });
 
-  ipcMain.handle(BrowserIpcChannels.openDevTools, (_event, payload: TabActionRequest = {}) => {
+  ipcMain.handle(BrowserIpcChannels.openDevTools, (event, payload: TabActionRequest = {}) => {
     log(BrowserIpcChannels.openDevTools, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return;
     tabManager.openDevTools(payload);
   });
 
-  ipcMain.handle(BrowserIpcChannels.closeDevTools, (_event, payload: TabActionRequest = {}) => {
+  ipcMain.handle(BrowserIpcChannels.closeDevTools, (event, payload: TabActionRequest = {}) => {
     log(BrowserIpcChannels.closeDevTools, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return;
     tabManager.closeDevTools(payload);
   });
 
   ipcMain.handle(
     BrowserIpcChannels.setDevToolsDockWidth,
-    (_event, payload: DevToolsDockWidthRequest) => {
+    (event, payload: DevToolsDockWidthRequest) => {
       log(BrowserIpcChannels.setDevToolsDockWidth, payload);
+      const tabManager = getTabManagerForSender(event.sender.id);
+      if (!tabManager) return null;
       return tabManager.setDevToolsDockWidth(payload.width);
     }
   );
 
-  ipcMain.handle(BrowserIpcChannels.getDevToolsDockState, () => {
+  ipcMain.handle(BrowserIpcChannels.getDevToolsDockState, event => {
     log(BrowserIpcChannels.getDevToolsDockState);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return null;
     return tabManager.getDevToolsDockState();
   });
 
   ipcMain.handle(
     BrowserIpcChannels.setPinnedTabs,
-    (_event, payload: SetPinnedTabsRequest) => {
+    (event, payload: SetPinnedTabsRequest) => {
       log(BrowserIpcChannels.setPinnedTabs, payload);
+      const tabManager = getTabManagerForSender(event.sender.id);
+      if (!tabManager) return;
       tabManager.setPinnedTabs(payload.tabIds);
     }
   );
 
   ipcMain.handle(
     BrowserIpcChannels.tabBindWebContents,
-    (_event, payload: TabWebContentsBindRequest) => {
+    (event, payload: TabWebContentsBindRequest) => {
       log(BrowserIpcChannels.tabBindWebContents, payload);
+      const tabManager = getTabManagerForSender(event.sender.id);
+      if (!tabManager) return;
       tabManager.bindWebContents(payload.tabId, payload.webContentsId);
     }
   );
 
   ipcMain.handle(
     BrowserIpcChannels.tabUnbindWebContents,
-    (_event, payload: TabWebContentsUnbindRequest) => {
+    (event, payload: TabWebContentsUnbindRequest) => {
       log(BrowserIpcChannels.tabUnbindWebContents, payload);
+      const tabManager = getTabManagerForSender(event.sender.id);
+      if (!tabManager) return;
       tabManager.unbindWebContents(payload.tabId);
     }
   );
 
   ipcMain.handle(
     BrowserIpcChannels.tabRuntimeUpdate,
-    (_event, payload: TabRuntimeUpdateRequest) => {
+    (event, payload: TabRuntimeUpdateRequest) => {
       log(BrowserIpcChannels.tabRuntimeUpdate, payload);
+      const tabManager = getTabManagerForSender(event.sender.id);
+      if (!tabManager) return { tabs: [], activeTabId: null };
       return tabManager.updateTabRuntime(payload);
     }
   );
 
   ipcMain.handle(
     BrowserIpcChannels.tabSetRenderMode,
-    (_event, payload: TabRenderModeRequest) => {
+    (event, payload: TabRenderModeRequest) => {
       log(BrowserIpcChannels.tabSetRenderMode, payload);
+      const tabManager = getTabManagerForSender(event.sender.id);
+      if (!tabManager) return { tabs: [], activeTabId: null };
       return tabManager.setTabRenderMode(payload.tabId, payload.mode);
     }
   );
 
   ipcMain.handle(
     BrowserIpcChannels.setViewportBounds,
-    (_event, payload: ViewportBounds) => {
+    (event, payload: ViewportBounds) => {
       log(BrowserIpcChannels.setViewportBounds, payload);
+      const tabManager = getTabManagerForSender(event.sender.id);
+      if (!tabManager) return;
       tabManager.setViewportBounds(payload);
     }
   );

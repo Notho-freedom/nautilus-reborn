@@ -5,6 +5,7 @@ import { BrowserIpcChannels } from '../../shared/browser-contract';
 const api: BrowserDesktopApi = {
   getState: () => ipcRenderer.invoke(BrowserIpcChannels.getState),
   createTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabCreate, payload),
+  openWindowWithTabs: payload => ipcRenderer.invoke(BrowserIpcChannels.openWindowWithTabs, payload),
   closeTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabClose, payload),
   activateTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabActivate, payload),
   moveTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabMove, payload),

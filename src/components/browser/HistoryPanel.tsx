@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Clock, X } from 'lucide-react';
+import { Clock, MoreVertical, X } from 'lucide-react';
 import {
   clearHistoryItems,
   getHistoryItems,
@@ -10,6 +10,14 @@ import {
 import { SidebarPanelShell } from './SidebarPanelShell';
 import { PanelEmptyState } from './PanelEmptyState';
 import { BrowserImportDialog } from './BrowserImportDialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { WorkspaceTab } from '@/lib/workspaces';
 
 function getDateLabel(visitedAt: string): string {
   const date = new Date(visitedAt);
@@ -21,6 +29,21 @@ function getDateLabel(visitedAt: string): string {
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
   return date.toLocaleDateString();
+}
+
+function getDateKey(visitedAt: string): string {
+  const date = new Date(visitedAt);
+  if (Number.isNaN(date.getTime())) return 'unknown';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDateValue(key: string): number {
+  const [year, month, day] = key.split('-').map(Number);
+  if (!year || !month || !day) return 0;
+  return new Date(year, month - 1, day).getTime();
 }
 
 function getTimeLabel(visitedAt: string): string {
@@ -45,13 +68,21 @@ function getFaviconUrl(url: string): string | null {
 
 interface HistoryPanelProps {
   onNavigate?: (url: string) => void;
+  onOpenUrlsInCurrentWindow?: (items: WorkspaceTab[]) => void;
+  onOpenUrlsInNewWindow?: (items: WorkspaceTab[]) => void;
   onClose?: () => void;
 }
 
-export function HistoryPanel({ onNavigate, onClose }: HistoryPanelProps) {
+export function HistoryPanel({
+  onNavigate,
+  onOpenUrlsInCurrentWindow,
+  onOpenUrlsInNewWindow,
+  onClose,
+}: HistoryPanelProps) {
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
+  const [expandedDates, setExpandedDates] = useState<string[]>([]);
 
   const refresh = useCallback(() => {
     setItems(getHistoryItems());
@@ -73,15 +104,24 @@ export function HistoryPanel({ onNavigate, onClose }: HistoryPanelProps) {
     [items, search]
   );
 
-  const grouped = useMemo(
-    () =>
-      filtered.reduce((acc, item) => {
-        const dateLabel = getDateLabel(item.visitedAt);
-        (acc[dateLabel] = acc[dateLabel] || []).push(item);
-        return acc;
-      }, {} as Record<string, HistoryItem[]>),
-    [filtered]
-  );
+  const grouped = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; items: HistoryItem[]; sortValue: number }>();
+    for (const item of filtered) {
+      const key = getDateKey(item.visitedAt);
+      const label = getDateLabel(item.visitedAt);
+      if (!map.has(key)) {
+        map.set(key, { key, label, items: [], sortValue: getDateValue(key) });
+      }
+      map.get(key)!.items.push(item);
+    }
+    return Array.from(map.values()).sort((a, b) => b.sortValue - a.sortValue);
+  }, [filtered]);
+
+  useEffect(() => {
+    if (expandedDates.length > 0) return;
+    if (grouped.length === 0) return;
+    setExpandedDates([grouped[0].key]);
+  }, [grouped, expandedDates.length]);
 
   return (
     <>
@@ -100,51 +140,103 @@ export function HistoryPanel({ onNavigate, onClose }: HistoryPanelProps) {
         footer={`${filtered.length} entries • Ctrl+H`}
         contentClassName={filtered.length === 0 ? 'flex' : undefined}
       >
-        {Object.entries(grouped).map(([date, entries]) => (
-          <div key={date}>
-            <div className="px-3 py-1.5 bg-notilus-surface-2/50 text-[10px] font-display text-muted-foreground uppercase tracking-widest sticky top-0">
-              {date}
-            </div>
-            {entries.map(h => {
-              const faviconUrl = getFaviconUrl(h.url);
-              return (
-                <div
-                  key={h.id}
-                  className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors duration-fast cursor-pointer"
-                  onClick={() => onNavigate?.(h.url)}
-                >
-                  {faviconUrl ? (
-                    <img
-                      src={faviconUrl}
-                      alt=""
-                      className="w-4 h-4 rounded-sm"
-                      onError={e => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-4 h-4 rounded-sm bg-muted/60" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-body text-foreground truncate">{h.title}</div>
-                    <div className="text-[10px] font-body text-muted-foreground truncate">{h.url}</div>
-                  </div>
-                  <span className="text-[10px] font-body text-muted-foreground shrink-0">{getTimeLabel(h.visitedAt)}</span>
-                  <button
-                    onClick={event => {
-                      event.stopPropagation();
-                      removeHistoryItem(h.id);
-                    }}
-                    className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-fast"
-                    title="Remove entry"
-                  >
-                    <X size={10} />
-                  </button>
+        <Accordion
+          type="multiple"
+          value={expandedDates}
+          onValueChange={setExpandedDates}
+          className="px-0"
+        >
+          {grouped.map(group => (
+            <AccordionItem key={group.key} value={group.key} className="border-border/50">
+              <AccordionTrigger className="px-3 py-2 text-[10px] font-display uppercase tracking-widest text-muted-foreground hover:no-underline">
+                <div className="flex items-center gap-2 w-full">
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <span className="text-[9px] font-body text-muted-foreground">{group.items.length}</span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={event => event.stopPropagation()}
+                        className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-fast"
+                      >
+                        <MoreVertical size={12} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="glass border-border min-w-[190px]">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onOpenUrlsInCurrentWindow?.(
+                            group.items.map(item => ({
+                              url: item.url,
+                              title: item.title,
+                              pinned: false,
+                            }))
+                          )
+                        }
+                        className="text-xs font-body cursor-pointer"
+                      >
+                        Open all in current window
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onOpenUrlsInNewWindow?.(
+                            group.items.map(item => ({
+                              url: item.url,
+                              title: item.title,
+                              pinned: false,
+                            }))
+                          )
+                        }
+                        className="text-xs font-body cursor-pointer"
+                      >
+                        Open all in new window
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              );
-            })}
-          </div>
-        ))}
+              </AccordionTrigger>
+              <AccordionContent className="pb-1 pt-0">
+                {group.items.map(h => {
+                  const faviconUrl = getFaviconUrl(h.url);
+                  return (
+                    <div
+                      key={h.id}
+                      className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors duration-fast cursor-pointer"
+                      onClick={() => onNavigate?.(h.url)}
+                    >
+                      {faviconUrl ? (
+                        <img
+                          src={faviconUrl}
+                          alt=""
+                          className="w-4 h-4 rounded-sm"
+                          onError={e => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-4 h-4 rounded-sm bg-muted/60" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-body text-foreground truncate">{h.title}</div>
+                        <div className="text-[10px] font-body text-muted-foreground truncate">{h.url}</div>
+                      </div>
+                      <span className="text-[10px] font-body text-muted-foreground shrink-0">{getTimeLabel(h.visitedAt)}</span>
+                      <button
+                        onClick={event => {
+                          event.stopPropagation();
+                          removeHistoryItem(h.id);
+                        }}
+                        className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-fast"
+                        title="Remove entry"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
         {filtered.length === 0 && (
           <PanelEmptyState
             icon={Clock}
