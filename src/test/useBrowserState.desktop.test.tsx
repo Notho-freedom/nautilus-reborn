@@ -26,6 +26,11 @@ describe('useBrowserState desktop mode', () => {
     bridge = {
       getState: vi.fn().mockResolvedValue(initialSnapshot),
       createTab: vi.fn().mockResolvedValue(initialSnapshot),
+      openTabsBatch: vi.fn().mockResolvedValue({
+        createdTabIds: [],
+        pinnedTabIds: [],
+        activeTabId: initialSnapshot.activeTabId,
+      }),
       openWindowWithTabs: vi.fn().mockResolvedValue(undefined),
       closeTab: vi.fn().mockResolvedValue(initialSnapshot),
       activateTab: vi.fn().mockResolvedValue(initialSnapshot),
@@ -48,6 +53,7 @@ describe('useBrowserState desktop mode', () => {
         maxWidth: 920,
       }),
       setPinnedTabs: vi.fn().mockResolvedValue(undefined),
+      setRenderPolicy: vi.fn().mockResolvedValue(undefined),
       bindTabWebContents: vi.fn().mockResolvedValue(undefined),
       unbindTabWebContents: vi.fn().mockResolvedValue(undefined),
       updateTabRuntime: vi.fn().mockResolvedValue(initialSnapshot),

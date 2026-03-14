@@ -384,10 +384,10 @@ function createWindowController(options?: {
         );
       }
       if (gitManager) {
-        window.webContents.send(
-          BrowserIpcChannels.gitStateChanged,
-          gitManager.getSnapshot()
-        );
+        void gitManager.refresh().then(snapshot => {
+          if (window.isDestroyed()) return;
+          window.webContents.send(BrowserIpcChannels.gitStateChanged, snapshot);
+        });
       }
       if (backendLabManager) {
         window.webContents.send(

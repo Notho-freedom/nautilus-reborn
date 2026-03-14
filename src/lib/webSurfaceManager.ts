@@ -643,7 +643,7 @@ class WebSurfaceManager {
           if (origin) {
             this.autoSwitchByTabId.set(surface.tabId, { origin, reason: 'blocked' });
           }
-          void desktopSetTabRenderMode({ tabId: surface.tabId, mode: 'native' });
+          void desktopSetTabRenderMode({ tabId: surface.tabId, mode: 'native', reason: 'blocked' });
         }
       }
 

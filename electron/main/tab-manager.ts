@@ -12,7 +12,11 @@ import type {
   BrowserSnapshot,
   DevToolsDockState,
   NavigateRequest,
+  OpenTabsBatchRequest,
+  OpenTabsBatchResponse,
+  RenderPolicy,
   TabRenderMode,
+  TabRenderModeReason,
   TabActionRequest,
   TabDescriptor,
   TabRuntimeUpdateRequest,
@@ -36,6 +40,11 @@ const INTERNAL_PREFIX = 'notilus://';
 const DEFAULT_INTERNAL_URL = 'notilus://speed-dial';
 const SHARED_WEBVIEW_PARTITION = 'persist:notilus-default';
 const PRIVATE_PARTITION_PREFIX = 'private:';
+const DEFAULT_RENDER_POLICY: RenderPolicy = {
+  profile: 'balance',
+  nativeSwapDelayMs: 300_000,
+  hibernateDelayMs: 0,
+};
 
 function isInternalUrl(url: string): boolean {
   return url.startsWith(INTERNAL_PREFIX);
@@ -91,6 +100,9 @@ export class TabManager {
     { tabId: string; cleanup: () => void }
   >();
   private readonly devToolsDock: DevToolsDockManager;
+  private renderPolicy: RenderPolicy = { ...DEFAULT_RENDER_POLICY };
+  private readonly renderModeReasonByTabId = new Map<string, TabRenderModeReason>();
+  private readonly performanceTimersByTabId = new Map<string, NodeJS.Timeout>();
 
   constructor(private readonly options: TabManagerOptions) {
     this.devToolsDock = new DevToolsDockManager({
@@ -182,17 +194,97 @@ export class TabManager {
   }
 
   createTab(rawUrl = DEFAULT_INTERNAL_URL, options?: { isPrivate?: boolean }): BrowserSnapshot {
+    const tabId = this.createTabInternal(rawUrl, {
+      isPrivate: options?.isPrivate,
+      activate: true,
+      notify: true,
+    });
+    this.log('tab:create', `${tabId}`);
+    return this.getSnapshot();
+  }
+
+  openTabsBatch(payload: OpenTabsBatchRequest): Promise<OpenTabsBatchResponse> {
+    const entries = Array.isArray(payload.tabs) ? payload.tabs : [];
+    if (entries.length === 0) {
+      return Promise.resolve({ createdTabIds: [], pinnedTabIds: [], activeTabId: this.activeTabId });
+    }
+
+    const chunkSize = 8;
+    const delayMs = 80;
+    const createdTabIds: string[] = [];
+    const pinnedTabIds: string[] = [];
+    const activeIndex =
+      typeof payload.activeIndex === 'number' && payload.activeIndex >= 0
+        ? Math.min(payload.activeIndex, entries.length - 1)
+        : entries.length - 1;
+
+    return new Promise(resolve => {
+      const totalChunks = Math.ceil(entries.length / chunkSize);
+      let chunkIndex = 0;
+
+      const processChunk = () => {
+        const start = chunkIndex * chunkSize;
+        const end = Math.min(entries.length, start + chunkSize);
+        for (let index = start; index < end; index += 1) {
+          const entry = entries[index];
+          if (!entry?.url) continue;
+          const tabId = this.createTabInternal(entry.url, {
+            isPrivate: false,
+            activate: false,
+            notify: false,
+            title: entry.title,
+          });
+          createdTabIds.push(tabId);
+          if (entry.pinned) {
+            pinnedTabIds.push(tabId);
+            this.pinnedTabIds.add(tabId);
+          }
+        }
+
+        chunkIndex += 1;
+        if (chunkIndex >= totalChunks) {
+          const activeTabId = createdTabIds[activeIndex] ?? createdTabIds[createdTabIds.length - 1];
+          if (activeTabId) {
+            this.activateTabInternal(activeTabId);
+          }
+          this.notifyStateChanged();
+          resolve({
+            createdTabIds,
+            pinnedTabIds,
+            activeTabId: activeTabId ?? this.activeTabId,
+          });
+          return;
+        }
+
+        setTimeout(processChunk, delayMs);
+      };
+
+      processChunk();
+    });
+  }
+
+  private createTabInternal(
+    rawUrl: string,
+    options: { isPrivate?: boolean; activate?: boolean; notify?: boolean; title?: string }
+  ): string {
     const url = normalizeUrl(rawUrl);
     const tabId = this.createTabId();
-    const isPrivate = options?.isPrivate ?? false;
+    const isPrivate = options.isPrivate ?? false;
+    const isInternal = isInternalUrl(url);
+    const initialRenderMode: TabRenderMode | undefined = isInternal
+      ? undefined
+      : this.renderPolicy.profile === 'isolate'
+        ? 'native'
+        : 'webview';
+
     const descriptor: TabDescriptor = {
       id: tabId,
-      title: deriveTitle(url),
+      title: options.title?.trim() || deriveTitle(url),
       url,
-      kind: isInternalUrl(url) ? 'internal' : 'external',
-      renderMode: isInternalUrl(url) ? undefined : 'webview',
+      kind: isInternal ? 'internal' : 'external',
+      renderMode: initialRenderMode,
       isPrivate: isPrivate || undefined,
-      isLoading: !isInternalUrl(url),
+      isLoading: !isInternal,
       canGoBack: false,
       canGoForward: false,
     };
@@ -200,10 +292,20 @@ export class TabManager {
     this.tabs.set(tabId, { descriptor });
     this.order.push(tabId);
 
-    this.log('tab:create', `${tabId} -> ${url}`);
-    this.activateTabInternal(tabId);
-    this.notifyStateChanged();
-    return this.getSnapshot();
+    if (descriptor.renderMode === 'native') {
+      this.ensureNativeView(tabId, url);
+      this.renderModeReasonByTabId.set(tabId, 'user');
+    }
+
+    if (options.activate) {
+      this.activateTabInternal(tabId);
+    }
+
+    if (options.notify) {
+      this.notifyStateChanged();
+    }
+
+    return tabId;
   }
 
   closeTab(tabId: string): BrowserSnapshot {
@@ -216,6 +318,8 @@ export class TabManager {
     this.order.splice(closingIndex, 1);
     this.pinnedTabIds.delete(tabId);
     this.webContentsByTabId.delete(tabId);
+    this.clearPerformanceTimer(tabId);
+    this.renderModeReasonByTabId.delete(tabId);
     this.destroyNativeView(tabId);
     this.detachContextMenuForTab(tabId);
     if (closingActiveTab) {
@@ -285,6 +389,7 @@ export class TabManager {
         canGoForward: false,
       };
       this.webContentsByTabId.delete(targetId);
+      this.renderModeReasonByTabId.delete(targetId);
       this.destroyNativeView(targetId);
       this.log('tab:navigate', `${targetId} -> ${url}`);
       this.activateTabInternal(targetId);
@@ -293,7 +398,11 @@ export class TabManager {
     }
 
     const renderMode: TabRenderMode =
-      tab.descriptor.renderMode === 'native' ? 'native' : 'webview';
+      this.renderPolicy.profile === 'isolate'
+        ? 'native'
+        : tab.descriptor.renderMode === 'native'
+          ? 'native'
+          : 'webview';
     tab.descriptor = {
       ...tab.descriptor,
       kind: 'external',
@@ -306,6 +415,9 @@ export class TabManager {
     };
 
     if (renderMode === 'native') {
+      if (!this.renderModeReasonByTabId.has(targetId)) {
+        this.renderModeReasonByTabId.set(targetId, 'user');
+      }
       this.ensureNativeView(targetId, url);
       const view = this.nativeViewsByTabId.get(targetId);
       if (view && !view.webContents.isDestroyed()) {
@@ -419,6 +531,8 @@ export class TabManager {
     this.attachContextMenuForTab(tabId, targetWebContents);
     this.refreshTabFromWebContents(tabId, targetWebContents);
     this.log('tab:bind-webcontents', `${tabId} -> ${webContentsId}`);
+    this.applyBackgroundThrottling();
+    this.refreshPerformanceTimers();
     this.notifyStateChanged();
   }
 
@@ -480,27 +594,24 @@ export class TabManager {
     this.notifyStateChanged();
   }
 
-  setTabRenderMode(tabId: string, mode: TabRenderMode): BrowserSnapshot {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return this.getSnapshot();
-    if (tab.descriptor.kind !== 'external') return this.getSnapshot();
-
-    const nextMode: TabRenderMode = mode === 'native' ? 'native' : 'webview';
-    if (tab.descriptor.renderMode === nextMode) return this.getSnapshot();
-
-    if (nextMode === 'native') {
-      this.webContentsByTabId.delete(tabId);
-      this.detachContextMenuForTab(tabId);
-      tab.descriptor = { ...tab.descriptor, renderMode: 'native' };
-      this.ensureNativeView(tabId, tab.descriptor.url);
-    } else {
-      this.destroyNativeView(tabId);
-      tab.descriptor = { ...tab.descriptor, renderMode: 'webview' };
+  setTabRenderMode(
+    tabId: string,
+    mode: TabRenderMode,
+    reason: TabRenderModeReason = 'user'
+  ): BrowserSnapshot {
+    const changed = this.applyTabRenderMode(tabId, mode, reason);
+    if (changed) {
+      this.syncNativeViews();
+      this.refreshPerformanceTimers();
+      this.applyBackgroundThrottling();
+      this.notifyStateChanged();
     }
-
-    this.syncNativeViews();
-    this.notifyStateChanged();
     return this.getSnapshot();
+  }
+
+  setRenderPolicy(payload: RenderPolicy): void {
+    this.renderPolicy = this.normalizeRenderPolicy(payload);
+    this.applyRenderPolicy();
   }
 
   getDevToolsDockState(): DevToolsDockState {
@@ -604,6 +715,8 @@ export class TabManager {
       .catch(() => {
         // Ignore navigation failures; renderer will retry.
       });
+
+    this.applyBackgroundThrottling();
   }
 
   private destroyNativeView(tabId: string): void {
@@ -669,6 +782,137 @@ export class TabManager {
     }
   }
 
+  private normalizeRenderPolicy(policy: RenderPolicy): RenderPolicy {
+    const profile = policy.profile === 'flow' || policy.profile === 'balance' || policy.profile === 'isolate'
+      ? policy.profile
+      : DEFAULT_RENDER_POLICY.profile;
+    const nativeSwapDelayMs = Number.isFinite(policy.nativeSwapDelayMs)
+      ? Math.max(30_000, policy.nativeSwapDelayMs)
+      : DEFAULT_RENDER_POLICY.nativeSwapDelayMs;
+    const hibernateDelayMs = Number.isFinite(policy.hibernateDelayMs)
+      ? Math.max(0, policy.hibernateDelayMs)
+      : DEFAULT_RENDER_POLICY.hibernateDelayMs;
+    return { profile, nativeSwapDelayMs, hibernateDelayMs };
+  }
+
+  private applyRenderPolicy(): void {
+    if (this.renderPolicy.profile === 'isolate') {
+      for (const [tabId, tab] of this.tabs.entries()) {
+        if (tab.descriptor.kind !== 'external') continue;
+        this.applyTabRenderMode(tabId, 'native', 'user');
+      }
+    }
+
+    if (this.renderPolicy.profile === 'flow') {
+      for (const [tabId, tab] of this.tabs.entries()) {
+        if (tab.descriptor.kind !== 'external') continue;
+        const reason = this.renderModeReasonByTabId.get(tabId);
+        if (reason === 'blocked') continue;
+        this.applyTabRenderMode(tabId, 'webview', 'user');
+      }
+    }
+
+    if (this.renderPolicy.profile === 'balance') {
+      // Keep current modes; only manage timers and throttling.
+    }
+
+    this.syncNativeViews();
+    this.refreshPerformanceTimers();
+    this.applyBackgroundThrottling();
+    this.notifyStateChanged();
+  }
+
+  private applyTabRenderMode(
+    tabId: string,
+    mode: TabRenderMode,
+    reason: TabRenderModeReason
+  ): boolean {
+    const tab = this.tabs.get(tabId);
+    if (!tab) return false;
+    if (tab.descriptor.kind !== 'external') return false;
+
+    const nextMode: TabRenderMode = mode === 'native' ? 'native' : 'webview';
+    if (tab.descriptor.renderMode === nextMode) return false;
+
+    if (nextMode === 'native') {
+      this.webContentsByTabId.delete(tabId);
+      this.detachContextMenuForTab(tabId);
+      tab.descriptor = { ...tab.descriptor, renderMode: 'native' };
+      this.renderModeReasonByTabId.set(tabId, reason);
+      this.ensureNativeView(tabId, tab.descriptor.url);
+    } else {
+      this.destroyNativeView(tabId);
+      tab.descriptor = { ...tab.descriptor, renderMode: 'webview' };
+      this.renderModeReasonByTabId.delete(tabId);
+    }
+
+    return true;
+  }
+
+  private applyBackgroundThrottling(): void {
+    for (const [tabId, tab] of this.tabs.entries()) {
+      if (tab.descriptor.kind !== 'external') continue;
+      const targetWebContents = this.resolveWebContents(tabId);
+      if (!targetWebContents || targetWebContents.isDestroyed()) continue;
+      const shouldThrottle = this.activeTabId !== tabId;
+      if (typeof targetWebContents.setBackgroundThrottling === 'function') {
+        targetWebContents.setBackgroundThrottling(shouldThrottle);
+      }
+    }
+  }
+
+  private clearPerformanceTimer(tabId: string): void {
+    const timer = this.performanceTimersByTabId.get(tabId);
+    if (timer) {
+      clearTimeout(timer);
+      this.performanceTimersByTabId.delete(tabId);
+    }
+  }
+
+  private refreshPerformanceTimers(): void {
+    if (this.renderPolicy.profile !== 'balance') {
+      for (const tabId of this.performanceTimersByTabId.keys()) {
+        this.clearPerformanceTimer(tabId);
+      }
+      return;
+    }
+
+    for (const [tabId, tab] of this.tabs.entries()) {
+      if (tab.descriptor.kind !== 'external') {
+        this.clearPerformanceTimer(tabId);
+        continue;
+      }
+
+      if (tabId === this.activeTabId) {
+        this.clearPerformanceTimer(tabId);
+        continue;
+      }
+
+      if (tab.descriptor.renderMode !== 'webview') {
+        this.clearPerformanceTimer(tabId);
+        continue;
+      }
+
+      if (this.performanceTimersByTabId.has(tabId)) continue;
+
+      const delay = this.renderPolicy.nativeSwapDelayMs;
+      const timer = setTimeout(() => {
+        const activeId = this.activeTabId;
+        const current = this.tabs.get(tabId);
+        if (!current) return;
+        if (activeId === tabId) return;
+        if (this.renderPolicy.profile !== 'balance') return;
+        if (current.descriptor.kind !== 'external') return;
+        if (current.descriptor.renderMode !== 'webview') return;
+        this.applyTabRenderMode(tabId, 'native', 'performance');
+        this.syncNativeViews();
+        this.applyBackgroundThrottling();
+        this.notifyStateChanged();
+      }, delay);
+      this.performanceTimersByTabId.set(tabId, timer);
+    }
+  }
+
   private resolveTargetTab(tabId?: string): ManagedTab | null {
     const resolvedId = tabId ?? this.activeTabId;
     if (!resolvedId) return null;
@@ -731,18 +975,32 @@ export class TabManager {
     for (const tabId of this.order) {
       this.destroyNativeView(tabId);
       this.detachContextMenuForTab(tabId);
+      this.clearPerformanceTimer(tabId);
     }
     this.tabs.clear();
     this.order.length = 0;
     this.webContentsByTabId.clear();
     this.pinnedTabIds.clear();
+    this.renderModeReasonByTabId.clear();
     this.activeTabId = null;
     this.devToolsDock.close();
   }
 
   private activateTabInternal(tabId: string): void {
     this.activeTabId = tabId;
+    const active = this.tabs.get(tabId);
+    if (active?.descriptor.kind === 'external' && active.descriptor.renderMode === 'native') {
+      const reason = this.renderModeReasonByTabId.get(tabId);
+      if (this.renderPolicy.profile === 'balance' && reason === 'performance') {
+        this.applyTabRenderMode(tabId, 'webview', 'user');
+      }
+      if (this.renderPolicy.profile === 'flow' && reason !== 'blocked') {
+        this.applyTabRenderMode(tabId, 'webview', 'user');
+      }
+    }
     this.syncNativeViews();
+    this.refreshPerformanceTimers();
+    this.applyBackgroundThrottling();
     this.log('tab:activate', tabId);
   }
 

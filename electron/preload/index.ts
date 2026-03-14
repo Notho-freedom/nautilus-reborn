@@ -5,6 +5,7 @@ import { BrowserIpcChannels } from '../../shared/browser-contract';
 const api: BrowserDesktopApi = {
   getState: () => ipcRenderer.invoke(BrowserIpcChannels.getState),
   createTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabCreate, payload),
+  openTabsBatch: payload => ipcRenderer.invoke(BrowserIpcChannels.openTabsBatch, payload),
   openWindowWithTabs: payload => ipcRenderer.invoke(BrowserIpcChannels.openWindowWithTabs, payload),
   closeTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabClose, payload),
   activateTab: payload => ipcRenderer.invoke(BrowserIpcChannels.tabActivate, payload),
@@ -21,6 +22,7 @@ const api: BrowserDesktopApi = {
     ipcRenderer.invoke(BrowserIpcChannels.getDevToolsDockState),
   setPinnedTabs: payload => ipcRenderer.invoke(BrowserIpcChannels.setPinnedTabs, payload),
   setTabRenderMode: payload => ipcRenderer.invoke(BrowserIpcChannels.tabSetRenderMode, payload),
+  setRenderPolicy: payload => ipcRenderer.invoke(BrowserIpcChannels.setRenderPolicy, payload),
   bindTabWebContents: payload =>
     ipcRenderer.invoke(BrowserIpcChannels.tabBindWebContents, payload),
   unbindTabWebContents: payload =>

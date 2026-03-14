@@ -24,6 +24,7 @@ import { addFlouPage } from '@/lib/flou';
 import { studioCaptureFullPage, studioCaptureViewport } from '@/lib/studio';
 import {
   desktopSetViewportBounds,
+  desktopSetRenderPolicy,
   desktopStudioGetWebviewViewport,
   onDesktopStudioWebviewViewportChanged,
 } from '@/lib/electronBridge';
@@ -77,11 +78,18 @@ export function BrowserShell() {
       const settings = getSettings();
       setAdBlockEnabled(settings.adBlock);
       setPanelCloseOnOutsideClick(settings.panelCloseOnOutsideClick);
+      if (browser.isDesktopMode) {
+        void desktopSetRenderPolicy({
+          profile: settings.renderingProfile,
+          nativeSwapDelayMs: settings.nativeSwapDelayMinutes * 60_000,
+          hibernateDelayMs: 0,
+        });
+      }
     };
 
     refreshSettingsState();
     return subscribeToSettingsUpdates(refreshSettingsState);
-  }, []);
+  }, [browser.isDesktopMode]);
 
   useEffect(() => {
     const refreshBookmarkState = () => {

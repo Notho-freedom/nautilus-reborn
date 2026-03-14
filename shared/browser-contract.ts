@@ -11,6 +11,15 @@ import type {
 
 export type TabKind = 'internal' | 'external';
 export type TabRenderMode = 'webview' | 'native';
+export type TabRenderModeReason = 'blocked' | 'performance' | 'user';
+
+export type RenderingProfile = 'flow' | 'balance' | 'isolate';
+
+export interface RenderPolicy {
+  profile: RenderingProfile;
+  nativeSwapDelayMs: number;
+  hibernateDelayMs: number;
+}
 
 export interface TabDescriptor {
   id: string;
@@ -68,6 +77,17 @@ export interface OpenWindowWithTabsRequest {
   activeIndex?: number;
 }
 
+export interface OpenTabsBatchRequest {
+  tabs: { url: string; title?: string; pinned?: boolean }[];
+  activeIndex?: number;
+}
+
+export interface OpenTabsBatchResponse {
+  createdTabIds: string[];
+  pinnedTabIds: string[];
+  activeTabId: string | null;
+}
+
 export interface TabCloseRequest {
   tabId: string;
 }
@@ -115,6 +135,7 @@ export interface TabRuntimeUpdateRequest {
 export interface TabRenderModeRequest {
   tabId: string;
   mode: TabRenderMode;
+  reason?: TabRenderModeReason;
 }
 
 export interface ViewportBounds {
@@ -321,6 +342,7 @@ export interface StudioRecordingSnapshot {
 export interface BrowserDesktopApi {
   getState: () => Promise<BrowserSnapshot>;
   createTab: (payload: TabCreateRequest) => Promise<BrowserSnapshot>;
+  openTabsBatch: (payload: OpenTabsBatchRequest) => Promise<OpenTabsBatchResponse>;
   openWindowWithTabs: (payload: OpenWindowWithTabsRequest) => Promise<void>;
   closeTab: (payload: TabCloseRequest) => Promise<BrowserSnapshot>;
   activateTab: (payload: TabActivateRequest) => Promise<BrowserSnapshot>;
@@ -335,6 +357,7 @@ export interface BrowserDesktopApi {
   getDevToolsDockState: () => Promise<DevToolsDockState>;
   setPinnedTabs: (payload: SetPinnedTabsRequest) => Promise<void>;
   setTabRenderMode: (payload: TabRenderModeRequest) => Promise<BrowserSnapshot>;
+  setRenderPolicy: (payload: RenderPolicy) => Promise<void>;
   bindTabWebContents: (payload: TabWebContentsBindRequest) => Promise<void>;
   unbindTabWebContents: (payload: TabWebContentsUnbindRequest) => Promise<void>;
   updateTabRuntime: (payload: TabRuntimeUpdateRequest) => Promise<BrowserSnapshot>;
@@ -405,6 +428,7 @@ export interface BrowserDesktopApi {
 export const BrowserIpcChannels = {
   getState: 'browser:get-state',
   tabCreate: 'browser:tab-create',
+  openTabsBatch: 'browser:open-tabs-batch',
   openWindowWithTabs: 'browser:open-window-with-tabs',
   tabClose: 'browser:tab-close',
   tabActivate: 'browser:tab-activate',
@@ -422,6 +446,7 @@ export const BrowserIpcChannels = {
   tabUnbindWebContents: 'browser:tab-unbind-webcontents',
   tabRuntimeUpdate: 'browser:tab-runtime-update',
   tabSetRenderMode: 'browser:tab-set-render-mode',
+  setRenderPolicy: 'browser:set-render-policy',
   stateChanged: 'browser:state-changed',
   devToolsDockStateChanged: 'browser:devtools-dock-state-changed',
   windowMinimize: 'window:minimize',

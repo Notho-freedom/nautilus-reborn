@@ -12,6 +12,7 @@ export type SearchEngineId = 'duckduckgo' | 'google' | 'brave';
 export type TerminalTypeId = 'native' | 'xterm';
 export type DevToolsPositionId = 'bottom' | 'right' | 'detached';
 export type AiModelId = 'llama-3.3-70b' | 'mixtral-8x7b' | 'gemma-2-9b';
+export type RenderingProfileId = 'flow' | 'balance' | 'isolate';
 
 export const WEB_SERVICE_IDS = [
   'youtubeMusic',
@@ -32,6 +33,8 @@ export interface BrowserSettings {
   saveHistory: boolean;
   acceptCookies: boolean;
   restoreTabs: boolean;
+  renderingProfile: RenderingProfileId;
+  nativeSwapDelayMinutes: number;
   homePageStyle: HomePageStyleId;
   terminalType: TerminalTypeId;
   terminalFontSize: 12 | 13 | 14 | 16;
@@ -55,6 +58,8 @@ const DEFAULT_SETTINGS: BrowserSettings = {
   saveHistory: true,
   acceptCookies: true,
   restoreTabs: true,
+  renderingProfile: 'balance',
+  nativeSwapDelayMinutes: 5,
   homePageStyle: 'modern',
   terminalType: 'xterm',
   terminalFontSize: 13,
@@ -96,6 +101,17 @@ function sanitizeSettings(candidate: Partial<BrowserSettings>): BrowserSettings 
 
   if (!['native', 'xterm'].includes(settings.terminalType)) {
     settings.terminalType = DEFAULT_SETTINGS.terminalType;
+  }
+
+  if (!['flow', 'balance', 'isolate'].includes(settings.renderingProfile)) {
+    settings.renderingProfile = DEFAULT_SETTINGS.renderingProfile;
+  }
+
+  if (
+    typeof settings.nativeSwapDelayMinutes !== 'number' ||
+    settings.nativeSwapDelayMinutes < 1
+  ) {
+    settings.nativeSwapDelayMinutes = DEFAULT_SETTINGS.nativeSwapDelayMinutes;
   }
 
   if (!['bottom', 'right', 'detached'].includes(settings.devToolsPosition)) {

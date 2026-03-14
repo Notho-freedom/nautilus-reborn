@@ -1,5 +1,5 @@
 import { Plus, X, Globe, Loader2, Pin, Copy, XCircle, Lock } from 'lucide-react';
-import { BrowserTab } from '@/hooks/useBrowserState';
+import type { BrowserTab } from '@/hooks/useBrowserState';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 

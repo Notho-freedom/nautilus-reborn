@@ -8,6 +8,7 @@ import {
   desktopCloseDevTools,
   desktopCloseTab,
   desktopCreateTab,
+  desktopOpenTabsBatch,
   desktopOpenWindowWithTabs,
   desktopGetDevToolsDockState,
   desktopGetState,
@@ -420,14 +421,15 @@ export function useBrowserState() {
 
     if (desktopMode) {
       const run = async () => {
-        const newlyPinned: string[] = [];
-        for (const entry of filtered) {
-          const snapshot = await desktopCreateTab({ url: entry.url });
-          const createdId = snapshot?.activeTabId;
-          if (entry.pinned && createdId) {
-            newlyPinned.push(createdId);
-          }
-        }
+        const response = await desktopOpenTabsBatch({
+          tabs: filtered.map(entry => ({
+            url: entry.url,
+            title: entry.title,
+            pinned: entry.pinned,
+          })),
+          activeIndex: filtered.length - 1,
+        });
+        const newlyPinned = response?.pinnedTabIds ?? [];
         if (newlyPinned.length > 0) {
           setPinnedTabIds(prev => {
             const next = Array.from(new Set([...prev, ...newlyPinned]));
@@ -442,33 +444,47 @@ export function useBrowserState() {
 
     const createdIds: string[] = [];
     const newPinned: string[] = [];
+    const chunkSize = 8;
+    const delayMs = 80;
+    let cursor = 0;
 
-    setLocalTabs(prev => {
-      const next = [...prev];
-      for (const entry of filtered) {
-        const normalizedUrl = normalizeUrl(entry.url);
-        const id = `tab-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-        createdIds.push(id);
-        if (entry.pinned) {
-          newPinned.push(id);
+    const processChunk = () => {
+      const slice = filtered.slice(cursor, cursor + chunkSize);
+      if (slice.length === 0) {
+        if (createdIds.length > 0) {
+          setLocalActiveTabId(createdIds[createdIds.length - 1]);
         }
-        next.push({
-          id,
-          url: normalizedUrl,
-          title: resolveTitle(normalizedUrl, entry.title),
-          isPrivate: false,
-        });
+        if (newPinned.length > 0) {
+          setPinnedTabIds(prev => Array.from(new Set([...prev, ...newPinned])));
+        }
+        return;
       }
-      return next;
-    });
 
-    if (createdIds.length > 0) {
-      setLocalActiveTabId(createdIds[createdIds.length - 1]);
-    }
-    if (newPinned.length > 0) {
-      setPinnedTabIds(prev => Array.from(new Set([...prev, ...newPinned])));
-    }
-  }, [desktopMode, desktopCreateTab, desktopSetPinnedTabs]);
+      setLocalTabs(prev => {
+        const next = [...prev];
+        for (const entry of slice) {
+          const normalizedUrl = normalizeUrl(entry.url);
+          const id = `tab-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+          createdIds.push(id);
+          if (entry.pinned) {
+            newPinned.push(id);
+          }
+          next.push({
+            id,
+            url: normalizedUrl,
+            title: resolveTitle(normalizedUrl, entry.title),
+            isPrivate: false,
+          });
+        }
+        return next;
+      });
+
+      cursor += chunkSize;
+      setTimeout(processChunk, delayMs);
+    };
+
+    processChunk();
+  }, [desktopMode, desktopOpenTabsBatch, desktopSetPinnedTabs]);
 
   const openUrlsInNewWindow = useCallback((entries: WorkspaceTab[]) => {
     const filtered = entries.filter(entry => entry?.url);

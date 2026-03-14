@@ -2,7 +2,9 @@ import { ipcMain } from 'electron';
 import type {
   DevToolsDockWidthRequest,
   NavigateRequest,
+  OpenTabsBatchRequest,
   OpenWindowWithTabsRequest,
+  RenderPolicy,
   SetPinnedTabsRequest,
   TabRenderModeRequest,
   TabActivateRequest,
@@ -27,6 +29,7 @@ interface RegisterBrowserIpcOptions {
 function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.getState);
   ipcMain.removeHandler(BrowserIpcChannels.tabCreate);
+  ipcMain.removeHandler(BrowserIpcChannels.openTabsBatch);
   ipcMain.removeHandler(BrowserIpcChannels.openWindowWithTabs);
   ipcMain.removeHandler(BrowserIpcChannels.tabClose);
   ipcMain.removeHandler(BrowserIpcChannels.tabActivate);
@@ -44,6 +47,7 @@ function removeExistingHandlers() {
   ipcMain.removeHandler(BrowserIpcChannels.tabUnbindWebContents);
   ipcMain.removeHandler(BrowserIpcChannels.tabRuntimeUpdate);
   ipcMain.removeHandler(BrowserIpcChannels.tabSetRenderMode);
+  ipcMain.removeHandler(BrowserIpcChannels.setRenderPolicy);
   ipcMain.removeHandler(BrowserIpcChannels.setViewportBounds);
 }
 
@@ -71,6 +75,13 @@ export function registerBrowserIpc({
     const tabManager = getTabManagerForSender(event.sender.id);
     if (!tabManager) return { tabs: [], activeTabId: null };
     return tabManager.createTab(payload.url, { isPrivate: payload.isPrivate });
+  });
+
+  ipcMain.handle(BrowserIpcChannels.openTabsBatch, (event, payload: OpenTabsBatchRequest) => {
+    log(BrowserIpcChannels.openTabsBatch, payload);
+    const tabManager = getTabManagerForSender(event.sender.id);
+    if (!tabManager) return { createdTabIds: [], pinnedTabIds: [], activeTabId: null };
+    return tabManager.openTabsBatch(payload);
   });
 
   ipcMain.handle(BrowserIpcChannels.openWindowWithTabs, (_event, payload: OpenWindowWithTabsRequest) => {
@@ -204,7 +215,17 @@ export function registerBrowserIpc({
       log(BrowserIpcChannels.tabSetRenderMode, payload);
       const tabManager = getTabManagerForSender(event.sender.id);
       if (!tabManager) return { tabs: [], activeTabId: null };
-      return tabManager.setTabRenderMode(payload.tabId, payload.mode);
+      return tabManager.setTabRenderMode(payload.tabId, payload.mode, payload.reason);
+    }
+  );
+
+  ipcMain.handle(
+    BrowserIpcChannels.setRenderPolicy,
+    (event, payload: RenderPolicy) => {
+      log(BrowserIpcChannels.setRenderPolicy, payload);
+      const tabManager = getTabManagerForSender(event.sender.id);
+      if (!tabManager) return;
+      tabManager.setRenderPolicy(payload);
     }
   );
 

@@ -48,8 +48,11 @@ import type {
   TabCreateRequest,
   TabMoveRequest,
   OpenWindowWithTabsRequest,
+  OpenTabsBatchRequest,
+  OpenTabsBatchResponse,
   WindowState,
 } from '../../shared/browser-contract';
+import type { RenderPolicy } from '../../shared/browser-contract';
 import type { SystemMetricsSnapshot } from '../../shared/system-contract';
 
 export function getDesktopBridge(): BrowserDesktopApi | null {
@@ -73,6 +76,14 @@ export async function desktopCreateTab(
   const bridge = getDesktopBridge();
   if (!bridge) return null;
   return bridge.createTab(payload);
+}
+
+export async function desktopOpenTabsBatch(
+  payload: OpenTabsBatchRequest
+): Promise<OpenTabsBatchResponse | null> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+  return bridge.openTabsBatch(payload);
 }
 
 export async function desktopOpenWindowWithTabs(
@@ -191,6 +202,12 @@ export async function desktopSetTabRenderMode(
   const bridge = getDesktopBridge();
   if (!bridge) return null;
   return bridge.setTabRenderMode(payload);
+}
+
+export async function desktopSetRenderPolicy(payload: RenderPolicy): Promise<void> {
+  const bridge = getDesktopBridge();
+  if (!bridge) return;
+  await bridge.setRenderPolicy(payload);
 }
 
 export async function desktopBindTabWebContents(

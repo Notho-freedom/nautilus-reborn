@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { Worker } from 'node:worker_threads';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { cpus } from 'node:os';
 import type {
   BackendLabJobRequest,
   BackendLabJobResponse,
@@ -16,26 +17,23 @@ const RESULT_TTL_SECONDS = 1800;
 const IDLE_TIMEOUT_MS = 120_000;
 
 const WORKER_SOURCE = `
-  const { parentPort, workerData } = require('worker_threads');
   const fetch = globalThis.fetch;
 
-  const {
-    restUrl,
-    restToken,
-    queueKey,
-    resultKeyPrefix,
-    backendBaseUrl,
-    debug,
-    idleTimeoutMs,
-    resultTtlSeconds,
-  } = workerData;
+  const restUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.NOTILUS_BACKENDLAB_REST_URL;
+  const restToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.NOTILUS_BACKENDLAB_REST_TOKEN;
+  const queueKey = process.env.NOTILUS_BACKENDLAB_QUEUE_KEY || 'notilus:backendlab:jobs';
+  const resultKeyPrefix = process.env.NOTILUS_BACKENDLAB_RESULT_PREFIX || 'notilus:backendlab:result:';
+  const backendBaseUrl = process.env.NOTILUS_BACKENDLAB_BACKEND_URL || 'http://127.0.0.1:8000';
+  const debug = process.env.NOTILUS_BACKENDLAB_DEBUG === '1';
+  const idleTimeoutMs = Number(process.env.NOTILUS_BACKENDLAB_IDLE_TIMEOUT_MS || 120000);
+  const resultTtlSeconds = Number(process.env.NOTILUS_BACKENDLAB_RESULT_TTL_SECONDS || 1800);
 
   let active = true;
   let lastJobAt = Date.now();
 
   function log(message) {
     if (!debug) return;
-    parentPort.postMessage({ type: 'log', message });
+    console.info('[backend-lab-worker]', message);
   }
 
   async function redisCommand(cmd, ...args) {
@@ -179,11 +177,14 @@ const WORKER_SOURCE = `
     }
   }
 
-  parentPort.on('message', message => {
-    if (message?.type === 'shutdown') {
-      active = false;
-      process.exit(0);
-    }
+  process.on('SIGTERM', () => {
+    active = false;
+    process.exit(0);
+  });
+
+  process.on('SIGINT', () => {
+    active = false;
+    process.exit(0);
   });
 
   loop().catch(error => {
@@ -197,7 +198,7 @@ export class BackendLabQueueManager {
   private readonly restUrl: string;
   private readonly restToken: string;
   private readonly backendBaseUrl: string;
-  private worker: Worker | null = null;
+  private workers: ChildProcess[] = [];
 
   constructor(options: BackendLabQueueManagerOptions) {
     this.debug = options.debug;
@@ -224,7 +225,7 @@ export class BackendLabQueueManager {
     }), 'EX', RESULT_TTL_SECONDS);
 
     await this.redisCommand('LPUSH', QUEUE_KEY, JSON.stringify(job));
-    this.ensureWorker();
+    this.ensureWorkers();
 
     return { jobId };
   }
@@ -243,41 +244,53 @@ export class BackendLabQueueManager {
   }
 
   dispose(): void {
-    if (!this.worker) return;
-    try {
-      this.worker.postMessage({ type: 'shutdown' });
-    } catch {
-      // ignore
+    if (this.workers.length === 0) return;
+    for (const worker of this.workers) {
+      try {
+        worker.kill();
+      } catch {
+        // ignore
+      }
     }
-    void this.worker.terminate();
-    this.worker = null;
+    this.workers = [];
   }
 
-  private ensureWorker(): void {
-    if (this.worker) return;
-    this.worker = new Worker(WORKER_SOURCE, {
-      eval: true,
-      workerData: {
-        restUrl: this.restUrl,
-        restToken: this.restToken,
-        queueKey: QUEUE_KEY,
-        resultKeyPrefix: RESULT_KEY_PREFIX,
-        backendBaseUrl: this.backendBaseUrl,
-        debug: this.debug,
-        idleTimeoutMs: IDLE_TIMEOUT_MS,
-        resultTtlSeconds: RESULT_TTL_SECONDS,
+  private ensureWorkers(): void {
+    const desired = this.resolveWorkerCount();
+    while (this.workers.length < desired) {
+      this.spawnWorker();
+    }
+  }
+
+  private spawnWorker(): void {
+    const worker = spawn(process.execPath, ['-e', WORKER_SOURCE], {
+      env: {
+        ...process.env,
+        UPSTASH_REDIS_REST_URL: this.restUrl,
+        UPSTASH_REDIS_REST_TOKEN: this.restToken,
+        NOTILUS_BACKENDLAB_QUEUE_KEY: QUEUE_KEY,
+        NOTILUS_BACKENDLAB_RESULT_PREFIX: RESULT_KEY_PREFIX,
+        NOTILUS_BACKENDLAB_BACKEND_URL: this.backendBaseUrl,
+        NOTILUS_BACKENDLAB_DEBUG: this.debug ? '1' : '0',
+        NOTILUS_BACKENDLAB_IDLE_TIMEOUT_MS: String(IDLE_TIMEOUT_MS),
+        NOTILUS_BACKENDLAB_RESULT_TTL_SECONDS: String(RESULT_TTL_SECONDS),
       },
+      stdio: this.debug ? 'inherit' : 'ignore',
+      windowsHide: true,
     });
 
-    this.worker.on('message', message => {
-      if (message?.type === 'log' && this.debug) {
-        console.info('[backend-lab-queue]', message.message);
-      }
-    });
+    this.workers.push(worker);
 
-    this.worker.on('exit', () => {
-      this.worker = null;
+    worker.on('exit', () => {
+      this.workers = this.workers.filter(entry => entry !== worker);
     });
+  }
+
+  private resolveWorkerCount(): number {
+    const raw = Number(process.env.BACKEND_LAB_WORKERS);
+    if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
+    const cores = cpus().length || 1;
+    return Math.min(4, Math.max(1, cores - 1));
   }
 
   private ensureUpstash(): void {

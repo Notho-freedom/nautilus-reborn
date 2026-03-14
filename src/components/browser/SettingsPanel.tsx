@@ -207,6 +207,24 @@ export function SettingsPanel({ onClose }: SettingsPanelProps = {}) {
                 onCheckedChange={checked => updateSettings({ restoreTabs: checked })}
               />
             </SettingRow>
+            <SelectRow
+              label="Rendering profile"
+              value={settings.renderingProfile}
+              onChange={v => updateSettings({ renderingProfile: v as BrowserSettings['renderingProfile'] })}
+            >
+              <option value="flow">Flow — smooth overlays</option>
+              <option value="balance">Balance — hybrid perf</option>
+              <option value="isolate">Isolate — max performance</option>
+            </SelectRow>
+            <SelectRow
+              label="Swap inactive tabs"
+              value={String(settings.nativeSwapDelayMinutes)}
+              onChange={v => updateSettings({ nativeSwapDelayMinutes: Number(v) })}
+            >
+              <option value="2">After 2 minutes</option>
+              <option value="5">After 5 minutes</option>
+              <option value="10">After 10 minutes</option>
+            </SelectRow>
           </Section>
 
           {/* Terminal */}
