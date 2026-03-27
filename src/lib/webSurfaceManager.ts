@@ -111,7 +111,7 @@ function getOrigin(url: string): string | null {
   }
 }
 
-function extractPopupUrl(rawEvent: Event): string | null {
+function extractEventUrl(rawEvent: Event): string | null {
   const event = rawEvent as unknown as Record<string, unknown>;
   const detail = (event.detail as Record<string, unknown> | undefined) ?? {};
 
@@ -132,6 +132,24 @@ function extractPopupUrl(rawEvent: Event): string | null {
     return trimmed;
   }
   return null;
+}
+
+function isMainFrameEvent(rawEvent: Event): boolean {
+  const event = rawEvent as unknown as Record<string, unknown>;
+  const detail = (event.detail as Record<string, unknown> | undefined) ?? {};
+
+  const candidates = [event.isMainFrame, detail.isMainFrame];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'boolean') {
+      return candidate;
+    }
+  }
+
+  return true;
+}
+
+function extractPopupUrl(rawEvent: Event): string | null {
+  return extractEventUrl(rawEvent);
 }
 
 function createSurfaceId(prefix: string) {
@@ -538,7 +556,7 @@ class WebSurfaceManager {
   private attachListeners(surface: WebSurface) {
     const webview = surface.webview;
 
-    const emitRuntime = async () => {
+    const emitRuntimeWithUrl = async (overrideUrl?: string) => {
       if (surface.mode !== 'tab') return;
       if (!surface.tabId || !surface.domReady) return;
 
@@ -558,13 +576,16 @@ class WebSurfaceManager {
         return;
       }
 
-      const currentUrl = resolveRuntimeUrl(rawUrl, surface.url);
-      const runtimeTitle = rawTitle.trim() || deriveTitle(currentUrl);
+      const currentUrl = resolveRuntimeUrl(overrideUrl?.trim() || rawUrl, surface.url);
+      const runtimeTitle =
+        overrideUrl && overrideUrl.trim()
+          ? deriveTitle(currentUrl)
+          : rawTitle.trim() || deriveTitle(currentUrl);
       const payload = {
         tabId: surface.tabId,
         url: currentUrl,
         title: runtimeTitle,
-        isLoading,
+        isLoading: overrideUrl ? true : isLoading,
         canGoBack,
         canGoForward,
       };
@@ -575,15 +596,34 @@ class WebSurfaceManager {
       await desktopUpdateTabRuntime(payload);
     };
 
+    const emitRuntime = async () => emitRuntimeWithUrl();
+
     surface.emitRuntime = emitRuntime;
 
-    const requestNativeBlockedMode = async (origin: string) => {
+    const requestNativeBlockedMode = async (origin: string, targetUrl?: string) => {
       if (surface.mode !== 'tab' || !surface.tabId || surface.nativeRequested) return;
 
       surface.nativeRequested = true;
+      if (targetUrl) {
+        surface.url = resolveRuntimeUrl(targetUrl, surface.url);
+      }
       this.autoSwitchByTabId.set(surface.tabId, { origin, reason: 'blocked' });
-      await emitRuntime();
+      await emitRuntimeWithUrl(targetUrl);
       await desktopSetTabRenderMode({ tabId: surface.tabId, mode: 'native', reason: 'blocked' });
+    };
+
+    const handleNavigationTarget = async (event: Event) => {
+      if (surface.mode !== 'tab' || !surface.tabId || surface.nativeRequested) return;
+      if (!isMainFrameEvent(event)) return;
+
+      const targetUrl = extractEventUrl(event);
+      if (!targetUrl) return;
+
+      const resolvedUrl = resolveRuntimeUrl(targetUrl, surface.url);
+      const embeddedAuthMatch = matchEmbeddedAuthPolicy(resolvedUrl);
+      if (!embeddedAuthMatch?.shouldPreferNative) return;
+
+      await requestNativeBlockedMode(embeddedAuthMatch.authOrigin, resolvedUrl);
     };
 
     const handleNavigation = async () => {
@@ -689,6 +729,9 @@ class WebSurfaceManager {
           void applyExtensions();
         },
       ],
+      ['will-navigate', event => void handleNavigationTarget(event)],
+      ['did-start-navigation', event => void handleNavigationTarget(event)],
+      ['did-redirect-navigation', event => void handleNavigationTarget(event)],
       ['did-navigate', () => void handleNavigation()],
       ['did-navigate-in-page', () => void handleNavigation()],
       ['page-title-updated', () => void emitRuntime()],

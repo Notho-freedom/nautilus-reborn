@@ -285,6 +285,51 @@ describe('DesktopWebviewLayer', () => {
     expect(setTabRenderMode).toHaveBeenCalledTimes(1);
   });
 
+  it('switches to native mode before Google auth navigation commits', async () => {
+    const tab = { ...externalTabA, id: 'tab-external-google-auth-preflight' };
+    render(
+      <DesktopWebviewLayer
+        tabs={[tab]}
+        activeTabId={tab.id}
+        onCreateTab={() => {}}
+        zoom={100}
+        studioViewport={null}
+        mosaicState={baseMosaicState}
+        mosaicRootTile={null}
+      />
+    );
+
+    const webview = getWebviewElement(tab.id);
+    webview.dispatchEvent(new Event('dom-ready'));
+    updateTabRuntime.mockClear();
+    setTabRenderMode.mockClear();
+
+    const willNavigateEvent = new Event('will-navigate') as Event & {
+      url?: string;
+      isMainFrame?: boolean;
+    };
+    willNavigateEvent.url = 'https://accounts.google.com/signin/v2/identifier';
+    willNavigateEvent.isMainFrame = true;
+    webview.dispatchEvent(willNavigateEvent);
+
+    await waitFor(() => {
+      expect(updateTabRuntime).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tabId: tab.id,
+          url: 'https://accounts.google.com/signin/v2/identifier',
+          isLoading: true,
+        })
+      );
+      expect(setTabRenderMode).toHaveBeenCalledWith({
+        tabId: tab.id,
+        mode: 'native',
+        reason: 'blocked',
+      });
+    });
+
+    expect(setTabRenderMode).toHaveBeenCalledTimes(1);
+  });
+
   it('falls back to native mode when the webview load is blocked', async () => {
     const tab = { ...externalTabA, id: 'tab-external-blocked-load' };
     render(
