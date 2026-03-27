@@ -271,6 +271,8 @@ describe('useBrowserState desktop mode', () => {
           title: 'docs.electronjs.org',
           url: 'https://www.electronjs.org/docs/latest/',
           kind: 'external',
+          renderMode: 'native',
+          renderModeReason: 'blocked',
           isLoading: true,
           canGoBack: false,
           canGoForward: false,
@@ -286,5 +288,6 @@ describe('useBrowserState desktop mode', () => {
     expect(result.current.activeTabId).toBe('tab-desktop-2');
     expect(result.current.isLoading).toBe(true);
     expect(result.current.tabs[0]?.title).toContain('docs.electronjs.org');
+    expect(result.current.tabs[0]?.renderModeReason).toBe('blocked');
   });
 });

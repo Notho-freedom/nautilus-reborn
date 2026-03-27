@@ -37,6 +37,7 @@ export interface BrowserTab {
   canGoForward?: boolean;
   kind?: 'internal' | 'external';
   renderMode?: 'webview' | 'native';
+  renderModeReason?: 'blocked' | 'performance' | 'user';
 }
 
 
@@ -179,6 +180,7 @@ function mapDesktopTab(tab: TabDescriptor): BrowserTab {
     canGoForward: tab.canGoForward,
     kind: tab.kind,
     renderMode: tab.renderMode,
+    renderModeReason: tab.renderModeReason,
     isPrivate: tab.isPrivate,
   };
 }

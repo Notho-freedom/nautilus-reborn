@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Camera,
   ChevronLeft,
@@ -24,6 +24,12 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AutocompleteOverlay } from './AutocompleteOverlay';
+import type { BrowserTab } from '@/hooks/useBrowserState';
+import { getHistoryItems, subscribeToHistoryUpdates } from '@/lib/history';
+import { getBookmarks, subscribeToBookmarksUpdates } from '@/lib/bookmarks';
+import { getRecentSearches, buildAutocompleteResults, recordSearch, resolveSmartTarget, buildSearchUrl } from '@/lib/autocomplete';
+import { getSettings, subscribeToSettingsUpdates } from '@/lib/settings';
 
 interface NavigationBarProps {
   url: string;
@@ -55,6 +61,9 @@ interface NavigationBarProps {
   onOpenGitHub?: () => void;
   onDisconnectGitHub?: () => void;
   onSignInWithGitHub?: () => void;
+  openTabs?: BrowserTab[];
+  activeTabId?: string;
+  onSwitchToTab?: (tabId: string) => void;
 }
 
 function ActionHint({
@@ -104,26 +113,62 @@ export function NavigationBar({
   onOpenGitHub,
   onDisconnectGitHub,
   onSignInWithGitHub,
+  openTabs = [],
+  activeTabId,
+  onSwitchToTab,
 }: NavigationBarProps) {
-  const [inputValue, setInputValue] = useState('');
+  const [query, setQuery] = useState('');
+  const [displayValue, setDisplayValue] = useState('');
   const [focused, setFocused] = useState(false);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const [snapshotBusy, setSnapshotBusy] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0);
+  const [searchEngine, setSearchEngine] = useState(() => getSettings().searchEngine);
+  const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const submitIntentRef = useRef(false);
 
   const isHttps = url.startsWith('https://');
   const isInternal = url.startsWith('notilus://');
   const profileInitial = (githubUsername?.trim().charAt(0) || 'N').toUpperCase();
+  const effectiveQuery = focused ? (hasUserTyped ? query : '') : '';
+  const autocompleteResults = useMemo(
+    () =>
+      buildAutocompleteResults({
+        query: effectiveQuery,
+        historyItems: getHistoryItems(),
+        bookmarkItems: getBookmarks(),
+        recentSearches: getRecentSearches(),
+        searchEngine,
+        openTabs,
+        activeTabId,
+        maxPerSection: 6,
+      }),
+    [effectiveQuery, searchEngine, dataVersion, openTabs, activeTabId]
+  );
+  const flatItems = autocompleteResults.flatItems;
+  const overlayVisible = focused && autocompleteResults.sections.length > 0;
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!submitIntentRef.current) return;
     submitIntentRef.current = false;
-    if (!inputValue.trim()) return;
-    const finalUrl = inputValue.includes('://') ? inputValue : `https://${inputValue}`;
-    onNavigate(finalUrl);
-    setInputValue('');
+    if (!hasUserTyped) return;
+    const target = resolveSmartTarget({
+      query,
+      results: autocompleteResults,
+      searchEngine,
+    });
+    if (!target) return;
+    onNavigate(target.url);
+    if (target.isSearch) {
+      recordSearch(query);
+      setDataVersion(v => v + 1);
+    }
+    setQuery('');
+    setDisplayValue('');
+    setHasUserTyped(false);
     setFocused(false);
   };
 
@@ -205,6 +250,102 @@ export function NavigationBar({
     </ActionHint>
   );
 
+  useEffect(() => {
+    const unsubscribeHistory = subscribeToHistoryUpdates(() => setDataVersion(v => v + 1));
+    const unsubscribeBookmarks = subscribeToBookmarksUpdates(() => setDataVersion(v => v + 1));
+    return () => {
+      unsubscribeHistory();
+      unsubscribeBookmarks();
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshSettings = () => {
+      setSearchEngine(getSettings().searchEngine);
+    };
+    refreshSettings();
+    return subscribeToSettingsUpdates(refreshSettings);
+  }, []);
+
+  useEffect(() => {
+    if (!focused) return;
+    if (flatItems.length === 0) {
+      setActiveIndex(0);
+      return;
+    }
+    if (autocompleteResults.inlineItemId) {
+      const idx = flatItems.findIndex(item => item.id === autocompleteResults.inlineItemId);
+      setActiveIndex(idx >= 0 ? idx : 0);
+      return;
+    }
+    setActiveIndex(0);
+  }, [focused, flatItems, autocompleteResults.inlineItemId]);
+
+  useEffect(() => {
+    if (!focused) return;
+    if (!hasUserTyped || !effectiveQuery) {
+      setDisplayValue(query);
+      return;
+    }
+    const inlineValue = autocompleteResults.inlineValue;
+    if (!inlineValue || !inlineValue.toLowerCase().startsWith(effectiveQuery.toLowerCase())) {
+      setDisplayValue(query);
+      return;
+    }
+    setDisplayValue(inlineValue);
+    requestAnimationFrame(() => {
+      const input = inputRef.current;
+      if (!input || document.activeElement !== input) return;
+      try {
+        input.setSelectionRange(effectiveQuery.length, inlineValue.length);
+      } catch {
+        // ignore
+      }
+    });
+  }, [focused, hasUserTyped, effectiveQuery, autocompleteResults.inlineValue, query]);
+
+  const handleSelectItem = (item: (typeof flatItems)[number]) => {
+    if (item.url) {
+      onNavigate(item.url);
+    } else if (item.query) {
+      onNavigate(buildSearchUrl(item.query, searchEngine));
+      recordSearch(item.query);
+      setDataVersion(v => v + 1);
+    }
+    setFocused(false);
+    setQuery('');
+    setDisplayValue('');
+    setHasUserTyped(false);
+  };
+
+  const handleSwitchToTab = (tabId: string) => {
+    onSwitchToTab?.(tabId);
+    setFocused(false);
+    setQuery('');
+    setDisplayValue('');
+    setHasUserTyped(false);
+  };
+
+  const acceptInlineCompletion = () => {
+    if (!autocompleteResults.inlineValue) return false;
+    const input = inputRef.current;
+    if (!input) return false;
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    if (start !== effectiveQuery.length || end !== displayValue.length) return false;
+    setQuery(autocompleteResults.inlineValue);
+    setDisplayValue(autocompleteResults.inlineValue);
+    setHasUserTyped(true);
+    requestAnimationFrame(() => {
+      try {
+        input.setSelectionRange(autocompleteResults.inlineValue!.length, autocompleteResults.inlineValue!.length);
+      } catch {
+        // ignore
+      }
+    });
+    return true;
+  };
+
   return (
     <div className="flex items-center h-10 bg-background border-b border-border px-2 gap-1 shrink-0">
       <NavButton label="Back" onClick={onBack} disabled={!canGoBack}>
@@ -224,10 +365,10 @@ export function NavigationBar({
         <Home size={15} />
       </NavButton>
 
-      <form onSubmit={handleSubmit} className="flex-1 mx-2">
+      <form onSubmit={handleSubmit} className="flex-1 mx-2 relative">
         <div
           className={cn(
-            'flex items-center h-8 rounded-lg border px-3 gap-1.5 transition-colors duration-fast',
+            'flex items-center h-8 rounded-lg border px-3 gap-1.5 transition-colors duration-fast relative',
             focused
               ? 'bg-notilus-surface-1 border-primary/50'
               : 'bg-transparent border-transparent hover:bg-primary/10'
@@ -243,11 +384,18 @@ export function NavigationBar({
           <input
             ref={inputRef}
             data-url-input
-            value={focused ? inputValue : ''}
-            onChange={event => setInputValue(event.target.value)}
+            value={focused ? displayValue : ''}
+            onChange={event => {
+              setHasUserTyped(true);
+              setQuery(event.target.value);
+              setDisplayValue(event.target.value);
+              submitIntentRef.current = false;
+            }}
             onFocus={() => {
               setFocused(true);
-              setInputValue(url);
+              setHasUserTyped(false);
+              setQuery(url);
+              setDisplayValue(url);
               submitIntentRef.current = false;
               window.requestAnimationFrame(() => {
                 inputRef.current?.select();
@@ -256,9 +404,48 @@ export function NavigationBar({
             onBlur={() => {
               submitIntentRef.current = false;
               setFocused(false);
+              setQuery('');
+              setDisplayValue('');
+              setHasUserTyped(false);
             }}
             onKeyDown={event => {
+              if (event.key === 'ArrowDown' && overlayVisible && flatItems.length > 0) {
+                event.preventDefault();
+                setActiveIndex(prev => (prev + 1) % flatItems.length);
+                submitIntentRef.current = false;
+                return;
+              }
+              if (event.key === 'ArrowUp' && overlayVisible && flatItems.length > 0) {
+                event.preventDefault();
+                setActiveIndex(prev => (prev - 1 + flatItems.length) % flatItems.length);
+                submitIntentRef.current = false;
+                return;
+              }
+              if ((event.key === 'Tab' || event.key === 'ArrowRight') && overlayVisible) {
+                const accepted = acceptInlineCompletion();
+                if (accepted) {
+                  event.preventDefault();
+                  submitIntentRef.current = false;
+                  return;
+                }
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setFocused(false);
+                setQuery('');
+                setDisplayValue('');
+                setHasUserTyped(false);
+                submitIntentRef.current = false;
+                return;
+              }
               if (event.key === 'Enter' && !(event.nativeEvent as KeyboardEvent).isComposing) {
+                if (overlayVisible && flatItems.length > 0) {
+                  event.preventDefault();
+                  const item = flatItems[activeIndex];
+                  if (item) handleSelectItem(item);
+                  submitIntentRef.current = false;
+                  return;
+                }
                 submitIntentRef.current = true;
                 return;
               }
@@ -337,6 +524,15 @@ export function NavigationBar({
             <Send size={13} />
           </UrlActionButton>
         </div>
+
+        {overlayVisible && (
+          <AutocompleteOverlay
+            sections={autocompleteResults.sections}
+            activeItemId={flatItems[activeIndex]?.id}
+            onSelect={handleSelectItem}
+            onSwitchToTab={handleSwitchToTab}
+          />
+        )}
       </form>
 
       <div data-testid="nav-right-separator" className="h-5 w-px bg-primary/60 mx-1 shrink-0" />

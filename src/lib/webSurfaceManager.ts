@@ -1,4 +1,5 @@
 import type { BrowserTab } from '@/hooks/useBrowserState';
+import { matchEmbeddedAuthPolicy } from '../../shared/embedded-auth-policy';
 import {
   desktopBindTabWebContents,
   desktopSetTabRenderMode,
@@ -383,7 +384,10 @@ class WebSurfaceManager {
 
   private handleAutoSwitchRevert(tabs: BrowserTab[]) {
     for (const tab of tabs) {
-      if (tab.kind !== 'external' || tab.renderMode !== 'native') continue;
+      if (tab.kind !== 'external' || tab.renderMode !== 'native') {
+        this.autoSwitchByTabId.delete(tab.id);
+        continue;
+      }
       const autoSwitch = this.autoSwitchByTabId.get(tab.id);
       if (!autoSwitch) continue;
       const currentOrigin = getOrigin(tab.url);
@@ -573,6 +577,34 @@ class WebSurfaceManager {
 
     surface.emitRuntime = emitRuntime;
 
+    const requestNativeBlockedMode = async (origin: string) => {
+      if (surface.mode !== 'tab' || !surface.tabId || surface.nativeRequested) return;
+
+      surface.nativeRequested = true;
+      this.autoSwitchByTabId.set(surface.tabId, { origin, reason: 'blocked' });
+      await emitRuntime();
+      await desktopSetTabRenderMode({ tabId: surface.tabId, mode: 'native', reason: 'blocked' });
+    };
+
+    const handleNavigation = async () => {
+      await emitRuntime();
+
+      if (surface.mode !== 'tab' || !surface.tabId || surface.nativeRequested) return;
+
+      let currentUrl = '';
+      try {
+        currentUrl = webview.getURL();
+      } catch {
+        return;
+      }
+
+      const resolvedUrl = resolveRuntimeUrl(currentUrl, surface.url);
+      const embeddedAuthMatch = matchEmbeddedAuthPolicy(resolvedUrl);
+      if (!embeddedAuthMatch?.shouldPreferNative) return;
+
+      await requestNativeBlockedMode(embeddedAuthMatch.authOrigin);
+    };
+
     const applyExtensions = async () => {
       if (surface.mode !== 'tab') return;
       if (!surface.domReady) return;
@@ -626,7 +658,7 @@ class WebSurfaceManager {
       this.onCreateTab?.(targetUrl);
     };
 
-    const handleFailLoad = (event: Event) => {
+    const handleFailLoad = async (event: Event) => {
       const detail = event as unknown as {
         errorDescription?: string;
         isMainFrame?: boolean;
@@ -637,17 +669,14 @@ class WebSurfaceManager {
       const blockedByResponse = BLOCKED_ERROR_SIGNATURES.some(signature => upperDescription.includes(signature));
 
       if (surface.mode === 'tab' && surface.tabId && isMainFrame && blockedByResponse) {
-        if (!surface.nativeRequested) {
-          surface.nativeRequested = true;
-          const origin = getOrigin(surface.url);
-          if (origin) {
-            this.autoSwitchByTabId.set(surface.tabId, { origin, reason: 'blocked' });
-          }
-          void desktopSetTabRenderMode({ tabId: surface.tabId, mode: 'native', reason: 'blocked' });
+        const origin = getOrigin(surface.url);
+        if (origin) {
+          await requestNativeBlockedMode(origin);
+          return;
         }
       }
 
-      void emitRuntime();
+      await emitRuntime();
     };
 
     const listeners: Array<[string, EventListener]> = [
@@ -660,10 +689,10 @@ class WebSurfaceManager {
           void applyExtensions();
         },
       ],
-      ['did-navigate', () => void emitRuntime()],
-      ['did-navigate-in-page', () => void emitRuntime()],
+      ['did-navigate', () => void handleNavigation()],
+      ['did-navigate-in-page', () => void handleNavigation()],
       ['page-title-updated', () => void emitRuntime()],
-      ['did-fail-load', handleFailLoad],
+      ['did-fail-load', event => void handleFailLoad(event)],
       ['new-window', handlePopup],
       ['did-create-window', handlePopup],
     ];

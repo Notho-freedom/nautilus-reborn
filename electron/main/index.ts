@@ -22,6 +22,7 @@ import { SystemMetricsManager } from './system-metrics-manager';
 import { TabManager } from './tab-manager';
 import { TerminalManager } from './terminal-manager';
 import { createMainWindow } from './window-manager';
+import { buildChromeUserAgent, ensureUserAgentCompatForSession } from './user-agent-compat';
 import { TabSessionStore } from './session-store';
 
 const DEBUG_IPC = process.env.NOTILUS_DEBUG_IPC === '1';
@@ -30,10 +31,12 @@ const SHARED_WEBVIEW_PARTITION = 'persist:notilus-default';
 const IS_DEV = !app.isPackaged;
 const SINGLE_INSTANCE_LOCK = app.requestSingleInstanceLock();
 
+app.commandLine.appendSwitch('disable-features', 'UserAgentClientHint,UserAgentReduction');
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
+
 function configureUserAgent() {
-  const chromeVersion = process.versions.chrome;
-  if (!chromeVersion) return;
-  const ua = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+  const ua = buildChromeUserAgent();
+  if (!ua) return;
   app.userAgentFallback = ua;
 
   app.on('web-contents-created', (_event, contents) => {
@@ -147,6 +150,7 @@ function configureWebviewSecurity(window: BrowserWindow, externalPreloadPath: st
     } else {
       webPreferences.partition = SHARED_WEBVIEW_PARTITION;
     }
+    ensureUserAgentCompatForSession(session.fromPartition(webPreferences.partition));
   });
 }
 
@@ -159,10 +163,12 @@ let networkLayerReady = false;
 
 function ensureNetworkLayer() {
   if (networkLayerReady) return;
+  ensureUserAgentCompatForSession(session.defaultSession);
   const networkLayer = new NetworkLayer(session.defaultSession, DEBUG_IPC);
   networkLayer.setup();
   const webviewSession = session.fromPartition(SHARED_WEBVIEW_PARTITION);
   if (webviewSession !== session.defaultSession) {
+    ensureUserAgentCompatForSession(webviewSession);
     const webviewNetworkLayer = new NetworkLayer(webviewSession, DEBUG_IPC);
     webviewNetworkLayer.setup();
   }

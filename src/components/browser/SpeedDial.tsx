@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Globe, Clock, Zap, Quote, Terminal, Plus, Wrench, ShieldCheck } from 'lucide-react';
+import { Search, Clock, Zap, Quote, Terminal, Plus, Wrench, ShieldCheck } from 'lucide-react';
 import { getBookmarks, subscribeToBookmarksUpdates } from '@/lib/bookmarks';
 import { getHistoryItems, subscribeToHistoryUpdates } from '@/lib/history';
 import { getSettings, subscribeToSettingsUpdates, type BrowserSettings } from '@/lib/settings';
 import { resolveInitialWallpaper, pickRandomDefaultWallpaper } from '@/lib/defaultWallpapers';
+import { AutocompleteOverlay } from './AutocompleteOverlay';
+import type { BrowserTab } from '@/hooks/useBrowserState';
+import { buildAutocompleteResults, buildSearchUrl, getRecentSearches, recordSearch } from '@/lib/autocomplete';
+import { cn } from '@/lib/utils';
 
 interface SpeedDialProps {
   onNavigate: (url: string) => void;
+  openTabs?: BrowserTab[];
+  activeTabId?: string;
+  onSwitchToTab?: (tabId: string) => void;
 }
 
 const SPEED_DIAL_WALLPAPER_KEY = 'notilus_v2_speed_dial_wallpaper';
@@ -48,10 +55,12 @@ function formatRecentTime(visitedAt: string): string {
   return `${Math.floor(diffSeconds / 86400)} d ago`;
 }
 
-export function SpeedDial({ onNavigate }: SpeedDialProps) {
+export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTab }: SpeedDialProps) {
   const [time, setTime] = useState(new Date());
-  const [searchQuery, setSearchQuery] = useState('');
+  const [query, setQuery] = useState('');
+  const [displayValue, setDisplayValue] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [searchEngine, setSearchEngine] = useState(() => getSettings().searchEngine);
   const [homePageStyle, setHomePageStyle] = useState<BrowserSettings['homePageStyle']>(
@@ -61,7 +70,28 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
   const [wallpaperStatus, setWallpaperStatus] = useState<WallpaperStatus>('idle');
   const [favorites, setFavorites] = useState(DEFAULT_FAVORITES);
   const [recent, setRecent] = useState(DEFAULT_RECENT);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [autocompleteVersion, setAutocompleteVersion] = useState(0);
   const submitIntentRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const effectiveQuery = searchFocused ? query : '';
+  const autocompleteResults = useMemo(
+    () =>
+      buildAutocompleteResults({
+        query: effectiveQuery,
+        historyItems: getHistoryItems(),
+        bookmarkItems: getBookmarks(),
+        recentSearches: getRecentSearches(),
+        searchEngine,
+        openTabs,
+        activeTabId,
+        maxPerSection: 6,
+      }),
+    [effectiveQuery, searchEngine, autocompleteVersion, openTabs, activeTabId]
+  );
+  const flatItems = autocompleteResults.flatItems;
+  const overlayVisible = searchFocused && autocompleteResults.sections.length > 0;
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
@@ -79,6 +109,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
         .slice(0, 8)
         .map(bookmark => ({ name: bookmark.title, url: bookmark.url }));
       setFavorites(bookmarks.length > 0 ? bookmarks : DEFAULT_FAVORITES);
+      setAutocompleteVersion(v => v + 1);
     };
 
     refreshFavorites();
@@ -95,6 +126,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
           time: formatRecentTime(item.visitedAt),
         }));
       setRecent(recentHistory.length > 0 ? recentHistory : DEFAULT_RECENT);
+      setAutocompleteVersion(v => v + 1);
     };
 
     refreshRecent();
@@ -156,16 +188,15 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
     e.preventDefault();
     if (!submitIntentRef.current) return;
     submitIntentRef.current = false;
-    if (searchQuery.trim()) {
-      const encoded = encodeURIComponent(searchQuery);
-      const target =
-        searchEngine === 'google'
-          ? `https://www.google.com/search?q=${encoded}`
-          : searchEngine === 'brave'
-            ? `https://search.brave.com/search?q=${encoded}`
-            : `https://duckduckgo.com/?q=${encoded}`;
-      onNavigate(target);
-    }
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    onNavigate(buildSearchUrl(trimmed, searchEngine));
+    recordSearch(trimmed);
+    setAutocompleteVersion(v => v + 1);
+    setQuery('');
+    setDisplayValue('');
+    setHasUserTyped(false);
+    setSearchFocused(false);
   };
 
   const greeting = () => {
@@ -179,6 +210,85 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
     homePageStyle === 'modern' &&
     wallpaperUrl !== null &&
     wallpaperStatus !== 'error';
+
+  useEffect(() => {
+    if (!searchFocused) return;
+    if (flatItems.length === 0) {
+      setActiveIndex(0);
+      return;
+    }
+    if (autocompleteResults.inlineItemId) {
+      const idx = flatItems.findIndex(item => item.id === autocompleteResults.inlineItemId);
+      setActiveIndex(idx >= 0 ? idx : 0);
+      return;
+    }
+    setActiveIndex(0);
+  }, [searchFocused, flatItems, autocompleteResults.inlineItemId]);
+
+  useEffect(() => {
+    if (!searchFocused) return;
+    if (!hasUserTyped || !effectiveQuery) {
+      setDisplayValue(query);
+      return;
+    }
+    const inlineValue = autocompleteResults.inlineValue;
+    if (!inlineValue || !inlineValue.toLowerCase().startsWith(effectiveQuery.toLowerCase())) {
+      setDisplayValue(query);
+      return;
+    }
+    setDisplayValue(inlineValue);
+    requestAnimationFrame(() => {
+      const input = searchInputRef.current;
+      if (!input || document.activeElement !== input) return;
+      try {
+        input.setSelectionRange(effectiveQuery.length, inlineValue.length);
+      } catch {
+        // ignore
+      }
+    });
+  }, [searchFocused, hasUserTyped, effectiveQuery, autocompleteResults.inlineValue, query]);
+
+  const handleSelectItem = (item: (typeof flatItems)[number]) => {
+    if (item.url) {
+      onNavigate(item.url);
+    } else if (item.query) {
+      onNavigate(buildSearchUrl(item.query, searchEngine));
+      recordSearch(item.query);
+      setAutocompleteVersion(v => v + 1);
+    }
+    setQuery('');
+    setDisplayValue('');
+    setHasUserTyped(false);
+    setSearchFocused(false);
+  };
+
+  const handleSwitchToTab = (tabId: string) => {
+    onSwitchToTab?.(tabId);
+    setQuery('');
+    setDisplayValue('');
+    setHasUserTyped(false);
+    setSearchFocused(false);
+  };
+
+  const acceptInlineCompletion = () => {
+    if (!autocompleteResults.inlineValue) return false;
+    const input = searchInputRef.current;
+    if (!input) return false;
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    if (start !== effectiveQuery.length || end !== displayValue.length) return false;
+    setQuery(autocompleteResults.inlineValue);
+    setDisplayValue(autocompleteResults.inlineValue);
+    setHasUserTyped(true);
+    requestAnimationFrame(() => {
+      try {
+        input.setSelectionRange(autocompleteResults.inlineValue!.length, autocompleteResults.inlineValue!.length);
+      } catch {
+        // ignore
+      }
+    });
+    return true;
+  };
 
   return (
     <div className="flex-1 flex flex-col items-center justify-start p-8 overflow-y-auto no-scrollbar relative">
@@ -210,30 +320,41 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
         className="absolute inset-0 z-[2] gradient-overlay pointer-events-none"
       />
 
-      {/* Logo */}
-      <div className="mb-6 mt-6 flex flex-col items-center animate-fade-in-up relative z-10">
-        <img
-          src="/logo_n_no_bg.png"
-          alt="Notilus"
-          className="w-36 h-36 object-contain mb-2 animate-glow-breathe drop-shadow-[0_0_16px_hsl(var(--primary)/0.35)]"
-        />
-        <p className="text-sm font-body text-muted-foreground mt-1">{greeting()}, Developer</p>
-      </div>
+      {searchFocused && (
+        <div className="absolute inset-0 z-[3] bg-black/50 backdrop-blur-sm" />
+      )}
 
-      {/* Clock */}
-      <div className="mb-8 text-center relative z-10 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        <div className="text-6xl font-display font-extralight text-foreground tracking-[0.2em]">
-          {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      <div
+        className={cn(
+          'relative z-10 transition-opacity duration-200',
+          searchFocused ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        )}
+      >
+        {/* Logo */}
+        <div className="mb-6 mt-6 flex flex-col items-center animate-fade-in-up">
+          <img
+            src="/logo_n_no_bg.png"
+            alt="Notilus"
+            className="w-36 h-36 object-contain mb-2 animate-glow-breathe drop-shadow-[0_0_16px_hsl(var(--primary)/0.35)]"
+          />
+          <p className="text-sm font-body text-muted-foreground mt-1">{greeting()}, Developer</p>
         </div>
-        <div className="text-sm font-body text-muted-foreground mt-2 tracking-wide">
-          {time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+
+        {/* Clock */}
+        <div className="mb-8 text-center animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+          <div className="text-6xl font-display font-extralight text-foreground tracking-[0.2em]">
+            {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+          <div className="text-sm font-body text-muted-foreground mt-2 tracking-wide">
+            {time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </div>
         </div>
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="w-full max-w-lg mb-10 relative z-10 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+      <form onSubmit={handleSearch} className="w-full max-w-lg mb-10 relative z-[4] animate-fade-in-up" style={{ animationDelay: '200ms' }}>
         <div
-          className={`flex items-center h-12 rounded-xl border px-4 gap-3 transition-colors duration-fast ${
+          className={`flex items-center h-12 rounded-xl border px-4 gap-3 transition-colors duration-fast relative ${
             showModernWallpaper
               ? (searchFocused
                 ? 'bg-notilus-surface-1 border-primary/50'
@@ -245,15 +366,65 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
         >
           <Search size={18} className="text-muted-foreground" />
           <input
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
+            ref={searchInputRef}
+            value={searchFocused ? displayValue : ''}
+            onChange={e => {
+              setHasUserTyped(true);
+              setQuery(e.target.value);
+              setDisplayValue(e.target.value);
+              submitIntentRef.current = false;
+            }}
+            onFocus={() => {
+              setSearchFocused(true);
+              setHasUserTyped(false);
+              setQuery('');
+              setDisplayValue('');
+            }}
             onBlur={() => {
               submitIntentRef.current = false;
               setSearchFocused(false);
+              setQuery('');
+              setDisplayValue('');
+              setHasUserTyped(false);
             }}
             onKeyDown={event => {
+              if (event.key === 'ArrowDown' && overlayVisible && flatItems.length > 0) {
+                event.preventDefault();
+                setActiveIndex(prev => (prev + 1) % flatItems.length);
+                submitIntentRef.current = false;
+                return;
+              }
+              if (event.key === 'ArrowUp' && overlayVisible && flatItems.length > 0) {
+                event.preventDefault();
+                setActiveIndex(prev => (prev - 1 + flatItems.length) % flatItems.length);
+                submitIntentRef.current = false;
+                return;
+              }
+              if ((event.key === 'Tab' || event.key === 'ArrowRight') && overlayVisible) {
+                const accepted = acceptInlineCompletion();
+                if (accepted) {
+                  event.preventDefault();
+                  submitIntentRef.current = false;
+                  return;
+                }
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setSearchFocused(false);
+                setQuery('');
+                setDisplayValue('');
+                setHasUserTyped(false);
+                submitIntentRef.current = false;
+                return;
+              }
               if (event.key === 'Enter' && !(event.nativeEvent as KeyboardEvent).isComposing) {
+                if (overlayVisible && flatItems.length > 0) {
+                  event.preventDefault();
+                  const item = flatItems[activeIndex];
+                  if (item) handleSelectItem(item);
+                  submitIntentRef.current = false;
+                  return;
+                }
                 submitIntentRef.current = true;
                 return;
               }
@@ -272,10 +443,26 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
             Search
           </button>
         </div>
+
+        {overlayVisible && (
+          <AutocompleteOverlay
+            sections={autocompleteResults.sections}
+            activeItemId={flatItems[activeIndex]?.id}
+            onSelect={handleSelectItem}
+            onSwitchToTab={handleSwitchToTab}
+            className="mt-3"
+          />
+        )}
       </form>
 
-      {/* Favorites grid */}
-      <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 max-w-2xl mb-10 relative z-10 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+      <div
+        className={cn(
+          'relative z-10 transition-opacity duration-200',
+          searchFocused ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        )}
+      >
+        {/* Favorites grid */}
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 max-w-2xl mb-10 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
         {favorites.map((fav, i) => (
           <button
             key={i}
@@ -298,10 +485,10 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
             </span>
           </button>
         ))}
-      </div>
+        </div>
 
-      {/* Bottom row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl w-full relative z-10 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+        {/* Bottom row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl w-full animate-fade-in-up" style={{ animationDelay: '400ms' }}>
         {/* Recent */}
         <div className="glass rounded-xl p-4">
           <div className="flex items-center gap-1.5 text-[11px] font-display text-muted-foreground uppercase tracking-wider mb-3">
@@ -342,6 +529,7 @@ export function SpeedDial({ onNavigate }: SpeedDialProps) {
               </button>
             ))}
           </div>
+        </div>
         </div>
       </div>
     </div>

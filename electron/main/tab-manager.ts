@@ -22,7 +22,9 @@ import type {
   TabRuntimeUpdateRequest,
   ViewportBounds,
 } from '../../shared/browser-contract';
+import { matchEmbeddedAuthPolicy } from '../../shared/embedded-auth-policy';
 import { DevToolsDockManager } from './devtools-dock-manager';
+import { ensureUserAgentCompatForSession } from './user-agent-compat';
 import type { PersistedTabSession } from './session-store';
 
 interface ManagedTab {
@@ -80,6 +82,16 @@ function normalizeRuntimeUrl(rawUrl: string, fallback: string): string {
   return trimmed;
 }
 
+function getOrigin(url: string): string | null {
+  if (!url) return null;
+  if (isInternalUrl(url)) return url;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
 function isDevToolsShortcutInput(input: Electron.Input): boolean {
   const key = typeof input.key === 'string' ? input.key.toUpperCase() : '';
   return key === 'F12' || ((input.control || input.meta) && input.shift && key === 'I');
@@ -102,6 +114,7 @@ export class TabManager {
   private readonly devToolsDock: DevToolsDockManager;
   private renderPolicy: RenderPolicy = { ...DEFAULT_RENDER_POLICY };
   private readonly renderModeReasonByTabId = new Map<string, TabRenderModeReason>();
+  private readonly blockedOriginByTabId = new Map<string, string>();
   private readonly performanceTimersByTabId = new Map<string, NodeJS.Timeout>();
 
   constructor(private readonly options: TabManagerOptions) {
@@ -119,7 +132,12 @@ export class TabManager {
       tabs: this.order
         .map(id => this.tabs.get(id)?.descriptor)
         .filter((tab): tab is TabDescriptor => Boolean(tab))
-        .map(tab => ({ ...tab })),
+        .map(tab => ({
+          ...tab,
+          renderModeReason: tab.renderMode
+            ? this.renderModeReasonByTabId.get(tab.id)
+            : undefined,
+        })),
       activeTabId: this.activeTabId,
     };
   }
@@ -271,11 +289,20 @@ export class TabManager {
     const tabId = this.createTabId();
     const isPrivate = options.isPrivate ?? false;
     const isInternal = isInternalUrl(url);
+    const embeddedAuthMatch = isInternal ? null : matchEmbeddedAuthPolicy(url);
     const initialRenderMode: TabRenderMode | undefined = isInternal
       ? undefined
-      : this.renderPolicy.profile === 'isolate'
+      : embeddedAuthMatch?.shouldPreferNative
         ? 'native'
-        : 'webview';
+        : this.renderPolicy.profile === 'isolate'
+          ? 'native'
+          : 'webview';
+    const initialRenderReason =
+      initialRenderMode === 'native'
+        ? embeddedAuthMatch?.shouldPreferNative
+          ? 'blocked'
+          : 'user'
+        : undefined;
 
     const descriptor: TabDescriptor = {
       id: tabId,
@@ -294,7 +321,10 @@ export class TabManager {
 
     if (descriptor.renderMode === 'native') {
       this.ensureNativeView(tabId, url);
-      this.renderModeReasonByTabId.set(tabId, 'user');
+      if (initialRenderReason) {
+        this.renderModeReasonByTabId.set(tabId, initialRenderReason);
+        this.trackBlockedOrigin(tabId, url, initialRenderReason);
+      }
     }
 
     if (options.activate) {
@@ -320,6 +350,7 @@ export class TabManager {
     this.webContentsByTabId.delete(tabId);
     this.clearPerformanceTimer(tabId);
     this.renderModeReasonByTabId.delete(tabId);
+    this.blockedOriginByTabId.delete(tabId);
     this.destroyNativeView(tabId);
     this.detachContextMenuForTab(tabId);
     if (closingActiveTab) {
@@ -390,6 +421,7 @@ export class TabManager {
       };
       this.webContentsByTabId.delete(targetId);
       this.renderModeReasonByTabId.delete(targetId);
+      this.blockedOriginByTabId.delete(targetId);
       this.destroyNativeView(targetId);
       this.log('tab:navigate', `${targetId} -> ${url}`);
       this.activateTabInternal(targetId);
@@ -397,12 +429,21 @@ export class TabManager {
       return this.getSnapshot();
     }
 
+    const embeddedAuthMatch = matchEmbeddedAuthPolicy(url);
     const renderMode: TabRenderMode =
-      this.renderPolicy.profile === 'isolate'
+      embeddedAuthMatch?.shouldPreferNative
         ? 'native'
-        : tab.descriptor.renderMode === 'native'
+        : this.renderPolicy.profile === 'isolate'
           ? 'native'
-          : 'webview';
+          : tab.descriptor.renderMode === 'native'
+            ? 'native'
+            : 'webview';
+    const renderModeReason =
+      renderMode === 'native'
+        ? embeddedAuthMatch?.shouldPreferNative
+          ? 'blocked'
+          : this.renderModeReasonByTabId.get(targetId) ?? 'user'
+        : undefined;
     tab.descriptor = {
       ...tab.descriptor,
       kind: 'external',
@@ -415,8 +456,9 @@ export class TabManager {
     };
 
     if (renderMode === 'native') {
-      if (!this.renderModeReasonByTabId.has(targetId)) {
-        this.renderModeReasonByTabId.set(targetId, 'user');
+      if (renderModeReason) {
+        this.renderModeReasonByTabId.set(targetId, renderModeReason);
+        this.trackBlockedOrigin(targetId, url, renderModeReason);
       }
       this.ensureNativeView(targetId, url);
       const view = this.nativeViewsByTabId.get(targetId);
@@ -665,6 +707,7 @@ export class TabManager {
     this.nativeViewsByTabId.set(tabId, view);
 
     const targetWebContents = view.webContents;
+    ensureUserAgentCompatForSession(targetWebContents.session);
     if (app.userAgentFallback) {
       targetWebContents.setUserAgent(app.userAgentFallback);
     }
@@ -833,17 +876,23 @@ export class TabManager {
 
     const nextMode: TabRenderMode = mode === 'native' ? 'native' : 'webview';
     if (tab.descriptor.renderMode === nextMode) return false;
+    const effectiveReason =
+      nextMode === 'native' && matchEmbeddedAuthPolicy(tab.descriptor.url)?.shouldPreferNative
+        ? 'blocked'
+        : reason;
 
     if (nextMode === 'native') {
       this.webContentsByTabId.delete(tabId);
       this.detachContextMenuForTab(tabId);
       tab.descriptor = { ...tab.descriptor, renderMode: 'native' };
-      this.renderModeReasonByTabId.set(tabId, reason);
+      this.renderModeReasonByTabId.set(tabId, effectiveReason);
+      this.trackBlockedOrigin(tabId, tab.descriptor.url, effectiveReason);
       this.ensureNativeView(tabId, tab.descriptor.url);
     } else {
       this.destroyNativeView(tabId);
       tab.descriptor = { ...tab.descriptor, renderMode: 'webview' };
       this.renderModeReasonByTabId.delete(tabId);
+      this.blockedOriginByTabId.delete(tabId);
     }
 
     return true;
@@ -961,6 +1010,10 @@ export class TabManager {
       canGoBack: targetWebContents.canGoBack(),
       canGoForward: targetWebContents.canGoForward(),
     };
+
+    if (this.maybeRevertBlockedNativeTab(tabId)) {
+      return;
+    }
   }
 
   private attachNativeView(mainWindow: BrowserWindow, view: WebContentsView): void {
@@ -982,6 +1035,7 @@ export class TabManager {
     this.webContentsByTabId.clear();
     this.pinnedTabIds.clear();
     this.renderModeReasonByTabId.clear();
+    this.blockedOriginByTabId.clear();
     this.activeTabId = null;
     this.devToolsDock.close();
   }
@@ -1206,5 +1260,44 @@ export class TabManager {
   private log(event: string, message: string): void {
     if (!this.options.debug) return;
     console.info(`[tab-manager] ${event} ${message}`);
+  }
+
+  private trackBlockedOrigin(
+    tabId: string,
+    url: string,
+    reason: TabRenderModeReason
+  ): void {
+    if (reason !== 'blocked') {
+      this.blockedOriginByTabId.delete(tabId);
+      return;
+    }
+
+    const authOrigin = matchEmbeddedAuthPolicy(url)?.authOrigin ?? getOrigin(url);
+    if (!authOrigin) {
+      this.blockedOriginByTabId.delete(tabId);
+      return;
+    }
+
+    this.blockedOriginByTabId.set(tabId, authOrigin);
+  }
+
+  private maybeRevertBlockedNativeTab(tabId: string): boolean {
+    const tab = this.tabs.get(tabId);
+    if (!tab || tab.descriptor.renderMode !== 'native') return false;
+    if (this.renderModeReasonByTabId.get(tabId) !== 'blocked') return false;
+
+    const blockedOrigin = this.blockedOriginByTabId.get(tabId);
+    const currentOrigin = getOrigin(tab.descriptor.url);
+    if (!blockedOrigin || !currentOrigin || currentOrigin === blockedOrigin) {
+      return false;
+    }
+
+    const changed = this.applyTabRenderMode(tabId, 'webview', 'user');
+    if (!changed) return false;
+
+    this.syncNativeViews();
+    this.refreshPerformanceTimers();
+    this.applyBackgroundThrottling();
+    return true;
   }
 }

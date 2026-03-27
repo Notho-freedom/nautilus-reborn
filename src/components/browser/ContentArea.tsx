@@ -9,6 +9,7 @@ interface ContentAreaProps {
   isDesktopMode: boolean;
   tabs: BrowserTab[];
   activeTabId: string;
+  onSwitchToTab?: (tabId: string) => void;
   onCreateTab: (url: string) => void;
   zoom: number;
   studioViewport: { width: number; height: number } | null;
@@ -22,6 +23,7 @@ export function ContentArea({
   isDesktopMode,
   tabs,
   activeTabId,
+  onSwitchToTab,
   onCreateTab,
   zoom,
   studioViewport,
@@ -31,7 +33,7 @@ export function ContentArea({
   const isInternalPage = url.startsWith('notilus://');
 
   if (isInternalPage || !url || url === 'notilus://speed-dial') {
-    return <SpeedDial onNavigate={onNavigate} />;
+    return <SpeedDial onNavigate={onNavigate} openTabs={tabs} activeTabId={activeTabId} onSwitchToTab={onSwitchToTab} />;
   }
 
   if (isDesktopMode) {

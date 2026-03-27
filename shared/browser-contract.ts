@@ -27,6 +27,7 @@ export interface TabDescriptor {
   url: string;
   kind: TabKind;
   renderMode?: TabRenderMode;
+  renderModeReason?: TabRenderModeReason;
   isPrivate?: boolean;
   isLoading: boolean;
   canGoBack: boolean;

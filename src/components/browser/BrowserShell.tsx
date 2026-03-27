@@ -41,6 +41,7 @@ export function BrowserShell() {
   const stats = useSystemMonitor();
   const auth = useAuth();
   const handledGitHubOAuthUrlRef = useRef(new Set<string>());
+  const nativeAuthToastKeysRef = useRef(new Set<string>());
   const [activeWebService, setActiveWebService] = useState<WebServiceItem | null>(null);
   const [activeTabBookmarked, setActiveTabBookmarked] = useState(false);
   const [adBlockEnabled, setAdBlockEnabled] = useState(() => getSettings().adBlock);
@@ -445,6 +446,22 @@ export function BrowserShell() {
   }, [auth.isGitHubAuthFlowPending]);
 
   useEffect(() => {
+    for (const tab of browser.tabs) {
+      if (tab.kind !== 'external') continue;
+      if (tab.renderMode !== 'native' || tab.renderModeReason !== 'blocked') continue;
+
+      const key = `${tab.id}|${tab.url}`;
+      if (nativeAuthToastKeysRef.current.has(key)) continue;
+      nativeAuthToastKeysRef.current.add(key);
+
+      toast({
+        title: 'Secure sign-in opened in native mode',
+        description: 'Nautilus switched this tab to the native engine for a compatible sign-in flow.',
+      });
+    }
+  }, [browser.tabs]);
+
+  useEffect(() => {
     if (!browser.isDesktopMode || !auth.isGitHubAuthFlowPending) return;
 
     let cancelled = false;
@@ -619,6 +636,9 @@ export function BrowserShell() {
         onOpenGitHub={() => browser.toggleSidebar('github')}
         onDisconnectGitHub={auth.disconnect}
         onSignInWithGitHub={handleSignInWithGitHub}
+        openTabs={browser.tabs}
+        activeTabId={browser.activeTabId}
+        onSwitchToTab={browser.setActiveTabId}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -673,6 +693,7 @@ export function BrowserShell() {
               isDesktopMode={browser.isDesktopMode}
               tabs={browser.tabs}
               activeTabId={browser.activeTabId}
+              onSwitchToTab={browser.setActiveTabId}
               onCreateTab={browser.addTab}
               zoom={zoom}
               studioViewport={studioWebviewViewport}
