@@ -41,7 +41,7 @@ function configureUserAgent() {
 
   app.on('web-contents-created', (_event, contents) => {
     const type = contents.getType();
-    if (type === 'webview' || type === 'webContentsView') {
+    if (type === 'webview' || (type as string) === 'webContentsView') {
       contents.setUserAgent(app.userAgentFallback);
     }
   });

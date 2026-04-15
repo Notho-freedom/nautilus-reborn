@@ -159,7 +159,7 @@ describe('DesktopWebviewLayer', () => {
 
   it('does not call loadURL when only active tab changes', async () => {
     const loadSpy = vi.spyOn(
-      HTMLElement.prototype as { loadURL: (url: string) => Promise<void> },
+      HTMLElement.prototype as unknown as { loadURL: (url: string) => Promise<void> },
       'loadURL'
     );
     const { rerender } = render(
@@ -200,7 +200,7 @@ describe('DesktopWebviewLayer', () => {
   it('keeps initial src stable and uses loadURL only when tab url changes', async () => {
     const tab = { ...externalTabA, id: 'tab-external-src' };
     const loadSpy = vi.spyOn(
-      HTMLElement.prototype as { loadURL: (url: string) => Promise<void> },
+      HTMLElement.prototype as unknown as { loadURL: (url: string) => Promise<void> },
       'loadURL'
     );
     const updatedTabA: BrowserTab = {
@@ -222,7 +222,7 @@ describe('DesktopWebviewLayer', () => {
 
     const webview = getWebviewElement(tab.id);
     await waitFor(() => {
-      expect(webview.src).toBe('https://example.com');
+      expect((webview as any).src).toBe('https://example.com');
     });
     webview.setAttribute('src', 'https://example.com');
     webview.dispatchEvent(new Event('dom-ready'));
