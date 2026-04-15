@@ -10,55 +10,68 @@
     --background: 252 30% 3%;       /* #09080D */
     --foreground: 240 10% 91%;      /* #E7E7EC */
 
-    --card: 240 20% 5%;             /* #101018 */
+    --card: 240 20% 6%;             /* slightly elevated */
     --card-foreground: 240 10% 91%;
 
-    --popover: 240 15% 8%;          /* #1C1C28 */
+    --popover: 240 15% 9%;
     --popover-foreground: 240 10% 91%;
 
     --primary: 345 100% 59%;        /* #FF2D55 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 18% 7%;        /* #181824 */
+    --secondary: 240 18% 8%;
     --secondary-foreground: 240 8% 70%;
 
-    --muted: 240 15% 10%;
-    --muted-foreground: 240 8% 52%; /* #7D7D89 */
+    --muted: 240 15% 11%;
+    --muted-foreground: 240 8% 50%;
 
-    --accent: 345 100% 59%;         /* #FF2D55 */
+    --accent: 345 100% 59%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 4 90% 60%;       /* #FF3B30 */
+    --destructive: 4 90% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 100% / 0.12;
-    --input: 0 0% 100% / 0.12;
+    --border: 240 10% 14%;
+    --input: 240 10% 14%;
     --ring: 345 100% 59%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
     /* Sidebar */
-    --sidebar-background: 252 30% 3%;
-    --sidebar-foreground: 240 8% 52%;
+    --sidebar-background: 240 20% 4%;
+    --sidebar-foreground: 240 8% 50%;
     --sidebar-primary: 345 100% 59%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 18% 7%;
+    --sidebar-accent: 240 18% 8%;
     --sidebar-accent-foreground: 240 8% 70%;
-    --sidebar-border: 0 0% 100% / 0.08;
+    --sidebar-border: 240 10% 12%;
     --sidebar-ring: 345 100% 59%;
 
-    /* Notilus V2 Semantic */
+    /* Notilus V2 Semantic Surfaces */
     --notilus-neon: 345 100% 59%;
     --notilus-neon-dark: 330 80% 40%;
-    --notilus-surface-1: 240 20% 5%;
-    --notilus-surface-2: 240 18% 7%;
-    --notilus-surface-3: 240 15% 8%;
+    --notilus-surface-1: 240 20% 6%;
+    --notilus-surface-2: 240 18% 8%;
+    --notilus-surface-3: 240 15% 10%;
+    --notilus-surface-elevated: 240 18% 7%;
+    --notilus-surface-overlay: 240 15% 10%;
+
+    /* Accent glow */
+    --notilus-accent-glow: 345 100% 59%;
+
+    /* Shadow tokens */
+    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
+    --shadow-sm: 0 2px 6px -1px hsl(0 0% 0% / 0.35), 0 1px 3px -1px hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 12px -2px hsl(0 0% 0% / 0.4), 0 2px 6px -2px hsl(0 0% 0% / 0.25);
+    --shadow-lg: 0 8px 24px -4px hsl(0 0% 0% / 0.5), 0 4px 10px -4px hsl(0 0% 0% / 0.3);
+    --shadow-panel: 4px 0 24px -4px hsl(0 0% 0% / 0.5), 2px 0 8px -2px hsl(0 0% 0% / 0.3);
+    --shadow-glow: 0 0 20px -4px hsl(345 100% 59% / 0.3);
 
     /* Status colors */
-    --color-success: 142 71% 49%;   /* #34C759 */
-    --color-warning: 32 100% 50%;   /* #FF9500 */
-    --color-error: 4 90% 60%;       /* #FF3B30 */
-    --color-info: 211 100% 50%;     /* #007AFF */
+    --color-success: 142 71% 49%;
+    --color-warning: 32 100% 50%;
+    --color-error: 4 90% 60%;
+    --color-info: 211 100% 50%;
 
     /* Motion */
     --motion-fast: 150ms;
@@ -98,6 +111,18 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Orbitron', 'Segoe UI', 'Inter', sans-serif;
   }
+
+  /* Universal interactive element transitions */
+  button, a, [role="button"] {
+    transition: all var(--motion-fast) var(--ease-default);
+  }
+
+  /* Focus visible ring */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
+    border-radius: var(--radius);
+  }
 }
 
 @layer utilities {
@@ -123,18 +148,50 @@
     --input: var(--secondary);
   }
 
-  .glass {
-    background: hsl(var(--notilus-surface-3) / 0.85);
-    backdrop-filter: blur(16px);
+  /* Surface utilities */
+  .surface-elevated {
+    background: hsl(var(--notilus-surface-elevated));
+    box-shadow: var(--shadow-sm);
     border: 1px solid hsl(var(--border));
+  }
+
+  .surface-panel {
+    background: hsl(var(--notilus-surface-1));
+    box-shadow: var(--shadow-panel);
+    border-right: 1px solid hsl(var(--border));
+  }
+
+  .surface-hover {
+    transition: background var(--motion-fast) var(--ease-default);
+  }
+
+  .surface-hover:hover {
+    background: hsl(var(--notilus-surface-2));
+  }
+
+  /* Glass variants */
+  .glass {
+    background: hsl(var(--notilus-surface-3) / 0.92);
+    backdrop-filter: blur(24px);
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-md);
   }
 
   .glass-strong {
-    background: hsl(var(--notilus-surface-2) / 0.92);
-    backdrop-filter: blur(24px);
+    background: hsl(var(--notilus-surface-2) / 0.95);
+    backdrop-filter: blur(32px);
     border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-lg);
   }
 
+  .glass-panel {
+    background: hsl(var(--notilus-surface-1) / 0.97);
+    backdrop-filter: blur(32px);
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-panel);
+  }
+
+  /* Glow utilities */
   .glow-primary {
     box-shadow: 0 0 18px -4px hsl(var(--primary) / 0.45);
   }
@@ -151,12 +208,17 @@
     text-shadow: 0 0 20px hsl(var(--primary) / 0.5);
   }
 
+  .glow-accent {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Gradients */
   .notilus-gradient {
-    background: linear-gradient(135deg, #ff2d55 0%, #b1165a 100%);
+    background: linear-gradient(135deg, hsl(345 100% 62%) 0%, hsl(330 80% 40%) 100%);
   }
 
   .notilus-gradient-full {
-    background: linear-gradient(135deg, #ff3366 0%, #ff0040 50%, #b1165a 100%);
+    background: linear-gradient(135deg, hsl(345 100% 65%) 0%, hsl(345 100% 55%) 50%, hsl(330 80% 40%) 100%);
   }
 
   .gradient-surface {
@@ -164,9 +226,14 @@
   }
 
   .gradient-overlay {
-    background: radial-gradient(120% 120% at 50% 0%, hsl(var(--primary) / 0.12) 0%, hsl(var(--primary) / 0) 60%);
+    background: radial-gradient(120% 120% at 50% 0%, hsl(var(--primary) / 0.08) 0%, hsl(var(--primary) / 0) 60%);
   }
 
+  .gradient-subtle {
+    background: linear-gradient(180deg, hsl(var(--notilus-surface-2) / 0.5) 0%, transparent 100%);
+  }
+
+  /* Scrollbar */
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted)) transparent;
@@ -196,6 +263,7 @@
     height: 0;
   }
 
+  /* Status color classes */
   .text-success { color: hsl(var(--color-success)); }
   .text-warning { color: hsl(var(--color-warning)); }
   .text-error { color: hsl(var(--color-error)); }
@@ -222,14 +290,34 @@
   100% { transform: translateY(100%); }
 }
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slide-in-left {
-  from { opacity: 0; transform: translateX(-20px); }
+  from { opacity: 0; transform: translateX(-12px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-up-sm {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .animate-notilus-pulse {
@@ -240,12 +328,24 @@
   animation: notilus-glow-breathe 3s var(--ease-smooth) infinite;
 }
 
+.animate-fade-in {
+  animation: fade-in var(--motion-fast) var(--ease-default) forwards;
+}
+
 .animate-fade-in-up {
   animation: fade-in-up var(--motion-normal) var(--ease-default) forwards;
 }
 
 .animate-slide-in-left {
   animation: slide-in-left var(--motion-panel) var(--ease-sharp) forwards;
+}
+
+.animate-slide-up-sm {
+  animation: slide-up-sm var(--motion-fast) var(--ease-default) forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in var(--motion-fast) var(--ease-default) forwards;
 }
 
 /* Force Radix portals above everything */
@@ -255,9 +355,11 @@
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition-duration: 80ms !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
 }

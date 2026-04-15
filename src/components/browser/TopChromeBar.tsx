@@ -86,13 +86,7 @@ function TabIcon({ tab, size, showNativeBadge = false }: { tab: BrowserTab; size
   );
 }
 
-function ActionHint({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function ActionHint({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -134,51 +128,33 @@ export function TopChromeBar({
 
   useEffect(() => {
     if (!desktopMode) return;
-
     let mounted = true;
     void desktopGetWindowState().then(state => {
       if (!mounted || !state) return;
       setIsMaximized(state.isMaximized);
     });
-
     const unsubscribe = onDesktopWindowStateChanged(state => {
       if (!mounted) return;
       setIsMaximized(state.isMaximized);
     });
-
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
+    return () => { mounted = false; unsubscribe(); };
   }, [desktopMode]);
 
   useEffect(() => {
     const element = tabsAreaRef.current;
     if (!element) return;
-
-    const update = () => {
-      setTabsAreaWidth(Math.round(element.getBoundingClientRect().width));
-    };
-
+    const update = () => setTabsAreaWidth(Math.round(element.getBoundingClientRect().width));
     update();
     const observer = new ResizeObserver(update);
     observer.observe(element);
     window.addEventListener('resize', update);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', update);
-    };
+    return () => { observer.disconnect(); window.removeEventListener('resize', update); };
   }, []);
 
   useEffect(() => {
     if (!searchOpen) return;
-    const timeoutId = window.setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 30);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    const timeoutId = window.setTimeout(() => searchInputRef.current?.focus(), 30);
+    return () => window.clearTimeout(timeoutId);
   }, [searchOpen]);
 
   const noDragStyle = { WebkitAppRegion: 'no-drag' } as CSSProperties;
@@ -186,29 +162,18 @@ export function TopChromeBar({
   const regularTabs = useMemo(() => tabs.filter(tab => !tab.isPinned), [tabs]);
   const groupedItems = useMemo(() => groupTabsByDomain(regularTabs), [regularTabs]);
 
-  // Count visual items (groups count as 1 when collapsed, N when expanded)
   const visibleTabCount = useMemo(() => {
     let count = 0;
     for (const item of groupedItems) {
-      if (item.kind === 'single') {
-        count += 1;
-      } else if (expandedGroup === item.group.domain) {
-        count += item.group.tabs.length;
-      } else {
-        count += 1;
-      }
+      if (item.kind === 'single') count += 1;
+      else if (expandedGroup === item.group.domain) count += item.group.tabs.length;
+      else count += 1;
     }
     return count;
   }, [groupedItems, expandedGroup]);
 
   const tabWidth = useMemo(
-    () =>
-      computeTabWidth(tabsAreaWidth, visibleTabCount, {
-        addButtonWidth: 34,
-        gap: 4,
-        minWidth: 36,
-        maxWidth: 220,
-      }),
+    () => computeTabWidth(tabsAreaWidth, visibleTabCount, { addButtonWidth: 34, gap: 4, minWidth: 36, maxWidth: 220 }),
     [tabsAreaWidth, visibleTabCount]
   );
   const displayMode = getTabDisplayMode(tabWidth);
@@ -216,116 +181,50 @@ export function TopChromeBar({
 
   const query = searchQuery.trim().toLowerCase();
   const filteredOpenTabs = useMemo(
-    () =>
-      tabs.filter(tab => {
-        if (!query) return true;
-        const domain = extractDisplayDomain(tab.url).toLowerCase();
-        return (
-          tab.title.toLowerCase().includes(query) ||
-          tab.url.toLowerCase().includes(query) ||
-          domain.includes(query)
-        );
-      }),
+    () => tabs.filter(tab => {
+      if (!query) return true;
+      const domain = extractDisplayDomain(tab.url).toLowerCase();
+      return tab.title.toLowerCase().includes(query) || tab.url.toLowerCase().includes(query) || domain.includes(query);
+    }),
     [tabs, query]
   );
   const filteredRecentlyClosed = useMemo(
-    () =>
-      recentlyClosedTabs.filter(tab => {
-        if (!query) return true;
-        const domain = extractDisplayDomain(tab.url).toLowerCase();
-        return (
-          tab.title.toLowerCase().includes(query) ||
-          tab.url.toLowerCase().includes(query) ||
-          domain.includes(query)
-        );
-      }),
+    () => recentlyClosedTabs.filter(tab => {
+      if (!query) return true;
+      const domain = extractDisplayDomain(tab.url).toLowerCase();
+      return tab.title.toLowerCase().includes(query) || tab.url.toLowerCase().includes(query) || domain.includes(query);
+    }),
     [recentlyClosedTabs, query]
   );
 
   const contextTab = contextMenu ? tabs.find(tab => tab.id === contextMenu.tabId) : null;
-
-  const handleContext = (event: React.MouseEvent, tabId: string) => {
-    event.preventDefault();
-    setContextMenu({ tabId, x: event.clientX, y: event.clientY });
-  };
-  const handleStripContextMenu = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setStripMenu({ x: event.clientX, y: event.clientY });
-  };
+  const handleContext = (event: React.MouseEvent, tabId: string) => { event.preventDefault(); setContextMenu({ tabId, x: event.clientX, y: event.clientY }); };
+  const handleStripContextMenu = (event: React.MouseEvent) => { event.preventDefault(); event.stopPropagation(); setStripMenu({ x: event.clientX, y: event.clientY }); };
 
   // DnD handlers
-  const handleDragStart = (event: React.DragEvent, tabId: string) => {
-    setDragTabId(tabId);
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', tabId);
-  };
-
-  const handleDragOver = (event: React.DragEvent, tabId: string) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    setDragOverTabId(tabId);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverTabId(null);
-  };
-
+  const handleDragStart = (event: React.DragEvent, tabId: string) => { setDragTabId(tabId); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', tabId); };
+  const handleDragOver = (event: React.DragEvent, tabId: string) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDragOverTabId(tabId); };
+  const handleDragLeave = () => setDragOverTabId(null);
   const handleDrop = (event: React.DragEvent, targetTabId: string) => {
     event.preventDefault();
     setDragOverTabId(null);
-
-    if (!dragTabId || dragTabId === targetTabId) {
-      setDragTabId(null);
-      return;
-    }
-
+    if (!dragTabId || dragTabId === targetTabId) { setDragTabId(null); return; }
     const allTabs = tabs;
     const fromIndex = allTabs.findIndex(t => t.id === dragTabId);
     const toIndex = allTabs.findIndex(t => t.id === targetTabId);
-
     if (fromIndex >= 0 && toIndex >= 0) {
-      // Check if same domain - if so, this creates/merges into a group
       const fromDomain = extractDomainGroup(allTabs[fromIndex].url);
       const toDomain = extractDomainGroup(allTabs[toIndex].url);
-
-      if (fromDomain !== toDomain) {
-        // Move tab next to target to create visual grouping
-        playDropOnTab();
-      }
-
+      if (fromDomain !== toDomain) playDropOnTab();
       onReorderTabs?.(fromIndex, toIndex);
     }
-
     setDragTabId(null);
   };
+  const handleDragEnd = () => { setDragTabId(null); setDragOverTabId(null); };
 
-  const handleDragEnd = () => {
-    setDragTabId(null);
-    setDragOverTabId(null);
-  };
-
-  const WindowButton = ({
-    label,
-    onClick,
-    children,
-    className,
-  }: {
-    label: string;
-    onClick: () => void;
-    children: ReactNode;
-    className?: string;
-  }) => (
+  const WindowButton = ({ label, onClick, children, className }: { label: string; onClick: () => void; children: ReactNode; className?: string }) => (
     <ActionHint label={label}>
-      <button
-        style={noDragStyle}
-        onClick={onClick}
-        aria-label={label}
-        className={cn(
-          'h-8 w-9 flex items-center justify-center transition-colors duration-fast text-primary',
-          className
-        )}
-      >
+      <button style={noDragStyle} onClick={onClick} aria-label={label} className={cn('h-10 w-10 flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground', className)}>
         {children}
       </button>
     </ActionHint>
@@ -351,21 +250,21 @@ export function TopChromeBar({
         onClick={() => onSelectTab(tab.id)}
         onContextMenu={event => handleContext(event, tab.id)}
         className={cn(
-          'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0',
+          'group relative flex items-center gap-1.5 h-8 px-2 rounded-lg text-xs font-body transition-all duration-150 min-w-0',
           isActive
-            ? 'bg-card border border-border text-foreground'
-            : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
+            ? 'bg-card text-foreground shadow-sm'
+            : 'text-muted-foreground hover:bg-notilus-surface-2 hover:text-foreground',
           displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : '',
-          tab.isPrivate ? 'border-dashed' : '',
+          tab.isPrivate ? 'border border-dashed border-muted-foreground/30' : '',
           isDragging ? 'opacity-40 scale-95' : '',
-          isDragOver ? 'ring-2 ring-primary/50 scale-105' : '',
+          isDragOver ? 'ring-2 ring-primary/40 scale-[1.03]' : '',
         )}
       >
         {isActive && !tab.isPrivate && (
-          <div className="absolute bottom-0 left-2 right-2 h-[2px] notilus-gradient rounded-t" />
+          <div className="absolute bottom-0 left-2 right-2 h-[3px] notilus-gradient rounded-t" />
         )}
         {isActive && tab.isPrivate && (
-          <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-muted-foreground/50 rounded-t" />
+          <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-muted-foreground/40 rounded-t" />
         )}
         <TabIcon tab={tab} size={iconSize} showNativeBadge />
         {displayMode !== 'icon-only' && (
@@ -374,7 +273,7 @@ export function TopChromeBar({
         {showClose && (
           <span
             onClick={event => { event.stopPropagation(); onCloseTab(tab.id); }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-primary/10 rounded-sm p-0.5 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+            className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-destructive/20 rounded-sm p-0.5 transition-opacity duration-150 opacity-0 group-hover:opacity-100"
           >
             <X size={10} />
           </span>
@@ -386,7 +285,7 @@ export function TopChromeBar({
   return (
     <>
       <div
-        className="flex items-center h-9 bg-background border-b border-border px-2 gap-2 select-none shrink-0"
+        className="flex items-center h-10 bg-notilus-surface-1 border-b border-border px-2 gap-2 select-none shrink-0"
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
         onDoubleClick={event => {
           if (!desktopMode) return;
@@ -394,99 +293,86 @@ export function TopChromeBar({
           void desktopToggleMaximizeWindow();
         }}
       >
-        <div className="flex items-center shrink-0 min-w-[24px]">
+        {/* Logo */}
+        <div className="flex items-center shrink-0 min-w-[28px]">
           <img
             src="/notilus-logo.png"
             alt="Notilus"
-            className="w-[22px] h-[22px] object-contain"
+            className="w-[24px] h-[24px] object-contain opacity-80 hover:opacity-100 transition-opacity"
             style={noDragStyle}
           />
         </div>
 
+        {/* Pinned tabs */}
         <div className="flex items-center gap-0.5 shrink-0 max-w-[180px] min-w-0 overflow-hidden">
-        {pinnedTabs.map(tab => {
-          const isActive = tab.id === activeTabId;
-          return (
-            <ActionHint key={tab.id} label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}>
-              <button
-                data-testid={`pinned-tab-${tab.id}`}
-                style={noDragStyle}
-                onClick={() => onSelectTab(tab.id)}
-                aria-label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}
-                className={cn(
-                  'h-8 w-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0 text-muted-foreground hover:text-foreground',
-                  isActive ? 'text-white scale-[1.05]' : ''
-                )}
-              >
-                <TabIcon tab={tab} size={15} showNativeBadge />
-              </button>
-            </ActionHint>
-          );
-        })}
-      </div>
+          {pinnedTabs.map(tab => {
+            const isActive = tab.id === activeTabId;
+            return (
+              <ActionHint key={tab.id} label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}>
+                <button
+                  data-testid={`pinned-tab-${tab.id}`}
+                  style={noDragStyle}
+                  onClick={() => onSelectTab(tab.id)}
+                  aria-label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}
+                  className={cn(
+                    'h-8 w-8 flex items-center justify-center rounded-lg transition-all shrink-0',
+                    isActive
+                      ? 'bg-card text-foreground shadow-sm scale-[1.05]'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2'
+                  )}
+                >
+                  <TabIcon tab={tab} size={15} showNativeBadge />
+                </button>
+              </ActionHint>
+            );
+          })}
+        </div>
 
-      <div ref={tabsAreaRef} className="flex-1 min-w-0">
+        {/* Tab strip */}
+        <div ref={tabsAreaRef} className="flex-1 min-w-0">
           <div
-            className="flex items-center gap-1 h-8"
+            className="flex items-center gap-1 h-9"
             onContextMenu={event => {
               if (event.target !== event.currentTarget) return;
               handleStripContextMenu(event);
             }}
           >
             {groupedItems.map(item => {
-              if (item.kind === 'single') {
-                return renderSingleTab(item.tab);
-              }
+              if (item.kind === 'single') return renderSingleTab(item.tab);
 
-              // Group chip or expanded group
               const { group } = item;
               const isExpanded = expandedGroup === group.domain;
               const groupHasActive = group.tabs.some(t => t.id === activeTabId);
-              const bgColor = getDomainColorBg(group.domain, 0.15);
+              const bgColor = getDomainColorBg(group.domain, 0.12);
               const accentColor = getDomainColor(group.domain);
 
               if (!isExpanded) {
-                // Collapsed group chip
                 const firstTab = group.tabs[0];
                 return (
                   <ActionHint key={`group-${group.domain}`} label={`${group.domain} — ${group.tabs.length} tabs`}>
                     <button
                       data-testid={`tab-group-${group.domain}`}
-                      style={{ ...noDragStyle, width: `${tabWidth}px`, backgroundColor: bgColor }}
-                      onClick={() => {
-                        setExpandedGroup(group.domain);
-                        playGroupExpand();
-                      }}
-                      onDragOver={event => {
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = 'move';
-                      }}
+                      style={{ ...noDragStyle, width: `${tabWidth}px`, background: `linear-gradient(135deg, ${bgColor}, transparent)` }}
+                      onClick={() => { setExpandedGroup(group.domain); playGroupExpand(); }}
+                      onDragOver={event => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }}
                       onDrop={event => {
                         event.preventDefault();
                         if (dragTabId) {
-                          // Drop on group = move next to first tab in group
                           const targetIndex = tabs.findIndex(t => t.id === group.tabs[0].id);
-                          if (targetIndex >= 0) {
-                            onMoveTabToIndex?.(dragTabId, targetIndex);
-                            playDropOnTab();
-                          }
+                          if (targetIndex >= 0) { onMoveTabToIndex?.(dragTabId, targetIndex); playDropOnTab(); }
                         }
-                        setDragTabId(null);
-                        setDragOverTabId(null);
+                        setDragTabId(null); setDragOverTabId(null);
                       }}
                       className={cn(
-                        'group relative flex items-center gap-1.5 h-8 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0 hover:scale-[1.03]',
-                        groupHasActive
-                          ? 'border text-foreground'
-                          : 'text-muted-foreground hover:text-foreground',
+                        'group relative flex items-center gap-1.5 h-8 px-2 rounded-lg text-xs font-body transition-all duration-150 min-w-0 hover:scale-[1.02]',
+                        groupHasActive ? 'text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                       )}
-                      >
-                        {/* Color accent bar */}
-                        <div
-                          className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t transition-opacity duration-200"
-                          style={{ backgroundColor: accentColor, opacity: groupHasActive ? 1 : 0.4 }}
-                        />
-                        <TabIcon tab={firstTab} size={iconSize} showNativeBadge />
+                    >
+                      <div
+                        className="absolute bottom-0 left-2 right-2 h-[3px] rounded-t transition-opacity"
+                        style={{ backgroundColor: accentColor, opacity: groupHasActive ? 1 : 0.3 }}
+                      />
+                      <TabIcon tab={firstTab} size={iconSize} showNativeBadge />
                       {displayMode !== 'icon-only' && (
                         <span className="truncate flex-1 min-w-0 text-left flex items-center gap-1">
                           {group.domain}
@@ -511,15 +397,12 @@ export function TopChromeBar({
                 );
               }
 
-              // Expanded group — show individual tabs with a colored border
+              // Expanded group
               return (
                 <div
                   key={`group-${group.domain}`}
-                  className="flex items-center gap-0.5 h-8 rounded-md px-0.5 animate-scale-in"
-                  style={{
-                    backgroundColor: bgColor,
-                    borderLeft: `2px solid ${accentColor}`,
-                  }}
+                  className="flex items-center gap-0.5 h-8 rounded-lg px-0.5 animate-scale-in"
+                  style={{ background: `linear-gradient(135deg, ${bgColor}, transparent)`, borderLeft: `3px solid ${accentColor}` }}
                 >
                   {group.tabs.map(tab => {
                     const isActive = tab.id === activeTabId;
@@ -537,51 +420,33 @@ export function TopChromeBar({
                         onDrop={event => handleDrop(event, tab.id)}
                         onDragEnd={handleDragEnd}
                         style={{ ...noDragStyle, width: `${tabWidth}px` }}
-                        onClick={() => {
-                          onSelectTab(tab.id);
-                          setExpandedGroup(null);
-                          playGroupCollapse();
-                        }}
+                        onClick={() => { onSelectTab(tab.id); setExpandedGroup(null); playGroupCollapse(); }}
                         onContextMenu={event => handleContext(event, tab.id)}
                         className={cn(
-                          'group relative flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-body transition-all duration-200 min-w-0 animate-fade-in',
-                          isActive
-                            ? 'bg-card border border-border text-foreground'
-                            : 'text-muted-foreground hover:bg-card/50 hover:text-foreground',
+                          'group relative flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-body transition-all duration-150 min-w-0 animate-fade-in',
+                          isActive ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:bg-card/50 hover:text-foreground',
                           displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : '',
                           isDragging ? 'opacity-40 scale-95' : '',
-                          isDragOver ? 'ring-2 ring-primary/50 scale-105' : '',
+                          isDragOver ? 'ring-2 ring-primary/40 scale-[1.03]' : '',
                         )}
                       >
                         {isActive && (
-                          <div
-                            className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t"
-                            style={{ backgroundColor: accentColor }}
-                          />
+                          <div className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t" style={{ backgroundColor: accentColor }} />
                         )}
                         <TabIcon tab={tab} size={iconSize} showNativeBadge />
-                        {displayMode !== 'icon-only' && (
-                          <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>
-                        )}
+                        {displayMode !== 'icon-only' && <span className="truncate flex-1 min-w-0 text-left">{tab.title}</span>}
                         {showClose && (
-                          <span
-                            onClick={event => { event.stopPropagation(); onCloseTab(tab.id); }}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-primary/10 rounded-sm p-0.5 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
-                          >
+                          <span onClick={event => { event.stopPropagation(); onCloseTab(tab.id); }} className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-destructive/20 rounded-sm p-0.5 transition-opacity duration-150 opacity-0 group-hover:opacity-100">
                             <X size={10} />
                           </span>
                         )}
                       </button>
                     );
                   })}
-                  {/* Collapse button */}
                   <button
                     style={noDragStyle}
-                    onClick={() => {
-                      setExpandedGroup(null);
-                      playGroupCollapse();
-                    }}
-                    className="flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-card/50 transition-colors duration-200 shrink-0"
+                    onClick={() => { setExpandedGroup(null); playGroupCollapse(); }}
+                    className="flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-card/50 transition-colors shrink-0"
                   >
                     <Layers size={10} />
                   </button>
@@ -589,6 +454,7 @@ export function TopChromeBar({
               );
             })}
 
+            {/* Add tab button */}
             <div className="flex items-center gap-0.5 shrink-0">
               <ActionHint label="New tab">
                 <button
@@ -596,7 +462,7 @@ export function TopChromeBar({
                   onClick={onAddTab}
                   onContextMenu={handleStripContextMenu}
                   aria-label="New tab"
-                  className="flex items-center justify-center h-8 w-8 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors duration-200 shrink-0"
+                  className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:bg-notilus-surface-2 hover:text-foreground transition-colors shrink-0"
                 >
                   <Plus size={14} />
                 </button>
@@ -605,150 +471,84 @@ export function TopChromeBar({
           </div>
         </div>
 
+        {/* Window controls */}
         <div className="flex items-center shrink-0">
-          <WindowButton
-            label="Search tabs"
-            onClick={() => setSearchOpen(true)}
-            className="hover:bg-primary/10"
-          >
+          <WindowButton label="Search tabs" onClick={() => setSearchOpen(true)} className="hover:bg-notilus-surface-2">
             <Search size={14} />
           </WindowButton>
-          <WindowButton
-            label="Minimize"
-            onClick={() => {
-              if (desktopMode) {
-                void desktopMinimizeWindow();
-              }
-            }}
-            className="hover:bg-primary/10"
-          >
+          <WindowButton label="Minimize" onClick={() => { if (desktopMode) void desktopMinimizeWindow(); }} className="hover:bg-notilus-surface-2">
             <Minus size={14} />
           </WindowButton>
-          <WindowButton
-            label={isMaximized ? 'Restore' : 'Maximize'}
-            onClick={() => {
-              if (desktopMode) {
-                void desktopToggleMaximizeWindow();
-              }
-            }}
-            className="hover:bg-primary/10"
-          >
+          <WindowButton label={isMaximized ? 'Restore' : 'Maximize'} onClick={() => { if (desktopMode) void desktopToggleMaximizeWindow(); }} className="hover:bg-notilus-surface-2">
             {isMaximized ? <Copy size={11} /> : <Square size={11} />}
           </WindowButton>
-          <WindowButton
-            label="Close"
-            onClick={() => {
-              if (desktopMode) {
-                void desktopCloseWindow();
-              }
-            }}
-            className="hover:bg-destructive hover:text-destructive-foreground"
-          >
+          <WindowButton label="Close" onClick={() => { if (desktopMode) void desktopCloseWindow(); }} className="hover:bg-destructive hover:text-destructive-foreground">
             <X size={14} />
           </WindowButton>
         </div>
       </div>
 
+      {/* Search tabs dialog */}
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
         <DialogContent data-testid="tab-search-dialog" className="sm:max-w-xl glass border-border">
           <DialogHeader>
-            <DialogTitle className="text-sm font-display tracking-wider uppercase">
-              Search Tabs
-            </DialogTitle>
-            <DialogDescription>
-              Find open tabs and reopen recently closed tabs.
-            </DialogDescription>
+            <DialogTitle className="text-sm font-display tracking-wider uppercase">Search Tabs</DialogTitle>
+            <DialogDescription>Find open tabs and reopen recently closed tabs.</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-3">
             <input
               ref={searchInputRef}
               value={searchQuery}
               onChange={event => setSearchQuery(event.target.value)}
-              onKeyDown={event => {
-                if (event.key !== 'Enter') return;
-                event.preventDefault();
-                event.stopPropagation();
-              }}
+              onKeyDown={event => { if (event.key !== 'Enter') return; event.preventDefault(); event.stopPropagation(); }}
               placeholder="Search by title or domain..."
-              className="w-full h-9 rounded-md bg-notilus-surface-1 border border-border px-3 text-sm font-body text-foreground outline-none focus:border-primary/50"
+              className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-border px-3 text-sm font-body text-foreground outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all"
             />
-
             <div>
-              <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">
-                Open tabs
-              </div>
-              <div className="max-h-48 overflow-y-auto rounded-md border border-border/60">
-                {filteredOpenTabs.length > 0 ? (
-                  filteredOpenTabs.map(tab => (
-                    <button
-                      key={tab.id}
-                      data-testid={`search-open-tab-${tab.id}`}
-                      className="w-full px-2 py-1.5 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast border-b border-border/40 last:border-b-0"
-                      onClick={() => {
-                        onSelectTab(tab.id);
-                        setSearchOpen(false);
-                        setSearchQuery('');
-                      }}
-                    >
-                      <TabIcon tab={tab} size={12} />
-                      <div className="min-w-0">
-                        <div className="text-xs font-body text-foreground truncate flex items-center gap-1">
-                          {tab.title}
-                          {tab.isPrivate && <VenetianMask size={10} className="text-muted-foreground shrink-0" />}
-                        </div>
-                        <div className="text-[10px] font-body text-muted-foreground truncate">
-                          {extractDisplayDomain(tab.url)}
-                        </div>
+              <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">Open tabs</div>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-border/60">
+                {filteredOpenTabs.length > 0 ? filteredOpenTabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    data-testid={`search-open-tab-${tab.id}`}
+                    className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-notilus-surface-2 transition-colors border-b border-border/30 last:border-b-0"
+                    onClick={() => { onSelectTab(tab.id); setSearchOpen(false); setSearchQuery(''); }}
+                  >
+                    <TabIcon tab={tab} size={12} />
+                    <div className="min-w-0">
+                      <div className="text-xs font-body text-foreground truncate flex items-center gap-1">
+                        {tab.title}
+                        {tab.isPrivate && <VenetianMask size={10} className="text-muted-foreground shrink-0" />}
                       </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-2 py-2 text-xs font-body text-muted-foreground">
-                    No open tabs found.
-                  </div>
+                      <div className="text-[10px] font-body text-muted-foreground truncate">{extractDisplayDomain(tab.url)}</div>
+                    </div>
+                  </button>
+                )) : (
+                  <div className="px-3 py-3 text-xs font-body text-muted-foreground">No open tabs found.</div>
                 )}
               </div>
             </div>
-
             <div>
               <div className="flex items-center justify-between mb-1">
-                <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest">
-                  Recently closed
-                </div>
-                <button
-                  onClick={onClearClosedTabs}
-                  className="text-[10px] font-body text-primary hover:text-primary/80 transition-colors duration-fast"
-                >
-                  Clear recent
-                </button>
+                <div className="text-[11px] font-display text-muted-foreground uppercase tracking-widest">Recently closed</div>
+                <button onClick={onClearClosedTabs} className="text-[10px] font-body text-primary hover:text-primary/80 transition-colors">Clear recent</button>
               </div>
-              <div className="max-h-48 overflow-y-auto rounded-md border border-border/60">
-                {filteredRecentlyClosed.length > 0 ? (
-                  filteredRecentlyClosed.map(tab => (
-                    <button
-                      key={tab.id}
-                      data-testid={`search-recent-tab-${tab.id}`}
-                      className="w-full px-2 py-1.5 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors duration-fast border-b border-border/40 last:border-b-0"
-                      onClick={() => {
-                        onReopenClosedTab(tab.id);
-                        setSearchOpen(false);
-                        setSearchQuery('');
-                      }}
-                    >
-                      <div className="w-3 h-3 rounded-sm bg-primary/30 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-xs font-body text-foreground truncate">{tab.title}</div>
-                        <div className="text-[10px] font-body text-muted-foreground truncate">
-                          {extractDisplayDomain(tab.url)}
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-2 py-2 text-xs font-body text-muted-foreground">
-                    No recently closed tabs.
-                  </div>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-border/60">
+                {filteredRecentlyClosed.length > 0 ? filteredRecentlyClosed.map(tab => (
+                  <button
+                    key={tab.id}
+                    data-testid={`search-recent-tab-${tab.id}`}
+                    className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-notilus-surface-2 transition-colors border-b border-border/30 last:border-b-0"
+                    onClick={() => { onReopenClosedTab(tab.id); setSearchOpen(false); setSearchQuery(''); }}
+                  >
+                    <div className="w-3 h-3 rounded-sm bg-primary/30 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-body text-foreground truncate">{tab.title}</div>
+                      <div className="text-[10px] font-body text-muted-foreground truncate">{extractDisplayDomain(tab.url)}</div>
+                    </div>
+                  </button>
+                )) : (
+                  <div className="px-3 py-3 text-xs font-body text-muted-foreground">No recently closed tabs.</div>
                 )}
               </div>
             </div>
@@ -756,44 +556,22 @@ export function TopChromeBar({
         </DialogContent>
       </Dialog>
 
+      {/* Context menu */}
       {contextMenu && (
         <>
-          <div
-            className="fixed inset-0 z-50"
-            onClick={() => setContextMenu(null)}
-          />
-          <div
-            className="fixed z-50 glass rounded-lg border border-border py-1 min-w-[190px] shadow-lg"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-          >
+          <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)} />
+          <div className="fixed z-50 glass rounded-lg border border-border py-1 min-w-[190px] shadow-lg animate-scale-in" style={{ left: contextMenu.x, top: contextMenu.y }}>
             {[
               { icon: Copy, label: 'Duplicate Tab', action: () => onDuplicateTab?.(contextMenu.tabId) },
-              {
-                icon: Pin,
-                label: contextTab?.isPinned ? 'Unpin Tab' : 'Pin Tab',
-                action: () => onTogglePinTab(contextMenu.tabId),
-              },
-              {
-                icon: VenetianMask,
-                label: 'New Private Tab',
-                action: () => onAddPrivateTab?.(),
-              },
-              {
-                icon: XCircle,
-                label: 'Close Other Tabs',
-                action: () => {
-                  tabs.filter(tab => tab.id !== contextMenu.tabId).forEach(tab => onCloseTab(tab.id));
-                },
-              },
+              { icon: Pin, label: contextTab?.isPinned ? 'Unpin Tab' : 'Pin Tab', action: () => onTogglePinTab(contextMenu.tabId) },
+              { icon: VenetianMask, label: 'New Private Tab', action: () => onAddPrivateTab?.() },
+              { icon: XCircle, label: 'Close Other Tabs', action: () => { tabs.filter(tab => tab.id !== contextMenu.tabId).forEach(tab => onCloseTab(tab.id)); } },
               { icon: X, label: 'Close Tab', action: () => onCloseTab(contextMenu.tabId) },
             ].map(item => (
               <button
                 key={item.label}
-                onClick={() => {
-                  item.action();
-                  setContextMenu(null);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-body text-foreground hover:bg-muted/50 transition-colors duration-fast"
+                onClick={() => { item.action(); setContextMenu(null); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-body text-foreground hover:bg-notilus-surface-2 transition-colors"
               >
                 <item.icon size={13} className="text-muted-foreground" />
                 {item.label}
@@ -803,38 +581,19 @@ export function TopChromeBar({
         </>
       )}
 
+      {/* Strip context menu */}
       {stripMenu && (
         <>
-          <div
-            className="fixed inset-0 z-50"
-            onClick={() => setStripMenu(null)}
-          />
-          <div
-            className="fixed z-50 glass rounded-lg border border-border py-1 min-w-[200px] shadow-lg"
-            style={{ left: stripMenu.x, top: stripMenu.y }}
-          >
+          <div className="fixed inset-0 z-50" onClick={() => setStripMenu(null)} />
+          <div className="fixed z-50 glass rounded-lg border border-border py-1 min-w-[200px] shadow-lg animate-scale-in" style={{ left: stripMenu.x, top: stripMenu.y }}>
             {onAddPrivateTab && (
-              <button
-                onClick={() => {
-                  onAddPrivateTab();
-                  setStripMenu(null);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-body text-foreground hover:bg-muted/50 transition-colors duration-fast"
-              >
-                <VenetianMask size={13} className="text-muted-foreground" />
-                New Private Tab
+              <button onClick={() => { onAddPrivateTab(); setStripMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-body text-foreground hover:bg-notilus-surface-2 transition-colors">
+                <VenetianMask size={13} className="text-muted-foreground" /> New Private Tab
               </button>
             )}
             {onSaveWorkspace && (
-              <button
-                onClick={() => {
-                  onSaveWorkspace();
-                  setStripMenu(null);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-body text-foreground hover:bg-muted/50 transition-colors duration-fast"
-              >
-                <FolderPlus size={13} className="text-muted-foreground" />
-                Save session as workspace
+              <button onClick={() => { onSaveWorkspace(); setStripMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-body text-foreground hover:bg-notilus-surface-2 transition-colors">
+                <FolderPlus size={13} className="text-muted-foreground" /> Save session as workspace
               </button>
             )}
           </div>

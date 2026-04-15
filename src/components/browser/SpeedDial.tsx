@@ -47,7 +47,6 @@ const QUOTES = [
 function formatRecentTime(visitedAt: string): string {
   const date = new Date(visitedAt);
   if (Number.isNaN(date.getTime())) return '';
-
   const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
   if (diffSeconds < 60) return 'just now';
   if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)} min ago`;
@@ -63,9 +62,7 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
   const [hasUserTyped, setHasUserTyped] = useState(false);
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [searchEngine, setSearchEngine] = useState(() => getSettings().searchEngine);
-  const [homePageStyle, setHomePageStyle] = useState<BrowserSettings['homePageStyle']>(
-    () => getSettings().homePageStyle
-  );
+  const [homePageStyle, setHomePageStyle] = useState<BrowserSettings['homePageStyle']>(() => getSettings().homePageStyle);
   const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
   const [wallpaperStatus, setWallpaperStatus] = useState<WallpaperStatus>('idle');
   const [favorites, setFavorites] = useState(DEFAULT_FAVORITES);
@@ -77,102 +74,57 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
 
   const effectiveQuery = searchFocused ? query : '';
   const autocompleteResults = useMemo(
-    () =>
-      buildAutocompleteResults({
-        query: effectiveQuery,
-        historyItems: getHistoryItems(),
-        bookmarkItems: getBookmarks(),
-        recentSearches: getRecentSearches(),
-        searchEngine,
-        openTabs,
-        activeTabId,
-        maxPerSection: 6,
-      }),
+    () => buildAutocompleteResults({ query: effectiveQuery, historyItems: getHistoryItems(), bookmarkItems: getBookmarks(), recentSearches: getRecentSearches(), searchEngine, openTabs, activeTabId, maxPerSection: 6 }),
     [effectiveQuery, searchEngine, autocompleteVersion, openTabs, activeTabId]
   );
   const flatItems = autocompleteResults.flatItems;
   const overlayVisible = searchFocused && autocompleteResults.sections.length > 0;
 
-  useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const iv = setInterval(() => setQuoteIdx(i => (i + 1) % QUOTES.length), 8000);
-    return () => clearInterval(iv);
-  }, []);
+  useEffect(() => { const interval = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(interval); }, []);
+  useEffect(() => { const iv = setInterval(() => setQuoteIdx(i => (i + 1) % QUOTES.length), 8000); return () => clearInterval(iv); }, []);
 
   useEffect(() => {
     const refreshFavorites = () => {
-      const bookmarks = getBookmarks()
-        .slice(0, 8)
-        .map(bookmark => ({ name: bookmark.title, url: bookmark.url }));
+      const bookmarks = getBookmarks().slice(0, 8).map(bookmark => ({ name: bookmark.title, url: bookmark.url }));
       setFavorites(bookmarks.length > 0 ? bookmarks : DEFAULT_FAVORITES);
       setAutocompleteVersion(v => v + 1);
     };
-
     refreshFavorites();
     return subscribeToBookmarksUpdates(refreshFavorites);
   }, []);
 
   useEffect(() => {
     const refreshRecent = () => {
-      const recentHistory = getHistoryItems()
-        .slice(0, 3)
-        .map(item => ({
-          title: item.title,
-          url: item.url,
-          time: formatRecentTime(item.visitedAt),
-        }));
+      const recentHistory = getHistoryItems().slice(0, 3).map(item => ({ title: item.title, url: item.url, time: formatRecentTime(item.visitedAt) }));
       setRecent(recentHistory.length > 0 ? recentHistory : DEFAULT_RECENT);
       setAutocompleteVersion(v => v + 1);
     };
-
     refreshRecent();
     return subscribeToHistoryUpdates(refreshRecent);
   }, []);
 
   useEffect(() => {
-    const refreshSettings = () => {
-      const settings = getSettings();
-      setSearchEngine(settings.searchEngine);
-      setHomePageStyle(settings.homePageStyle);
-    };
-
+    const refreshSettings = () => { const settings = getSettings(); setSearchEngine(settings.searchEngine); setHomePageStyle(settings.homePageStyle); };
     refreshSettings();
     return subscribeToSettingsUpdates(refreshSettings);
   }, []);
 
-  // Wallpaper init
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    if (homePageStyle !== 'modern') {
-      setWallpaperUrl(null);
-      setWallpaperStatus('idle');
-      return;
-    }
-
+    if (homePageStyle !== 'modern') { setWallpaperUrl(null); setWallpaperStatus('idle'); return; }
     const storedUrl = window.localStorage.getItem(SPEED_DIAL_WALLPAPER_KEY);
     const resolved = resolveInitialWallpaper(storedUrl);
-
-    if (storedUrl !== resolved) {
-      window.localStorage.setItem(SPEED_DIAL_WALLPAPER_KEY, resolved);
-    }
-
+    if (storedUrl !== resolved) window.localStorage.setItem(SPEED_DIAL_WALLPAPER_KEY, resolved);
     setWallpaperUrl(resolved);
     setWallpaperStatus('loading');
   }, [homePageStyle]);
 
-  // Wallpaper auto-rotation
   useEffect(() => {
     if (homePageStyle !== 'modern') return;
     const intervalSeconds = getSettings().wallpaperInterval || 30;
     const timer = setInterval(() => {
       const next = pickRandomDefaultWallpaper();
-      setWallpaperUrl(next);
-      setWallpaperStatus('loading');
+      setWallpaperUrl(next); setWallpaperStatus('loading');
       window.localStorage.setItem(SPEED_DIAL_WALLPAPER_KEY, next);
     }, intervalSeconds * 1000);
     return () => clearInterval(timer);
@@ -193,10 +145,7 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
     onNavigate(buildSearchUrl(trimmed, searchEngine));
     recordSearch(trimmed);
     setAutocompleteVersion(v => v + 1);
-    setQuery('');
-    setDisplayValue('');
-    setHasUserTyped(false);
-    setSearchFocused(false);
+    setQuery(''); setDisplayValue(''); setHasUserTyped(false); setSearchFocused(false);
   };
 
   const greeting = () => {
@@ -206,68 +155,39 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
     return 'Good evening';
   };
 
-  const showModernWallpaper =
-    homePageStyle === 'modern' &&
-    wallpaperUrl !== null &&
-    wallpaperStatus !== 'error';
+  const showModernWallpaper = homePageStyle === 'modern' && wallpaperUrl !== null && wallpaperStatus !== 'error';
 
   useEffect(() => {
     if (!searchFocused) return;
-    if (flatItems.length === 0) {
-      setActiveIndex(0);
-      return;
-    }
+    if (flatItems.length === 0) { setActiveIndex(0); return; }
     if (autocompleteResults.inlineItemId) {
       const idx = flatItems.findIndex(item => item.id === autocompleteResults.inlineItemId);
-      setActiveIndex(idx >= 0 ? idx : 0);
-      return;
+      setActiveIndex(idx >= 0 ? idx : 0); return;
     }
     setActiveIndex(0);
   }, [searchFocused, flatItems, autocompleteResults.inlineItemId]);
 
   useEffect(() => {
     if (!searchFocused) return;
-    if (!hasUserTyped || !effectiveQuery) {
-      setDisplayValue(query);
-      return;
-    }
+    if (!hasUserTyped || !effectiveQuery) { setDisplayValue(query); return; }
     const inlineValue = autocompleteResults.inlineValue;
-    if (!inlineValue || !inlineValue.toLowerCase().startsWith(effectiveQuery.toLowerCase())) {
-      setDisplayValue(query);
-      return;
-    }
+    if (!inlineValue || !inlineValue.toLowerCase().startsWith(effectiveQuery.toLowerCase())) { setDisplayValue(query); return; }
     setDisplayValue(inlineValue);
     requestAnimationFrame(() => {
       const input = searchInputRef.current;
       if (!input || document.activeElement !== input) return;
-      try {
-        input.setSelectionRange(effectiveQuery.length, inlineValue.length);
-      } catch {
-        // ignore
-      }
+      try { input.setSelectionRange(effectiveQuery.length, inlineValue.length); } catch {}
     });
   }, [searchFocused, hasUserTyped, effectiveQuery, autocompleteResults.inlineValue, query]);
 
   const handleSelectItem = (item: (typeof flatItems)[number]) => {
-    if (item.url) {
-      onNavigate(item.url);
-    } else if (item.query) {
-      onNavigate(buildSearchUrl(item.query, searchEngine));
-      recordSearch(item.query);
-      setAutocompleteVersion(v => v + 1);
-    }
-    setQuery('');
-    setDisplayValue('');
-    setHasUserTyped(false);
-    setSearchFocused(false);
+    if (item.url) onNavigate(item.url);
+    else if (item.query) { onNavigate(buildSearchUrl(item.query, searchEngine)); recordSearch(item.query); setAutocompleteVersion(v => v + 1); }
+    setQuery(''); setDisplayValue(''); setHasUserTyped(false); setSearchFocused(false);
   };
 
   const handleSwitchToTab = (tabId: string) => {
-    onSwitchToTab?.(tabId);
-    setQuery('');
-    setDisplayValue('');
-    setHasUserTyped(false);
-    setSearchFocused(false);
+    onSwitchToTab?.(tabId); setQuery(''); setDisplayValue(''); setHasUserTyped(false); setSearchFocused(false);
   };
 
   const acceptInlineCompletion = () => {
@@ -277,16 +197,8 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
     const start = input.selectionStart ?? 0;
     const end = input.selectionEnd ?? 0;
     if (start !== effectiveQuery.length || end !== displayValue.length) return false;
-    setQuery(autocompleteResults.inlineValue);
-    setDisplayValue(autocompleteResults.inlineValue);
-    setHasUserTyped(true);
-    requestAnimationFrame(() => {
-      try {
-        input.setSelectionRange(autocompleteResults.inlineValue!.length, autocompleteResults.inlineValue!.length);
-      } catch {
-        // ignore
-      }
-    });
+    setQuery(autocompleteResults.inlineValue); setDisplayValue(autocompleteResults.inlineValue); setHasUserTyped(true);
+    requestAnimationFrame(() => { try { input.setSelectionRange(autocompleteResults.inlineValue!.length, autocompleteResults.inlineValue!.length); } catch {} });
     return true;
   };
 
@@ -298,238 +210,150 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
             data-testid="speed-dial-wallpaper-image"
             src={wallpaperUrl}
             alt=""
-            className={`h-full w-full object-cover transition-opacity duration-500 ${
-              wallpaperStatus === 'loaded' ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`h-full w-full object-cover transition-opacity duration-700 ${wallpaperStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
             onLoad={() => setWallpaperStatus('loaded')}
             onError={() => setWallpaperStatus('error')}
           />
         </div>
       )}
 
-      {showModernWallpaper && (
-        <div
-          data-testid="speed-dial-wallpaper-scrim"
-          className="absolute inset-0 z-[1] bg-black/30 pointer-events-none"
-        />
-      )}
+      {showModernWallpaper && <div data-testid="speed-dial-wallpaper-scrim" className="absolute inset-0 z-[1] bg-gradient-to-b from-background/60 via-background/30 to-background/80 pointer-events-none" />}
+      <div data-testid="speed-dial-gradient-overlay" className="absolute inset-0 z-[2] gradient-overlay pointer-events-none" />
+      {searchFocused && <div className="absolute inset-0 z-[3] bg-background/70 backdrop-blur-sm" />}
 
-      {/* Subtle gradient overlay */}
-      <div
-        data-testid="speed-dial-gradient-overlay"
-        className="absolute inset-0 z-[2] gradient-overlay pointer-events-none"
-      />
-
-      {searchFocused && (
-        <div className="absolute inset-0 z-[3] bg-black/50 backdrop-blur-sm" />
-      )}
-
-      <div
-        className={cn(
-          'relative z-10 transition-opacity duration-200',
-          searchFocused ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        )}
-      >
+      <div className={cn('relative z-10 transition-all duration-300', searchFocused ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100')}>
         {/* Logo */}
-        <div className="mb-6 mt-6 flex flex-col items-center animate-fade-in-up">
+        <div className="mb-4 mt-8 flex flex-col items-center animate-fade-in-up">
           <img
             src="/logo_n_no_bg.png"
             alt="Notilus"
-            className="w-36 h-36 object-contain mb-2 animate-glow-breathe drop-shadow-[0_0_16px_hsl(var(--primary)/0.35)]"
+            className="w-20 h-20 object-contain mb-1 drop-shadow-[0_0_20px_hsl(var(--primary)/0.25)] hover:drop-shadow-[0_0_30px_hsl(var(--primary)/0.5)] transition-all duration-300"
           />
-          <p className="text-sm font-body text-muted-foreground mt-1">{greeting()}, Developer</p>
         </div>
 
         {/* Clock */}
-        <div className="mb-8 text-center animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-          <div className="text-6xl font-display font-extralight text-foreground tracking-[0.2em]">
+        <div className="mb-6 text-center animate-fade-in-up" style={{ animationDelay: '60ms' }}>
+          <div className="text-5xl font-display font-light text-foreground tracking-[0.15em]">
             {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </div>
-          <div className="text-sm font-body text-muted-foreground mt-2 tracking-wide">
-            {time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          <div className="text-sm font-body text-muted-foreground mt-1.5">
+            {greeting()} · {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
         </div>
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="w-full max-w-lg mb-10 relative z-[4] animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-        <div
-          className={`flex items-center h-12 rounded-xl border px-4 gap-3 transition-colors duration-fast relative ${
-            showModernWallpaper
-              ? (searchFocused
-                ? 'bg-notilus-surface-1 border-primary/50'
-                : 'bg-notilus-surface-1/90 border-transparent hover:bg-notilus-surface-1')
-              : (searchFocused
-                ? 'bg-notilus-surface-1 border-primary/50'
-                : 'bg-transparent border-transparent hover:bg-primary/10')
-          }`}
-        >
+      <form onSubmit={handleSearch} className="w-full max-w-lg mb-8 relative z-[4] animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+        <div className={cn(
+          'flex items-center h-12 rounded-2xl border px-4 gap-3 transition-all relative',
+          showModernWallpaper
+            ? (searchFocused
+              ? 'bg-notilus-surface-1 border-primary/40 ring-2 ring-primary/15 shadow-md'
+              : 'bg-notilus-surface-1/95 border-border shadow-sm hover:shadow-md')
+            : (searchFocused
+              ? 'bg-notilus-surface-1 border-primary/40 ring-2 ring-primary/15 shadow-md'
+              : 'bg-notilus-surface-1 border-border hover:border-muted-foreground/30')
+        )}>
           <Search size={18} className="text-muted-foreground" />
           <input
             ref={searchInputRef}
             value={searchFocused ? displayValue : ''}
-            onChange={e => {
-              setHasUserTyped(true);
-              setQuery(e.target.value);
-              setDisplayValue(e.target.value);
-              submitIntentRef.current = false;
-            }}
-            onFocus={() => {
-              setSearchFocused(true);
-              setHasUserTyped(false);
-              setQuery('');
-              setDisplayValue('');
-            }}
-            onBlur={() => {
-              submitIntentRef.current = false;
-              setSearchFocused(false);
-              setQuery('');
-              setDisplayValue('');
-              setHasUserTyped(false);
-            }}
+            onChange={e => { setHasUserTyped(true); setQuery(e.target.value); setDisplayValue(e.target.value); submitIntentRef.current = false; }}
+            onFocus={() => { setSearchFocused(true); setHasUserTyped(false); setQuery(''); setDisplayValue(''); }}
+            onBlur={() => { submitIntentRef.current = false; setSearchFocused(false); setQuery(''); setDisplayValue(''); setHasUserTyped(false); }}
             onKeyDown={event => {
-              if (event.key === 'ArrowDown' && overlayVisible && flatItems.length > 0) {
-                event.preventDefault();
-                setActiveIndex(prev => (prev + 1) % flatItems.length);
-                submitIntentRef.current = false;
-                return;
-              }
-              if (event.key === 'ArrowUp' && overlayVisible && flatItems.length > 0) {
-                event.preventDefault();
-                setActiveIndex(prev => (prev - 1 + flatItems.length) % flatItems.length);
-                submitIntentRef.current = false;
-                return;
-              }
-              if ((event.key === 'Tab' || event.key === 'ArrowRight') && overlayVisible) {
-                const accepted = acceptInlineCompletion();
-                if (accepted) {
-                  event.preventDefault();
-                  submitIntentRef.current = false;
-                  return;
-                }
-              }
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                setSearchFocused(false);
-                setQuery('');
-                setDisplayValue('');
-                setHasUserTyped(false);
-                submitIntentRef.current = false;
-                return;
-              }
+              if (event.key === 'ArrowDown' && overlayVisible && flatItems.length > 0) { event.preventDefault(); setActiveIndex(prev => (prev + 1) % flatItems.length); submitIntentRef.current = false; return; }
+              if (event.key === 'ArrowUp' && overlayVisible && flatItems.length > 0) { event.preventDefault(); setActiveIndex(prev => (prev - 1 + flatItems.length) % flatItems.length); submitIntentRef.current = false; return; }
+              if ((event.key === 'Tab' || event.key === 'ArrowRight') && overlayVisible) { const accepted = acceptInlineCompletion(); if (accepted) { event.preventDefault(); submitIntentRef.current = false; return; } }
+              if (event.key === 'Escape') { event.preventDefault(); setSearchFocused(false); setQuery(''); setDisplayValue(''); setHasUserTyped(false); submitIntentRef.current = false; return; }
               if (event.key === 'Enter' && !(event.nativeEvent as KeyboardEvent).isComposing) {
-                if (overlayVisible && flatItems.length > 0) {
-                  event.preventDefault();
-                  const item = flatItems[activeIndex];
-                  if (item) handleSelectItem(item);
-                  submitIntentRef.current = false;
-                  return;
-                }
-                submitIntentRef.current = true;
-                return;
+                if (overlayVisible && flatItems.length > 0) { event.preventDefault(); const item = flatItems[activeIndex]; if (item) handleSelectItem(item); submitIntentRef.current = false; return; }
+                submitIntentRef.current = true; return;
               }
               submitIntentRef.current = false;
             }}
             placeholder={searchPlaceholder}
             className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none selection:bg-primary selection:text-primary-foreground"
           />
-          <button
-            type="submit"
-            onClick={() => {
-              submitIntentRef.current = true;
-            }}
-            className="h-7 rounded-md px-2 text-[11px] text-primary transition-colors hover:bg-primary/10"
-          >
+          <button type="submit" onClick={() => { submitIntentRef.current = true; }} className="h-7 rounded-lg px-3 text-[11px] font-display text-primary hover:bg-primary/10 transition-all">
             Search
           </button>
         </div>
-
         {overlayVisible && (
-          <AutocompleteOverlay
-            sections={autocompleteResults.sections}
-            activeItemId={flatItems[activeIndex]?.id}
-            onSelect={handleSelectItem}
-            onSwitchToTab={handleSwitchToTab}
-            className="mt-3"
-          />
+          <AutocompleteOverlay sections={autocompleteResults.sections} activeItemId={flatItems[activeIndex]?.id} onSelect={handleSelectItem} onSwitchToTab={handleSwitchToTab} className="mt-3" />
         )}
       </form>
 
-      <div
-        className={cn(
-          'relative z-10 transition-opacity duration-200',
-          searchFocused ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        )}
-      >
+      <div className={cn('relative z-10 transition-all duration-300', searchFocused ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100')}>
         {/* Favorites grid */}
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 max-w-2xl mb-10 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-        {favorites.map((fav, i) => (
-          <button
-            key={i}
-            onClick={() => onNavigate(fav.url)}
-            className="group flex flex-col items-center gap-1.5 p-2.5 rounded-xl hover:bg-muted/50 transition-all duration-fast"
-          >
-            <div className="w-12 h-12 rounded-xl bg-notilus-surface-2 flex items-center justify-center transition-transform duration-fast group-hover:scale-105 group-hover:bg-notilus-surface-3 overflow-hidden border border-border">
-              <img
-                src={`https://www.google.com/s2/favicons?domain=${new URL(fav.url).hostname}&sz=32`}
-                alt=""
-                className="w-6 h-6"
-                onError={e => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-muted-foreground"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></span>';
-                }}
-              />
-            </div>
-            <span className="text-[11px] font-body text-muted-foreground group-hover:text-foreground transition-colors truncate w-full text-center">
-              {fav.name}
-            </span>
-          </button>
-        ))}
-        </div>
-
-        {/* Bottom row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl w-full animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-        {/* Recent */}
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-[11px] font-display text-muted-foreground uppercase tracking-wider mb-3">
-            <Clock size={12} /> Recent
-          </div>
-          {recent.map((r, i) => (
-            <button key={i} onClick={() => onNavigate(r.url)} className="w-full flex items-start gap-2 py-1.5 hover:bg-muted/30 rounded px-1 transition-colors duration-fast text-left">
-              <img src={`https://www.google.com/s2/favicons?domain=${new URL(r.url).hostname}&sz=16`} alt="" className="w-4 h-4 mt-0.5 rounded-sm" />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-body text-foreground truncate">{r.title}</div>
-                <div className="text-[10px] font-body text-muted-foreground">{r.time}</div>
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-4 max-w-2xl mb-10 animate-fade-in-up" style={{ animationDelay: '180ms' }}>
+          {favorites.map((fav, i) => (
+            <button
+              key={i}
+              onClick={() => onNavigate(fav.url)}
+              className="group flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-notilus-surface-2 transition-all"
+            >
+              <div className="w-11 h-11 rounded-full bg-notilus-surface-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-md overflow-hidden border border-border">
+                <img
+                  src={`https://www.google.com/s2/favicons?domain=${new URL(fav.url).hostname}&sz=32`}
+                  alt=""
+                  className="w-5 h-5"
+                  onError={e => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-muted-foreground"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></span>';
+                  }}
+                />
               </div>
+              <span className="text-[10px] font-body text-muted-foreground group-hover:text-foreground transition-colors truncate w-full text-center">
+                {fav.name}
+              </span>
             </button>
           ))}
         </div>
 
-        {/* Quote */}
-        <div className="glass rounded-xl p-4 flex flex-col justify-center">
-          <Quote size={16} className="text-primary mb-2" />
-          <p className="text-xs font-body text-foreground italic leading-relaxed">"{QUOTES[quoteIdx].text}"</p>
-          <p className="text-[10px] font-body text-muted-foreground mt-2">— {QUOTES[quoteIdx].author}</p>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-[11px] font-display text-muted-foreground uppercase tracking-wider mb-3">
-            <Zap size={12} /> Quick Actions
-          </div>
-          <div className="space-y-1.5">
-            {[
-              { icon: Plus, label: 'New Tab', action: () => onNavigate('notilus://speed-dial') },
-              { icon: Terminal, label: 'Open Terminal', action: () => {} },
-              { icon: ShieldCheck, label: 'Private Tab', action: () => {} },
-              { icon: Wrench, label: 'DevTools (F12)', action: () => {} },
-            ].map(a => (
-              <button key={a.label} onClick={a.action} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-notilus-surface-2 text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-3 transition-colors duration-fast border border-transparent hover:border-border">
-                <a.icon size={13} /> {a.label}
+        {/* Bottom row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-2xl w-full animate-fade-in-up" style={{ animationDelay: '240ms' }}>
+          {/* Recent */}
+          <div className="bg-notilus-surface-1 rounded-xl p-4 border border-border shadow-xs">
+            <div className="flex items-center gap-1.5 text-[11px] font-body font-semibold text-muted-foreground mb-3">
+              <Clock size={12} className="text-primary" /> Recent
+            </div>
+            {recent.map((r, i) => (
+              <button key={i} onClick={() => onNavigate(r.url)} className="w-full flex items-start gap-2 py-1.5 hover:bg-notilus-surface-2 rounded-lg px-2 transition-all text-left">
+                <img src={`https://www.google.com/s2/favicons?domain=${new URL(r.url).hostname}&sz=16`} alt="" className="w-4 h-4 mt-0.5 rounded-sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-body text-foreground truncate">{r.title}</div>
+                  <div className="text-[10px] font-body text-muted-foreground">{r.time}</div>
+                </div>
               </button>
             ))}
           </div>
-        </div>
+
+          {/* Quote */}
+          <div className="bg-notilus-surface-1 rounded-xl p-4 border border-border shadow-xs flex flex-col justify-center">
+            <div className="w-6 h-[2px] notilus-gradient rounded-full mb-3" />
+            <p className="text-xs font-body text-foreground/90 italic leading-relaxed">"{QUOTES[quoteIdx].text}"</p>
+            <p className="text-[10px] font-body text-muted-foreground mt-2">— {QUOTES[quoteIdx].author}</p>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-notilus-surface-1 rounded-xl p-4 border border-border shadow-xs">
+            <div className="flex items-center gap-1.5 text-[11px] font-body font-semibold text-muted-foreground mb-3">
+              <Zap size={12} className="text-primary" /> Quick Actions
+            </div>
+            <div className="space-y-1">
+              {[
+                { icon: Plus, label: 'New Tab', action: () => onNavigate('notilus://speed-dial'), color: 'text-info' },
+                { icon: Terminal, label: 'Open Terminal', action: () => {}, color: 'text-success' },
+                { icon: ShieldCheck, label: 'Private Tab', action: () => {}, color: 'text-warning' },
+                { icon: Wrench, label: 'DevTools (F12)', action: () => {}, color: 'text-primary' },
+              ].map(a => (
+                <button key={a.label} onClick={a.action} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-notilus-surface-2 text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-3 transition-all border border-transparent hover:border-border">
+                  <a.icon size={13} className={a.color} /> {a.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
