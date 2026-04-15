@@ -506,7 +506,7 @@ class WebSurfaceManager {
     webview.setAttribute('allowpopups', 'true');
     webview.setAttribute('data-surface', 'true');
     webview.className = 'bg-transparent';
-    webview.src = url;
+    webview.setAttribute('src', url);
     Object.assign(webview.style, {
       position: 'absolute',
       inset: '0',
