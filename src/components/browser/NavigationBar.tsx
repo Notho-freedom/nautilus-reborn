@@ -199,28 +199,28 @@ export function NavigationBar({
   };
 
   return (
-    <div className="flex items-center h-11 bg-background border-b border-border px-2 gap-1.5 shrink-0">
-      {/* Nav button group */}
-      <div className="flex items-center bg-notilus-surface-1 rounded-lg p-0.5 gap-0.5">
-        <NavButton label="Back" onClick={onBack} disabled={!canGoBack}><ChevronLeft size={15} /></NavButton>
-        <NavButton label="Forward" onClick={onForward} disabled={!canGoForward}><ChevronRight size={15} /></NavButton>
+    <div className="flex items-center h-11 bg-background border-b border-border px-2 gap-1 shrink-0">
+      {/* Nav buttons — transparent */}
+      <div className="flex items-center gap-0.5">
+        <NavButton label="Back" onClick={onBack} disabled={!canGoBack}><ChevronLeft size={16} strokeWidth={1.5} /></NavButton>
+        <NavButton label="Forward" onClick={onForward} disabled={!canGoForward}><ChevronRight size={16} strokeWidth={1.5} /></NavButton>
         <NavButton label="Reload" onClick={onReload}>
-          {isLoading ? <Loader2 size={14} className="animate-spin text-primary" /> : <RotateCw size={14} />}
+          {isLoading ? <Loader2 size={15} strokeWidth={1.5} className="animate-spin text-primary" /> : <RotateCw size={15} strokeWidth={1.5} />}
         </NavButton>
-        <NavButton label="Home" onClick={onHome}><Home size={15} /></NavButton>
+        <NavButton label="Home" onClick={onHome}><Home size={15} strokeWidth={1.5} /></NavButton>
       </div>
 
       {/* URL bar */}
       <form onSubmit={handleSubmit} className="flex-1 mx-1 relative">
         <div className={cn(
-          'flex items-center h-9 rounded-lg border px-3 gap-2 transition-all',
+          'flex items-center h-9 rounded-lg px-3 gap-2 transition-all border',
           focused
-            ? 'bg-notilus-surface-1 border-primary/40 ring-2 ring-primary/15 shadow-sm'
-            : 'bg-notilus-surface-1 border-border hover:border-muted-foreground/30'
+            ? 'bg-notilus-surface-1 border-primary/40 ring-1 ring-primary/15'
+            : 'bg-notilus-surface-1/60 border-transparent hover:bg-notilus-surface-1'
         )}>
-          {isInternal ? <Shield size={14} className="text-muted-foreground shrink-0" />
-            : isHttps ? <Lock size={14} className="text-success shrink-0" />
-              : <ShieldCheck size={14} className="text-warning shrink-0" />}
+          {isInternal ? <Shield size={14} strokeWidth={1.5} className="text-muted-foreground shrink-0" />
+            : isHttps ? <Lock size={14} strokeWidth={1.5} className="text-success shrink-0" />
+              : <ShieldCheck size={14} strokeWidth={1.5} className="text-warning shrink-0" />}
           <input
             ref={inputRef}
             data-url-input
@@ -237,18 +237,18 @@ export function NavigationBar({
               submitIntentRef.current = false;
             }}
             placeholder={url}
-            className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none selection:bg-primary selection:text-primary-foreground"
+            className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none border-0 focus:outline-none focus:ring-0 selection:bg-primary selection:text-primary-foreground"
           />
           <UrlActionButton label={isBookmarked ? 'Remove favorite' : 'Add favorite'} onClick={() => onToggleBookmark?.()} active={isBookmarked}>
-            <Star size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
+            <Star size={14} strokeWidth={1.5} fill={isBookmarked ? 'currentColor' : 'none'} />
           </UrlActionButton>
           <UrlActionButton label={isPinned ? 'Unpin tab' : 'Pin tab'} onClick={onTogglePin} active={isPinned}>
-            <Pin size={14} fill={isPinned ? 'currentColor' : 'none'} />
+            <Pin size={14} strokeWidth={1.5} fill={isPinned ? 'currentColor' : 'none'} />
           </UrlActionButton>
           <Popover open={snapshotOpen} onOpenChange={setSnapshotOpen}>
             <ActionHint label="Snapshot">
               <PopoverTrigger aria-label="Snapshot" className={cn('h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-all text-muted-foreground hover:text-foreground hover:bg-notilus-surface-3', snapshotBusy ? 'opacity-60 cursor-not-allowed' : '')} disabled={snapshotBusy}>
-                {snapshotBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                {snapshotBusy ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" /> : <Camera size={14} strokeWidth={1.5} />}
               </PopoverTrigger>
             </ActionHint>
             <PopoverContent align="end" sideOffset={8} className="w-52 p-2 glass border-border">
@@ -258,23 +258,23 @@ export function NavigationBar({
             </PopoverContent>
           </Popover>
           <UrlActionButton label={adBlockEnabled ? 'Disable ad block' : 'Enable ad block'} onClick={onToggleAdBlock} active={adBlockEnabled} activeColor="text-success">
-            <Shield size={14} fill={adBlockEnabled ? 'currentColor' : 'none'} />
+            <Shield size={14} strokeWidth={1.5} fill={adBlockEnabled ? 'currentColor' : 'none'} />
           </UrlActionButton>
-          <UrlActionButton label="Translate (coming soon)" disabled><Languages size={14} /></UrlActionButton>
-          <UrlActionButton label="Send to flou" onClick={onSendToFlou}><Send size={14} /></UrlActionButton>
+          <UrlActionButton label="Translate (coming soon)" disabled><Languages size={14} strokeWidth={1.5} /></UrlActionButton>
+          <UrlActionButton label="Send to flou" onClick={onSendToFlou}><Send size={14} strokeWidth={1.5} /></UrlActionButton>
         </div>
         {overlayVisible && (
           <AutocompleteOverlay sections={autocompleteResults.sections} activeItemId={flatItems[activeIndex]?.id} onSelect={handleSelectItem} onSwitchToTab={handleSwitchToTab} />
         )}
       </form>
 
-      {/* Right actions group */}
-      <div className="flex items-center bg-notilus-surface-1 rounded-lg p-0.5 gap-0.5">
-        <NavButton label="Extensions" onClick={onOpenExtensions}><Puzzle size={15} /></NavButton>
-        <NavButton label="Downloads" onClick={onOpenDownloads}><Download size={15} /></NavButton>
+      {/* Right actions — transparent */}
+      <div className="flex items-center gap-0.5">
+        <NavButton label="Extensions" onClick={onOpenExtensions}><Puzzle size={15} strokeWidth={1.5} /></NavButton>
+        <NavButton label="Downloads" onClick={onOpenDownloads}><Download size={15} strokeWidth={1.5} /></NavButton>
         <ActionHint label="AI assistant">
           <button onClick={onToggleAI} aria-label="AI assistant" className="h-8 w-8 flex items-center justify-center rounded-lg text-primary hover:bg-primary/10 transition-all">
-            <Sparkles size={15} />
+            <Sparkles size={15} strokeWidth={1.5} />
           </button>
         </ActionHint>
       </div>

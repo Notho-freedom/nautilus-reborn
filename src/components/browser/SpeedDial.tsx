@@ -245,16 +245,12 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
       {/* Search */}
       <form onSubmit={handleSearch} className="w-full max-w-lg mb-8 relative z-[4] animate-fade-in-up" style={{ animationDelay: '120ms' }}>
         <div className={cn(
-          'flex items-center h-12 rounded-2xl border px-4 gap-3 transition-all relative',
-          showModernWallpaper
-            ? (searchFocused
-              ? 'bg-notilus-surface-1 border-primary/40 ring-2 ring-primary/15 shadow-md'
-              : 'bg-notilus-surface-1/95 border-border shadow-sm hover:shadow-md')
-            : (searchFocused
-              ? 'bg-notilus-surface-1 border-primary/40 ring-2 ring-primary/15 shadow-md'
-              : 'bg-notilus-surface-1 border-border hover:border-muted-foreground/30')
+          'flex items-center h-12 rounded-2xl px-4 gap-3 transition-all relative',
+          searchFocused
+            ? 'bg-notilus-surface-1 ring-1 ring-primary/25 shadow-md'
+            : 'bg-notilus-surface-1/85 shadow-sm hover:bg-notilus-surface-1'
         )}>
-          <Search size={18} className="text-muted-foreground" />
+          <Search size={18} strokeWidth={1.5} className="text-muted-foreground" />
           <input
             ref={searchInputRef}
             value={searchFocused ? displayValue : ''}
@@ -273,7 +269,7 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
               submitIntentRef.current = false;
             }}
             placeholder={searchPlaceholder}
-            className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none selection:bg-primary selection:text-primary-foreground"
+            className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none border-0 focus:outline-none focus:ring-0 selection:bg-primary selection:text-primary-foreground"
           />
           <button type="submit" onClick={() => { submitIntentRef.current = true; }} className="h-7 rounded-lg px-3 text-[11px] font-display text-primary hover:bg-primary/10 transition-all">
             Search
@@ -293,14 +289,14 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
               onClick={() => onNavigate(fav.url)}
               className="group flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-notilus-surface-2 transition-all"
             >
-              <div className="w-11 h-11 rounded-full bg-notilus-surface-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-md overflow-hidden border border-border">
+              <div className="w-11 h-11 rounded-full bg-notilus-surface-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-md overflow-hidden">
                 <img
                   src={`https://www.google.com/s2/favicons?domain=${new URL(fav.url).hostname}&sz=32`}
                   alt=""
                   className="w-5 h-5"
                   onError={e => {
                     (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-muted-foreground"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></span>';
+                    (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-muted-foreground"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg></span>';
                   }}
                 />
               </div>
@@ -314,9 +310,9 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
         {/* Bottom row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-2xl w-full animate-fade-in-up" style={{ animationDelay: '240ms' }}>
           {/* Recent */}
-          <div className="bg-notilus-surface-1 rounded-xl p-4 border border-border shadow-xs">
+          <div className="bg-notilus-surface-1/70 rounded-xl p-4">
             <div className="flex items-center gap-1.5 text-[11px] font-body font-semibold text-muted-foreground mb-3">
-              <Clock size={12} className="text-primary" /> Recent
+              <Clock size={12} strokeWidth={1.5} className="text-primary" /> Recent
             </div>
             {recent.map((r, i) => (
               <button key={i} onClick={() => onNavigate(r.url)} className="w-full flex items-start gap-2 py-1.5 hover:bg-notilus-surface-2 rounded-lg px-2 transition-all text-left">
@@ -330,16 +326,16 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
           </div>
 
           {/* Quote */}
-          <div className="bg-notilus-surface-1 rounded-xl p-4 border border-border shadow-xs flex flex-col justify-center">
+          <div className="bg-notilus-surface-1/70 rounded-xl p-4 flex flex-col justify-center">
             <div className="w-6 h-[2px] notilus-gradient rounded-full mb-3" />
             <p className="text-xs font-body text-foreground/90 italic leading-relaxed">"{QUOTES[quoteIdx].text}"</p>
             <p className="text-[10px] font-body text-muted-foreground mt-2">— {QUOTES[quoteIdx].author}</p>
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-notilus-surface-1 rounded-xl p-4 border border-border shadow-xs">
+          <div className="bg-notilus-surface-1/70 rounded-xl p-4">
             <div className="flex items-center gap-1.5 text-[11px] font-body font-semibold text-muted-foreground mb-3">
-              <Zap size={12} className="text-primary" /> Quick Actions
+              <Zap size={12} strokeWidth={1.5} className="text-primary" /> Quick Actions
             </div>
             <div className="space-y-1">
               {[
@@ -348,8 +344,8 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
                 { icon: ShieldCheck, label: 'Private Tab', action: () => {}, color: 'text-warning' },
                 { icon: Wrench, label: 'DevTools (F12)', action: () => {}, color: 'text-primary' },
               ].map(a => (
-                <button key={a.label} onClick={a.action} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-notilus-surface-2 text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-3 transition-all border border-transparent hover:border-border">
-                  <a.icon size={13} className={a.color} /> {a.label}
+                <button key={a.label} onClick={a.action} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-notilus-surface-2/60 text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-3 transition-all">
+                  <a.icon size={13} strokeWidth={1.5} className={a.color} /> {a.label}
                 </button>
               ))}
             </div>
