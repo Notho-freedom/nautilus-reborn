@@ -1,147 +1,140 @@
 
 
-# Plan: Refonte design commerciale de Notilus Browser
+# Plan: Affinage UI commercial — bordures, icônes fines, panels et page settings
 
-## Diagnostic
+## Scope
+Quatre axes d'affinage avant la prochaine grande étape :
+1. **Quick fixes ciblés** (NavigationBar, StatusBar, SpeedDial)
+2. **Système d'icônes fines** global
+3. **Refonte de tous les panels latéraux** (design, structure, bordures)
+4. **Refonte du panel Settings** en multi-pages (une vue par onglet)
 
-Le design actuel souffre de plusieurs problèmes qui le rendent amateur :
-- **Densité visuelle plate** : tout est au meme niveau, pas de hiérarchie visuelle claire
-- **Surfaces monotones** : bg-background partout, pas de profondeur ni de layering
-- **Typographie trop petite/uniforme** : tout en text-xs/text-[10px], pas de contraste
-- **Couleurs ternes** : le rose accent (#FF2D55) est sous-exploité, tout est gris
-- **Manque de polish** : pas de micro-interactions, pas de hover states sophistiqués, pas de transitions fluides
-- **SpeedDial basique** : le logo pixélisé qui pulse, l'horloge géante, les cartes glass plates
-- **Tab bar et nav bar trop fines** : h-9/h-10 donne un look compressé
-- **StatusBar invisible** : h-6 avec du texte en 10px
-- **Sidebar icons sans distinction** : tous les icons identiques, pas de groupement visuel
-- **Panels latéraux plats** : SidebarPanelShell sans élévation ni séparation visuelle
+---
 
-## Approche de redesign
+## 1. Quick fixes ciblés
 
-S'inspirer de **Arc Browser**, **Vivaldi**, **Figma**, **Linear** et **Raycast** : interfaces premium, layering subtil, animations fluides, typographie soignée.
+### NavigationBar (deuxième barre / barre d'adresse)
+- **Retirer les conteneurs avec fond/bordure** autour des groupes de boutons (gauche `bg-notilus-surface-1 rounded-lg p-0.5` et droite `bg-notilus-surface-1 rounded-lg p-0.5`). Les boutons restent visibles individuellement, fond transparent comme Settings/Profile à l'extrême droite.
+- **Barre d'URL au repos** : retirer la bordure (`border-border` → `border-transparent`), fond plus subtil.
+- **Au focus** : garder uniquement la bordure du conteneur URL (`border-primary/40 + ring`), mais **retirer toute bordure/outline** sur l'`<input>` (déjà `outline-none`, vérifier qu'aucun `focus-visible:ring` global ne s'applique via `:focus-visible` dans `index.css`).
+- **Fix global focus-visible** : dans `index.css`, le sélecteur `:focus-visible { box-shadow: 0 0 0 2px ... }` s'applique à tous les éléments y compris les `<input>`. Le restreindre à `button:focus-visible, a:focus-visible, [role="button"]:focus-visible` pour ne pas dupliquer la bordure sur les inputs.
 
-## 1. Refonte du systeme de couleurs et surfaces (index.css)
+### StatusBar (bottom bar)
+- **Bloc réseau** : actuellement combine `<Wifi/>` + `<NetworkSignal>` (les barres). Garder uniquement l'icône Wifi/WifiOff + le label, **supprimer le composant `NetworkSignal`** (les 4 barres redondantes).
 
-**Nouvelles variables CSS** :
-- Ajouter `--notilus-surface-elevated` : surface surélevée avec ombre subtile
-- Ajouter `--notilus-surface-overlay` : pour les panels flottants
-- Réviser `--border` : passer de blanc 12% a blanc 8% pour plus de subtilité
-- Ajouter `--notilus-accent-glow` : halo de couleur autour des éléments actifs
-- Ajouter des shadows tokenisées : `--shadow-sm`, `--shadow-md`, `--shadow-panel`
+### SpeedDial (Home)
+- **Barre de recherche** : même traitement que NavigationBar — retirer la bordure du conteneur au repos (laisser uniquement fond + ombre subtile), retirer toute bordure/ring sur l'`<input>`. Au focus, garder uniquement le ring/border du conteneur.
 
-**Nouvelles utility classes** :
-- `.surface-elevated` : bg + box-shadow + border subtil
-- `.surface-panel` : pour les panels latéraux avec ombre portée
-- `.surface-hover` : état hover avec léger éclaircissement
-- Réviser `.glass` : rendre le blur plus fort (24px), opacité plus élevée
-- Ajouter `.glass-panel` : version spéciale pour les grands panels
+---
 
-## 2. Refonte TopChromeBar (TopChromeBar.tsx)
+## 2. Icônes fines (global)
 
-- Passer de `h-9` a `h-10` avec padding ajusté
-- Fond : `bg-notilus-surface-1` au lieu de `bg-background` pour créer une séparation
-- Tabs : coins plus arrondis (`rounded-lg`), fond actif plus distinct avec subtle shadow
-- Tab active : fond `bg-card` avec `shadow-sm` + bordure accent plus visible (3px au lieu de 2px)
-- Tabs inactives : hover state avec transition de fond plus visible
-- Group chips : fond gradient subtil au lieu de fond plat
-- Boutons Add/Search : style pill avec fond muted
-- Logo : version compacte avec opacity dynamique au hover
+Lucide n'a pas de variante "outline thin" séparée mais accepte `strokeWidth`. Par défaut c'est `2`. Pour un look fin et premium :
+- Définir un `strokeWidth={1.5}` par défaut sur **toutes les icônes Lucide** des composants browser.
+- Approche : remplacer manuellement dans les composants principaux (NavigationBar, TopChromeBar, StatusBar, SidebarPanelShell, DevToolsSidebar, SettingsPanel, tous les panels listés ci-dessous) en ajoutant `strokeWidth={1.5}` aux icônes Lucide.
+- Ne pas toucher aux icônes décoratives qui dépendent du `fill` (Star, Pin actifs).
 
-## 3. Refonte NavigationBar (NavigationBar.tsx)
+---
 
-- Passer de `h-10` a `h-11`
-- Barre d'URL : fond `bg-notilus-surface-1` permanent (pas transparent), bordure visible en idle
-- Barre d'URL focus : glow subtil autour (`ring-2 ring-primary/20`), fond éclairci
-- Boutons nav (back/forward/reload/home) : style unifié avec `bg-notilus-surface-1` groupé (button group)
-- Séparer visuellement les boutons nav des URL actions
-- Profile avatar : anneau coloré quand connecté
-- Icones d'action dans la barre : taille 14 au lieu de 13, espacement accru
-- Section droite : fond groupé `bg-notilus-surface-1 rounded-lg` pour Extensions/Downloads/AI/Profile
+## 3. Refonte des panels latéraux
 
-## 4. Refonte DevToolsSidebar (DevToolsSidebar.tsx)
+### SidebarPanelShell (composant racine)
+- **Bordure droite** : conserver subtile (`border-border/50`). Retirer toute autre bordure interne redondante.
+- **Header** : garder propre, retirer la `border-b border-border` de séparation, utiliser plutôt un padding plus généreux pour la hiérarchie.
+- **Filters bar** : retirer `border-b border-border`. Séparation par espace seulement.
+- **Footer** : retirer `border-t border-border`.
+- **Search input** : retirer `border border-border`, fond `bg-notilus-surface-2` suffit. Au focus, retirer `border-primary/40` du conteneur, garder juste le `ring-2 ring-primary/15` subtil.
 
-- Largeur : passer de `w-11` a `w-12`
-- Icones : taille 16 au lieu de 15
-- Active state : fond `bg-primary/15` + indicator bar de 3px a gauche (au lieu de juste bg)
-- Hover state : scale(1.05) subtil + fond
-- Séparateurs : style dot (3 points) au lieu de ligne plate
-- Section "Web" : label mieux stylisé avec badge count
-- Collapse button : icone plus visible, fond permanent
+### Panels concernés (mêmes principes appliqués)
+**Pour chacun** : retirer les bordures verticales/horizontales en désordre, harmoniser l'espacement, alléger les "cartes" en favorisant des séparations par espace ou hover background plutôt que `border`.
 
-## 5. Refonte SidebarPanelShell (SidebarPanelShell.tsx)
+| Panel | Refactor principal |
+|-------|--------------------|
+| `BookmarksPanel.tsx` | Items en lignes hover, retirer borders entre items |
+| `HistoryPanel.tsx` | Accordion sans borders, items en lignes propres groupées par date |
+| `DownloadsPanel.tsx` | Cards sans border, fond hover |
+| `ExtensionsPanel.tsx` | Liste alignée, retirer cards encadrées |
+| `WorkspacesPanel.tsx` | Items en grille sans border |
+| `WebServicePanel.tsx` | Hover row simple |
+| `GitHubReposPanel.tsx` + `GitHubRepoView.tsx` + `GitHubFileViewer.tsx` | Lister sans borders, fines séparations |
+| `GitPanel.tsx` | Sections espacées sans encadrés |
+| `TerminalPanel.tsx` | Header simple, contenu xterm prend tout l'espace |
+| `StudioPanel.tsx` | Form épuré, retirer borders cards |
+| `FrontendLabPanel.tsx` / `BackendLabPanel.tsx` | Tabs propres, contenu sans encadrés |
+| `LighthousePanel.tsx` | Métriques en colonnes sans borders |
+| `DocumentationPanel.tsx` / `ApiDocsPanel.tsx` / `UpdatesPanel.tsx` / `FlouPanel.tsx` / `MosaicPanel.tsx` / `WidgetsPanel.tsx` | Refonte épurée selon même charte |
 
-- Largeur du panel : min 320px
-- Fond : `surface-panel` class avec ombre portée a droite
-- Header : plus grand (p-4), titre plus visible (text-sm au lieu de text-xs)
-- Recherche : hauteur 9 au lieu de 8, coins plus arrondis
-- Filters : style pill plus prononcé avec fond visible
-- Animation d'ouverture : slide-in-left plus fluide avec ease-out
+### DevTools bottom (`DevToolsPanel.tsx`, `NotilusMiniDevToolsPanel.tsx` + `devtools/*`)
+- **Icônes fines** (`strokeWidth={1.5}`)
+- **Tabs** : style propre sans borders en désordre, séparateurs subtils ou aucun
+- Onglets internes (Console/Elements/Network/Sources/Performance/Application) : passes en revue pour bordures/cartes redondantes
 
-## 6. Refonte SpeedDial (SpeedDial.tsx)
+---
 
-C'est le composant le plus visible et le plus critique.
+## 4. Refonte du panel Settings (multi-pages)
 
-- **Logo** : réduire a `w-24 h-24`, arreter l'animation glow-breathe permanente (trop amateur), remplacer par un hover-only glow
-- **Horloge** : réduire la taille de `text-6xl` a `text-5xl`, poids `font-light` (pas extralight), tracking réduit
-- **Greeting** : supprimer "Developer" — juste le greeting
-- **Barre de recherche** : design pill plus marqué, fond toujours visible, icone de moteur de recherche, hauteur plus grande
-- **Favoris** : grid plus serrée, icones dans des cercles (pas des carrés), hover scale subtil
-- **Cards du bas** (Recent/Quote/Quick Actions) : refonte complète
-  - Fond : `bg-notilus-surface-1` avec bordure subtile au lieu de `.glass`
-  - Headers de section : style plus clean, pas d'uppercase tracking-wider partout
-  - Quick Actions : style bouton plus prononcé avec icones colorées
-  - Quote : style plus minimal, pas de icone Quote énorme
-- **Animation** : les éléments apparaissent en cascade avec des delays, mais l'animation est plus subtile (translateY(4px) au lieu de 10px)
+### Problème actuel
+- Single-page scroll avec toutes les sections empilées
+- Cards `border border-border/30 bg-card/40` partout → effet "désordonné"
 
-## 7. Refonte StatusBar (StatusBar.tsx)
+### Nouvelle structure
+**Layout** : nav latérale gauche (gardée) + **vue unique** à droite qui change selon l'onglet sélectionné (pas de scroll-into-view).
 
-- Hauteur : passer de `h-6` a `h-7`
-- Fond : `bg-notilus-surface-1` pour séparation visuelle
-- Texte : `text-[11px]` au lieu de `text-[10px]`
-- Boutons : hover plus visible
-- Indicateurs (CPU/RAM/Network) : micro-barres de progression colorées au lieu de texte brut
-- Zoom controls : slider visuel compact au lieu de boutons +/-
+```text
+┌──────────┬──────────────────────────────────┐
+│ Appearance│  ┌─ Page: Appearance ──────────┐│
+│ Home Page │  │  Dark Mode      [switch]    ││
+│ Tabs      │  │                             ││
+│ Terminal  │  │  Accent Color               ││
+│ Privacy   │  │  [grid de couleurs]         ││
+│ ...       │  └─────────────────────────────┘│
+└──────────┴──────────────────────────────────┘
+```
 
-## 8. Refonte AIAssistant (AIAssistant.tsx)
+### Changements
+- Remplacer `scrollToSection` par un simple `setActiveSection` qui conditionne le rendu : `{activeSection === 'appearance' && <AppearanceSection/>}`.
+- **Extraire chaque section** dans son propre sous-composant local : `AppearanceSection`, `HomePageSection`, `TabsSection`, `TerminalSection`, `PrivacySection`, `WebServicesSection`, `AISection`, `GeneralSection`, `NotificationsSection`, `AboutSection`.
+- **Section wrapper** (`Section`) : retirer `border border-border/30 bg-card/40`. Juste un titre + contenu, espacement vertical généreux.
+- **Nav gauche** : garder l'indicateur `border-r-2 border-primary` à gauche pour l'item actif (subtil, fin).
+- **SelectRow** : retirer `border border-border/50`, utiliser `bg-muted/30` seul + `focus:ring-1 ring-primary/30`.
+- **Cartes "About"** (`bg-muted/30 p-4 border border-border/30`) : retirer la border, juste fond.
+- Augmenter la largeur de la nav à `w-[140px]` pour respiration et label complet.
 
-- Header : fond gradient subtil
-- Messages : bulles avec coins arrondis différents pour user/assistant
-- Input : style plus premium avec fond distinct
-- Quick actions : style chips arrondis au lieu de boutons rectangulaires
+---
 
-## 9. Corrections build (en parallele)
+## 5. Fichier-clé : `src/index.css`
 
-| Fichier | Fix |
-|---------|-----|
-| `electron/main/tab-manager.ts:742` | Remplacer `view.webContents.destroy()` par `view.webContents.close()` |
-| `src/lib/webSurfaceManager.ts:487` | Cast `webview` avec `setAttribute('src', url)` au lieu de `.src =` |
-| `src/test/useBrowserState.desktop.test.tsx:26` | Ajouter les mocks manquants : `moveTab`, `setTabRenderMode`, `setViewportBounds` |
-| `electron/main/index.ts:41` | Cast le type ou utiliser `.includes()` au lieu de `===` pour la comparaison |
+Affiner le focus global :
+```css
+/* Avant : tous les éléments */
+:focus-visible { box-shadow: 0 0 0 2px hsl(var(--primary)/0.3); }
 
-## 10. Animations et transitions globales (index.css + tailwind.config.ts)
+/* Après : uniquement boutons et liens */
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--primary)/0.3);
+  border-radius: var(--radius);
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: none; /* le conteneur gère la focus state */
+}
+```
 
-- Ajouter keyframes : `fade-in` (opacity only), `slide-up-sm` (4px), `scale-in` pour panels
-- Transition par défaut sur tous les éléments interactifs : `transition-all duration-150`
-- Hover states universels : tous les boutons ont un hover défini
-- Focus-visible : ring primary subtil sur tous les éléments focusables
-- Réduire `reduced-motion` a juste désactiver les animations, pas les transitions
+Affiner les bordures globales : `--border` à blanc 6-7% au lieu de 14% pour des séparations vraiment fines et discrètes.
+
+---
 
 ## Fichiers modifiés
 
-| Fichier | Scope |
-|---------|-------|
-| `src/index.css` | Variables CSS, surfaces, shadows, animations |
-| `tailwind.config.ts` | Tokens shadows, animations, spacing |
-| `src/components/browser/TopChromeBar.tsx` | Layout, couleurs, hover states |
-| `src/components/browser/NavigationBar.tsx` | Layout, URL bar, button groups |
-| `src/components/browser/DevToolsSidebar.tsx` | Sizing, active indicators |
-| `src/components/browser/SidebarPanelShell.tsx` | Panel elevation, header, animation |
-| `src/components/browser/SpeedDial.tsx` | Redesign complet du home |
-| `src/components/browser/StatusBar.tsx` | Layout, micro-visualizations |
-| `src/components/browser/AIAssistant.tsx` | Chat UI polish |
-| `src/components/browser/BrowserShell.tsx` | Layout spacing adjustments |
-| `electron/main/tab-manager.ts` | Fix build error |
-| `electron/main/index.ts` | Fix build error |
-| `src/lib/webSurfaceManager.ts` | Fix build error |
-| `src/test/useBrowserState.desktop.test.tsx` | Fix missing mocks |
+| Catégorie | Fichiers |
+|-----------|----------|
+| Quick fixes | `NavigationBar.tsx`, `StatusBar.tsx`, `SpeedDial.tsx`, `index.css` |
+| Shell | `SidebarPanelShell.tsx` |
+| Panels (left/bottom) | `BookmarksPanel.tsx`, `HistoryPanel.tsx`, `DownloadsPanel.tsx`, `ExtensionsPanel.tsx`, `WorkspacesPanel.tsx`, `WebServicePanel.tsx`, `GitHubReposPanel.tsx`, `GitHubRepoView.tsx`, `GitHubFileViewer.tsx`, `GitPanel.tsx`, `TerminalPanel.tsx`, `StudioPanel.tsx`, `FrontendLabPanel.tsx`, `BackendLabPanel.tsx`, `LighthousePanel.tsx`, `DocumentationPanel.tsx`, `ApiDocsPanel.tsx`, `UpdatesPanel.tsx`, `FlouPanel.tsx`, `MosaicPanel.tsx`, `WidgetsPanel.tsx` |
+| DevTools | `DevToolsPanel.tsx`, `NotilusMiniDevToolsPanel.tsx`, `devtools/DevConsole.tsx`, `devtools/DevElements.tsx`, `devtools/DevNetwork.tsx`, `devtools/DevSources.tsx`, `devtools/DevPerformance.tsx`, `devtools/DevApplication.tsx` |
+| Settings refonte | `SettingsPanel.tsx` (refactor en multi-pages) |
+| Icônes fines | passes `strokeWidth={1.5}` sur tous les fichiers ci-dessus |
+
+## Notes
+- Préserver la fonctionnalité existante (états, callbacks, tests).
+- Les tests `sidebarPanel.test.tsx`, `topChromeBar.tabs.test.tsx`, `navigationBar.actions.test.tsx`, `speedDial.searchStyle.test.tsx` doivent rester verts. Si les attentes sur classes CSS spécifiques cassent, mettre à jour les tests pour refléter la nouvelle direction.
 
