@@ -396,7 +396,7 @@ function SelectRow({
       <select
         value={value}
         onChange={event => onChange(event.target.value)}
-        className="h-7 w-full rounded-lg border border-border/50 bg-muted/30 px-2 text-[11px] font-body text-foreground outline-none focus:border-primary/50 transition-colors"
+        className="h-8 w-full rounded-lg bg-muted/30 px-2 text-[11px] font-body text-foreground outline-none border-0 focus:bg-muted/50 transition-colors"
       >
         {children}
       </select>
