@@ -31,8 +31,8 @@
     --destructive: 4 90% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 10% 14%;
-    --input: 240 10% 14%;
+    --border: 240 10% 9%;
+    --input: 240 10% 9%;
     --ring: 345 100% 59%;
 
     --radius: 0.625rem;
@@ -117,11 +117,24 @@
     transition: all var(--motion-fast) var(--ease-default);
   }
 
-  /* Focus visible ring */
-  :focus-visible {
+  /* Focus visible ring — buttons and links only */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
     border-radius: var(--radius);
+  }
+
+  /* Inputs handled by their parent container */
+  input:focus,
+  input:focus-visible,
+  textarea:focus,
+  textarea:focus-visible,
+  select:focus,
+  select:focus-visible {
+    outline: none;
+    box-shadow: none;
   }
 }
 
