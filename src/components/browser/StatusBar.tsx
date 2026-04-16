@@ -45,20 +45,7 @@ function MicroBar({ value, max = 100, color }: { value: number; max?: number; co
   );
 }
 
-function NetworkSignal({ quality }: { quality: SystemStats['networkQuality'] }) {
-  const strength = quality === 'excellent' ? 4 : quality === 'good' ? 3 : quality === 'fair' ? 2 : 1;
-  return (
-    <div className="flex items-end gap-px">
-      {[1, 2, 3, 4].map(level => (
-        <span
-          key={level}
-          className={cn('w-[3px] rounded-sm transition-colors', level <= strength ? 'bg-current opacity-100' : 'bg-current opacity-20')}
-          style={{ height: `${3 + level * 2}px` }}
-        />
-      ))}
-    </div>
-  );
-}
+// NetworkSignal removed — single Wifi icon is enough.
 
 const StatusButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ children, className, type, ...props }, ref) => (
@@ -116,8 +103,7 @@ export function StatusBar({
         <HoverCard openDelay={180}>
           <HoverCardTrigger asChild>
             <div className={cn('inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] text-muted-foreground hover:bg-notilus-surface-2', networkTone)}>
-              {stats.networkOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
-              <NetworkSignal quality={stats.networkQuality} />
+              {stats.networkOnline ? <Wifi size={11} strokeWidth={1.5} /> : <WifiOff size={11} strokeWidth={1.5} />}
               <span>{networkLabel}</span>
             </div>
           </HoverCardTrigger>

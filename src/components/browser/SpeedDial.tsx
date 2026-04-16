@@ -245,16 +245,12 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
       {/* Search */}
       <form onSubmit={handleSearch} className="w-full max-w-lg mb-8 relative z-[4] animate-fade-in-up" style={{ animationDelay: '120ms' }}>
         <div className={cn(
-          'flex items-center h-12 rounded-2xl border px-4 gap-3 transition-all relative',
-          showModernWallpaper
-            ? (searchFocused
-              ? 'bg-notilus-surface-1 border-primary/40 ring-2 ring-primary/15 shadow-md'
-              : 'bg-notilus-surface-1/95 border-border shadow-sm hover:shadow-md')
-            : (searchFocused
-              ? 'bg-notilus-surface-1 border-primary/40 ring-2 ring-primary/15 shadow-md'
-              : 'bg-notilus-surface-1 border-border hover:border-muted-foreground/30')
+          'flex items-center h-12 rounded-2xl px-4 gap-3 transition-all relative',
+          searchFocused
+            ? 'bg-notilus-surface-1 ring-1 ring-primary/25 shadow-md'
+            : 'bg-notilus-surface-1/85 shadow-sm hover:bg-notilus-surface-1'
         )}>
-          <Search size={18} className="text-muted-foreground" />
+          <Search size={18} strokeWidth={1.5} className="text-muted-foreground" />
           <input
             ref={searchInputRef}
             value={searchFocused ? displayValue : ''}
@@ -273,7 +269,7 @@ export function SpeedDial({ onNavigate, openTabs = [], activeTabId, onSwitchToTa
               submitIntentRef.current = false;
             }}
             placeholder={searchPlaceholder}
-            className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none selection:bg-primary selection:text-primary-foreground"
+            className="flex-1 bg-transparent text-base font-body text-foreground placeholder:text-muted-foreground outline-none border-0 focus:outline-none focus:ring-0 selection:bg-primary selection:text-primary-foreground"
           />
           <button type="submit" onClick={() => { submitIntentRef.current = true; }} className="h-7 rounded-lg px-3 text-[11px] font-display text-primary hover:bg-primary/10 transition-all">
             Search
