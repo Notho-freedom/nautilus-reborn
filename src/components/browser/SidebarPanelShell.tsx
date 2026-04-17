@@ -35,20 +35,20 @@ export function SidebarPanelShell({
   onClose, menuItems, children, footer, contentClassName,
 }: SidebarPanelShellProps) {
   return (
-    <div className="flex flex-col h-full min-w-[320px] surface-panel animate-slide-in-left" data-panel-active={isActive ? 'true' : 'false'}>
+    <div className="flex flex-col h-full min-w-[320px] surface-panel-gx animate-slide-in-left" data-panel-active={isActive ? 'true' : 'false'}>
       {/* Header */}
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-display font-semibold text-primary uppercase tracking-widest flex items-center gap-2">
-            {titleIcon ?? (Icon ? <Icon size={14} strokeWidth={1.5} /> : null)}
+          <h3 className="text-[11px] font-display text-primary/85 uppercase tracking-[0.2em] flex items-center gap-2 font-medium">
+            {titleIcon ?? (Icon ? <Icon size={13} strokeWidth={1.25} /> : null)}
             {title}
           </h3>
           <div className="flex items-center gap-0.5">
             {menuItems && menuItems.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-all">
-                    <MoreVertical size={13} strokeWidth={1.5} />
+                  <button className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60 transition-all duration-200">
+                    <MoreVertical size={13} strokeWidth={1.25} />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="glass border-border min-w-[140px]">
@@ -62,18 +62,18 @@ export function SidebarPanelShell({
             )}
             <button
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-destructive/15 transition-all"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-destructive/15 transition-all duration-200"
               title="Close panel"
             >
-              <X size={13} strokeWidth={1.5} />
+              <X size={13} strokeWidth={1.25} />
             </button>
           </div>
         </div>
 
         {/* Search */}
         {searchable && (
-          <div className="flex items-center h-9 rounded-lg bg-notilus-surface-2 px-3 gap-2 mt-3 ring-1 ring-transparent focus-within:ring-primary/20 transition-all">
-            <Search size={13} strokeWidth={1.5} className="text-muted-foreground" />
+          <div className="flex items-center h-9 rounded-lg bg-notilus-surface-2/70 px-3 gap-2 mt-3 ring-1 ring-transparent focus-within:ring-primary/25 focus-within:bg-notilus-surface-2 transition-all duration-200">
+            <Search size={13} strokeWidth={1.25} className="text-muted-foreground" />
             <input
               value={searchValue}
               onChange={e => onSearchChange?.(e.target.value)}
@@ -91,10 +91,10 @@ export function SidebarPanelShell({
           <button
             onClick={() => onFilterChange?.(null)}
             className={cn(
-              'px-2.5 py-1 rounded-lg text-[10px] font-display shrink-0 transition-all',
+              'px-2.5 py-1 rounded-full text-[10px] font-display shrink-0 transition-all duration-200',
               !activeFilter
                 ? 'bg-primary/15 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2'
+                : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60'
             )}
           >
             All
@@ -104,10 +104,10 @@ export function SidebarPanelShell({
               key={f.value}
               onClick={() => onFilterChange?.(activeFilter === f.value ? null : f.value)}
               className={cn(
-                'px-2.5 py-1 rounded-lg text-[10px] font-display shrink-0 transition-all',
+                'px-2.5 py-1 rounded-full text-[10px] font-display shrink-0 transition-all duration-200',
                 activeFilter === f.value
                   ? 'bg-primary/15 text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60'
               )}
             >
               {f.label}
