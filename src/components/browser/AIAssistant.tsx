@@ -40,29 +40,29 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="w-80 h-full border-l border-border bg-card flex flex-col animate-slide-in-right shrink-0 shadow-panel">
+    <div className="w-80 h-full surface-panel-gx flex flex-col animate-slide-in-right shrink-0">
       {/* Header */}
-      <div className="flex items-center justify-between h-11 px-4 border-b border-border bg-gradient-to-r from-primary/8 to-transparent shrink-0">
+      <div className="flex items-center justify-between h-11 px-4 surface-chrome shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg notilus-gradient flex items-center justify-center shadow-sm">
-            <Sparkles size={12} className="text-primary-foreground" />
+            <Sparkles size={12} strokeWidth={1.25} className="text-primary-foreground" />
           </div>
-          <span className="text-xs font-display font-semibold text-foreground tracking-wider">HYPER AI</span>
+          <span className="text-[11px] font-display text-primary/85 tracking-[0.2em] uppercase font-medium">Hyper AI</span>
         </div>
-        <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-destructive/15 transition-all">
-          <X size={14} />
+        <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-destructive/15 transition-all duration-200">
+          <X size={14} strokeWidth={1.25} />
         </button>
       </div>
 
       {/* Mode toggle */}
-      <div className="flex gap-1 px-3 py-2 border-b border-border">
+      <div className="flex gap-1 px-3 py-2">
         {(['console', 'chat'] as const).map(m => (
           <button
             key={m}
             onClick={() => setMode(m)}
             className={cn(
-              "flex-1 h-7 rounded-lg text-[10px] font-display uppercase tracking-wider transition-all",
-              mode === m ? "bg-primary/15 text-primary shadow-xs" : "bg-notilus-surface-1 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2"
+              "flex-1 h-7 rounded-lg text-[10px] font-display uppercase tracking-[0.15em] transition-all duration-200",
+              mode === m ? "bg-primary/15 text-primary" : "bg-notilus-surface-2/40 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/70"
             )}
           >
             {m}
@@ -71,11 +71,11 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
       </div>
 
       {/* Model selector */}
-      <div className="px-3 py-2 border-b border-border">
+      <div className="px-3 pb-2">
         <select
           value={model}
           onChange={e => setModel(e.target.value)}
-          className="w-full h-8 rounded-lg bg-notilus-surface-1 text-[11px] font-body text-foreground px-2 border border-border outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/15 transition-all"
+          className="w-full h-8 rounded-lg bg-notilus-surface-2/70 text-[11px] font-body text-foreground px-2 outline-none focus:ring-1 focus:ring-primary/25 transition-all duration-200"
         >
           <option value="llama-3.3-70b">Llama 3.3 70B</option>
           <option value="mixtral-8x7b">Mixtral 8x7B</option>
@@ -84,13 +84,13 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-1.5 px-3 py-2 border-b border-border">
+      <div className="grid grid-cols-2 gap-1.5 px-3 pb-2">
         {QUICK_ACTIONS.map((action, i) => (
           <button
             key={i}
-            className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-all border border-transparent hover:border-border"
+            className="flex items-center gap-2 px-2.5 py-2 rounded-full bg-notilus-surface-2/40 text-[10px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/70 transition-all duration-200"
           >
-            <action.icon size={12} className={action.color} />
+            <action.icon size={12} strokeWidth={1.25} className={action.color} />
             <span>{action.label}</span>
           </button>
         ))}
@@ -103,8 +103,8 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
             <div className={cn(
               "max-w-[90%] px-3 py-2 text-xs font-body",
               msg.role === 'user'
-                ? "notilus-gradient text-primary-foreground rounded-2xl rounded-br-md shadow-sm"
-                : "bg-notilus-surface-2 text-foreground border border-border rounded-2xl rounded-bl-md"
+                ? "bg-primary/15 text-foreground rounded-2xl rounded-br-sm"
+                : "bg-notilus-surface-2/60 text-foreground rounded-2xl rounded-bl-sm"
             )}>
               {msg.content}
             </div>
@@ -115,19 +115,19 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
       {/* Input */}
       <form
         onSubmit={e => { e.preventDefault(); handleSend(); }}
-        className="flex items-center gap-2 p-3 border-t border-border"
+        className="flex items-center gap-2 p-3"
       >
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Ask anything..."
-          className="flex-1 h-9 rounded-lg bg-notilus-surface-1 px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none border border-border focus:border-primary/40 focus:ring-2 focus:ring-primary/15 transition-all"
+          className="flex-1 h-9 rounded-full bg-notilus-surface-2/70 px-4 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/25 focus:bg-notilus-surface-2 transition-all duration-200"
         />
         <button
           type="submit"
-          className="h-9 w-9 flex items-center justify-center rounded-lg notilus-gradient text-primary-foreground hover:opacity-90 transition-all shadow-sm hover:shadow-glow"
+          className="h-9 w-9 flex items-center justify-center rounded-full notilus-gradient text-primary-foreground hover:opacity-90 transition-all duration-200 shadow-[0_0_18px_-6px_hsl(var(--primary)/0.5)]"
         >
-          <Send size={14} />
+          <Send size={14} strokeWidth={1.25} />
         </button>
       </form>
     </div>
