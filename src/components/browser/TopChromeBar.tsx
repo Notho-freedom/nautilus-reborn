@@ -250,18 +250,18 @@ export function TopChromeBar({
         onClick={() => onSelectTab(tab.id)}
         onContextMenu={event => handleContext(event, tab.id)}
         className={cn(
-          'group relative flex items-center gap-1.5 h-8 px-2 rounded-lg text-xs font-body transition-all duration-150 min-w-0',
+          'group relative flex items-center gap-1.5 h-8 px-2 rounded-lg text-xs font-body transition-all duration-200 min-w-0',
           isActive
-            ? 'bg-card text-foreground shadow-sm'
-            : 'text-muted-foreground hover:bg-notilus-surface-2 hover:text-foreground',
+            ? 'bg-notilus-surface-2 text-foreground shadow-[0_0_12px_-4px_hsl(var(--primary)/0.4)]'
+            : 'text-muted-foreground hover:bg-notilus-surface-2/60 hover:text-foreground',
           displayMode === 'icon-only' ? 'justify-center px-1 gap-0' : '',
-          tab.isPrivate ? 'border border-dashed border-muted-foreground/30' : '',
+          tab.isPrivate ? 'bg-muted/30' : '',
           isDragging ? 'opacity-40 scale-95' : '',
           isDragOver ? 'ring-2 ring-primary/40 scale-[1.03]' : '',
         )}
       >
         {isActive && !tab.isPrivate && (
-          <div className="absolute bottom-0 left-2 right-2 h-[3px] notilus-gradient rounded-t" />
+          <div className="absolute bottom-0 left-2 right-2 h-[2px] notilus-gradient rounded-t" />
         )}
         {isActive && tab.isPrivate && (
           <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-muted-foreground/40 rounded-t" />
@@ -275,7 +275,7 @@ export function TopChromeBar({
             onClick={event => { event.stopPropagation(); onCloseTab(tab.id); }}
             className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-destructive/20 rounded-sm p-0.5 transition-opacity duration-150 opacity-0 group-hover:opacity-100"
           >
-            <X size={10} />
+            <X size={10} strokeWidth={1.25} />
           </span>
         )}
       </button>
@@ -285,7 +285,7 @@ export function TopChromeBar({
   return (
     <>
       <div
-        className="flex items-center h-10 bg-notilus-surface-1 border-b border-border px-2 gap-2 select-none shrink-0"
+        className="flex items-center h-10 surface-chrome px-2 gap-2 select-none shrink-0"
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
         onDoubleClick={event => {
           if (!desktopMode) return;
@@ -294,11 +294,11 @@ export function TopChromeBar({
         }}
       >
         {/* Logo */}
-        <div className="flex items-center shrink-0 min-w-[28px]">
+        <div className="flex items-center shrink-0 min-w-[26px]">
           <img
             src="/notilus-logo.png"
             alt="Notilus"
-            className="w-[24px] h-[24px] object-contain opacity-80 hover:opacity-100 transition-opacity"
+            className="w-[22px] h-[22px] object-contain opacity-70 hover:opacity-100 transition-opacity"
             style={noDragStyle}
           />
         </div>
@@ -315,10 +315,10 @@ export function TopChromeBar({
                   onClick={() => onSelectTab(tab.id)}
                   aria-label={`${tab.title} - ${extractDisplayDomain(tab.url)}`}
                   className={cn(
-                    'h-8 w-8 flex items-center justify-center rounded-lg transition-all shrink-0',
+                    'h-8 w-8 flex items-center justify-center rounded-lg transition-all duration-200 shrink-0',
                     isActive
-                      ? 'bg-card text-foreground shadow-sm scale-[1.05]'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2'
+                      ? 'bg-notilus-surface-2 text-foreground shadow-[0_0_10px_-4px_hsl(var(--primary)/0.4)]'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60'
                   )}
                 >
                   <TabIcon tab={tab} size={15} showNativeBadge />
@@ -462,9 +462,9 @@ export function TopChromeBar({
                   onClick={onAddTab}
                   onContextMenu={handleStripContextMenu}
                   aria-label="New tab"
-                  className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:bg-notilus-surface-2 hover:text-foreground transition-colors shrink-0"
+                  className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:bg-notilus-surface-2/60 hover:text-foreground transition-all duration-200 shrink-0"
                 >
-                  <Plus size={14} />
+                  <Plus size={14} strokeWidth={1.25} />
                 </button>
               </ActionHint>
             </div>
@@ -473,17 +473,17 @@ export function TopChromeBar({
 
         {/* Window controls */}
         <div className="flex items-center shrink-0">
-          <WindowButton label="Search tabs" onClick={() => setSearchOpen(true)} className="hover:bg-notilus-surface-2">
-            <Search size={14} />
+          <WindowButton label="Search tabs" onClick={() => setSearchOpen(true)} className="hover:bg-notilus-surface-2/60">
+            <Search size={14} strokeWidth={1.25} />
           </WindowButton>
-          <WindowButton label="Minimize" onClick={() => { if (desktopMode) void desktopMinimizeWindow(); }} className="hover:bg-notilus-surface-2">
-            <Minus size={14} />
+          <WindowButton label="Minimize" onClick={() => { if (desktopMode) void desktopMinimizeWindow(); }} className="hover:bg-notilus-surface-2/60">
+            <Minus size={14} strokeWidth={1.25} />
           </WindowButton>
-          <WindowButton label={isMaximized ? 'Restore' : 'Maximize'} onClick={() => { if (desktopMode) void desktopToggleMaximizeWindow(); }} className="hover:bg-notilus-surface-2">
-            {isMaximized ? <Copy size={11} /> : <Square size={11} />}
+          <WindowButton label={isMaximized ? 'Restore' : 'Maximize'} onClick={() => { if (desktopMode) void desktopToggleMaximizeWindow(); }} className="hover:bg-notilus-surface-2/60">
+            {isMaximized ? <Copy size={11} strokeWidth={1.25} /> : <Square size={11} strokeWidth={1.25} />}
           </WindowButton>
           <WindowButton label="Close" onClick={() => { if (desktopMode) void desktopCloseWindow(); }} className="hover:bg-destructive hover:text-destructive-foreground">
-            <X size={14} />
+            <X size={14} strokeWidth={1.25} />
           </WindowButton>
         </div>
       </div>
