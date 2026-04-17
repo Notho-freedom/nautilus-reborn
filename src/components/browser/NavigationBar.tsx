@@ -199,28 +199,28 @@ export function NavigationBar({
   };
 
   return (
-    <div className="flex items-center h-11 bg-background border-b border-border px-2 gap-1 shrink-0">
+    <div className="flex items-center h-11 surface-chrome px-2 gap-1 shrink-0">
       {/* Nav buttons — transparent */}
       <div className="flex items-center gap-0.5">
-        <NavButton label="Back" onClick={onBack} disabled={!canGoBack}><ChevronLeft size={16} strokeWidth={1.5} /></NavButton>
-        <NavButton label="Forward" onClick={onForward} disabled={!canGoForward}><ChevronRight size={16} strokeWidth={1.5} /></NavButton>
+        <NavButton label="Back" onClick={onBack} disabled={!canGoBack}><ChevronLeft size={16} strokeWidth={1.25} /></NavButton>
+        <NavButton label="Forward" onClick={onForward} disabled={!canGoForward}><ChevronRight size={16} strokeWidth={1.25} /></NavButton>
         <NavButton label="Reload" onClick={onReload}>
-          {isLoading ? <Loader2 size={15} strokeWidth={1.5} className="animate-spin text-primary" /> : <RotateCw size={15} strokeWidth={1.5} />}
+          {isLoading ? <Loader2 size={15} strokeWidth={1.25} className="animate-spin text-primary" /> : <RotateCw size={15} strokeWidth={1.25} />}
         </NavButton>
-        <NavButton label="Home" onClick={onHome}><Home size={15} strokeWidth={1.5} /></NavButton>
+        <NavButton label="Home" onClick={onHome}><Home size={15} strokeWidth={1.25} /></NavButton>
       </div>
 
       {/* URL bar */}
       <form onSubmit={handleSubmit} className="flex-1 mx-1 relative">
         <div className={cn(
-          'flex items-center h-9 rounded-lg px-3 gap-2 transition-all border',
+          'flex items-center h-9 rounded-lg px-3 gap-2 transition-all duration-200',
           focused
-            ? 'bg-notilus-surface-1 border-primary/40 ring-1 ring-primary/15'
-            : 'bg-notilus-surface-1/60 border-transparent hover:bg-notilus-surface-1'
+            ? 'bg-notilus-surface-2 ring-1 ring-primary/30 shadow-[0_0_18px_-6px_hsl(var(--primary)/0.4)]'
+            : 'bg-notilus-surface-2/50 hover:bg-notilus-surface-2/70'
         )}>
-          {isInternal ? <Shield size={14} strokeWidth={1.5} className="text-muted-foreground shrink-0" />
-            : isHttps ? <Lock size={14} strokeWidth={1.5} className="text-success shrink-0" />
-              : <ShieldCheck size={14} strokeWidth={1.5} className="text-warning shrink-0" />}
+          {isInternal ? <Shield size={14} strokeWidth={1.25} className="text-muted-foreground shrink-0" />
+            : isHttps ? <Lock size={14} strokeWidth={1.25} className="text-success shrink-0" />
+              : <ShieldCheck size={14} strokeWidth={1.25} className="text-warning shrink-0" />}
           <input
             ref={inputRef}
             data-url-input
@@ -240,15 +240,15 @@ export function NavigationBar({
             className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none border-0 focus:outline-none focus:ring-0 selection:bg-primary selection:text-primary-foreground"
           />
           <UrlActionButton label={isBookmarked ? 'Remove favorite' : 'Add favorite'} onClick={() => onToggleBookmark?.()} active={isBookmarked}>
-            <Star size={14} strokeWidth={1.5} fill={isBookmarked ? 'currentColor' : 'none'} />
+            <Star size={14} strokeWidth={1.25} fill={isBookmarked ? 'currentColor' : 'none'} />
           </UrlActionButton>
           <UrlActionButton label={isPinned ? 'Unpin tab' : 'Pin tab'} onClick={onTogglePin} active={isPinned}>
-            <Pin size={14} strokeWidth={1.5} fill={isPinned ? 'currentColor' : 'none'} />
+            <Pin size={14} strokeWidth={1.25} fill={isPinned ? 'currentColor' : 'none'} />
           </UrlActionButton>
           <Popover open={snapshotOpen} onOpenChange={setSnapshotOpen}>
             <ActionHint label="Snapshot">
               <PopoverTrigger aria-label="Snapshot" className={cn('h-6 w-6 shrink-0 flex items-center justify-center rounded-md transition-all text-muted-foreground hover:text-foreground hover:bg-notilus-surface-3', snapshotBusy ? 'opacity-60 cursor-not-allowed' : '')} disabled={snapshotBusy}>
-                {snapshotBusy ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" /> : <Camera size={14} strokeWidth={1.5} />}
+                {snapshotBusy ? <Loader2 size={14} strokeWidth={1.25} className="animate-spin" /> : <Camera size={14} strokeWidth={1.25} />}
               </PopoverTrigger>
             </ActionHint>
             <PopoverContent align="end" sideOffset={8} className="w-52 p-2 glass border-border">
@@ -258,10 +258,10 @@ export function NavigationBar({
             </PopoverContent>
           </Popover>
           <UrlActionButton label={adBlockEnabled ? 'Disable ad block' : 'Enable ad block'} onClick={onToggleAdBlock} active={adBlockEnabled} activeColor="text-success">
-            <Shield size={14} strokeWidth={1.5} fill={adBlockEnabled ? 'currentColor' : 'none'} />
+            <Shield size={14} strokeWidth={1.25} fill={adBlockEnabled ? 'currentColor' : 'none'} />
           </UrlActionButton>
-          <UrlActionButton label="Translate (coming soon)" disabled><Languages size={14} strokeWidth={1.5} /></UrlActionButton>
-          <UrlActionButton label="Send to flou" onClick={onSendToFlou}><Send size={14} strokeWidth={1.5} /></UrlActionButton>
+          <UrlActionButton label="Translate (coming soon)" disabled><Languages size={14} strokeWidth={1.25} /></UrlActionButton>
+          <UrlActionButton label="Send to flou" onClick={onSendToFlou}><Send size={14} strokeWidth={1.25} /></UrlActionButton>
         </div>
         {overlayVisible && (
           <AutocompleteOverlay sections={autocompleteResults.sections} activeItemId={flatItems[activeIndex]?.id} onSelect={handleSelectItem} onSwitchToTab={handleSwitchToTab} />
@@ -270,11 +270,11 @@ export function NavigationBar({
 
       {/* Right actions — transparent */}
       <div className="flex items-center gap-0.5">
-        <NavButton label="Extensions" onClick={onOpenExtensions}><Puzzle size={15} strokeWidth={1.5} /></NavButton>
-        <NavButton label="Downloads" onClick={onOpenDownloads}><Download size={15} strokeWidth={1.5} /></NavButton>
+        <NavButton label="Extensions" onClick={onOpenExtensions}><Puzzle size={15} strokeWidth={1.25} /></NavButton>
+        <NavButton label="Downloads" onClick={onOpenDownloads}><Download size={15} strokeWidth={1.25} /></NavButton>
         <ActionHint label="AI assistant">
           <button onClick={onToggleAI} aria-label="AI assistant" className="h-8 w-8 flex items-center justify-center rounded-lg text-primary hover:bg-primary/10 transition-all">
-            <Sparkles size={15} strokeWidth={1.5} />
+            <Sparkles size={15} strokeWidth={1.25} />
           </button>
         </ActionHint>
       </div>
@@ -283,10 +283,10 @@ export function NavigationBar({
       <Popover>
         <ActionHint label={isGitHubConnected ? `Profile: ${githubUsername || 'connected'}` : 'Profile'}>
           <PopoverTrigger aria-label="Profile" className="h-8 w-8 flex items-center justify-center rounded-lg transition-all overflow-hidden hover:ring-2 hover:ring-primary/20">
-            <Avatar className={cn('h-7 w-7', isGitHubConnected ? 'ring-2 ring-primary/40' : 'ring-1 ring-border')}>
+            <Avatar className={cn('h-7 w-7', isGitHubConnected ? 'ring-2 ring-primary/40' : 'ring-1 ring-border/30')}>
               <AvatarImage src={githubAvatarUrl} alt={githubUsername || 'Profile avatar'} />
               <AvatarFallback className="text-[10px] font-display bg-notilus-surface-2 text-foreground">
-                {isGitHubConnected ? profileInitial : <User size={12} />}
+                {isGitHubConnected ? profileInitial : <User size={12} strokeWidth={1.25} />}
               </AvatarFallback>
             </Avatar>
           </PopoverTrigger>
@@ -313,7 +313,7 @@ export function NavigationBar({
             <div className="space-y-3">
               <p className="text-[11px] font-body text-muted-foreground">Sign in to access your repositories and sync your profile.</p>
               <button type="button" onClick={onSignInWithGitHub} className="w-full h-9 rounded-lg notilus-gradient text-xs font-display text-primary-foreground tracking-wider flex items-center justify-center gap-2 shadow-sm hover:shadow-glow transition-shadow">
-                <Github size={14} /> Sign in with GitHub
+                <Github size={14} strokeWidth={1.25} /> Sign in with GitHub
               </button>
               <div className="text-[10px] font-body text-muted-foreground text-center">
                 or <button type="button" onClick={onOpenGitHub} className="text-primary hover:underline">use a Personal Access Token</button>
@@ -323,7 +323,7 @@ export function NavigationBar({
         </PopoverContent>
       </Popover>
 
-      <NavButton label="Settings" onClick={onOpenSettings}><Settings size={15} /></NavButton>
+      <NavButton label="Settings" onClick={onOpenSettings}><Settings size={15} strokeWidth={1.25} /></NavButton>
     </div>
   );
 }

@@ -82,12 +82,12 @@ export function StatusBar({
   const ramColor = stats.ram > 80 ? 'hsl(4, 90%, 60%)' : stats.ram > 50 ? 'hsl(32, 100%, 50%)' : 'hsl(142, 71%, 49%)';
 
   return (
-    <div className="flex h-7 shrink-0 items-center justify-between border-t border-border bg-notilus-surface-1 px-2 select-none">
+    <div className="flex h-7 shrink-0 items-center justify-between border-t border-border/30 surface-chrome px-2 select-none">
       <div className="flex items-center gap-1">
         <HoverCard openDelay={180}>
           <HoverCardTrigger asChild>
-            <div className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] text-muted-foreground hover:bg-notilus-surface-2">
-              <Lock size={10} className={isSecure ? 'text-success' : 'text-warning'} />
+            <div className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] text-muted-foreground hover:bg-notilus-surface-2/60 transition-colors">
+              <Lock size={11} strokeWidth={1.25} className={isSecure ? 'text-success' : 'text-warning'} />
               <span>{isSecure ? 'Secure' : 'Insecure'}</span>
             </div>
           </HoverCardTrigger>
@@ -102,8 +102,8 @@ export function StatusBar({
 
         <HoverCard openDelay={180}>
           <HoverCardTrigger asChild>
-            <div className={cn('inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] text-muted-foreground hover:bg-notilus-surface-2', networkTone)}>
-              {stats.networkOnline ? <Wifi size={11} strokeWidth={1.5} /> : <WifiOff size={11} strokeWidth={1.5} />}
+            <div className={cn('inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] text-muted-foreground hover:bg-notilus-surface-2/60 transition-colors', networkTone)}>
+              {stats.networkOnline ? <Wifi size={11} strokeWidth={1.25} /> : <WifiOff size={11} strokeWidth={1.25} />}
               <span>{networkLabel}</span>
             </div>
           </HoverCardTrigger>
@@ -123,13 +123,13 @@ export function StatusBar({
 
         <HoverCard openDelay={180}>
           <HoverCardTrigger asChild>
-            <div className="inline-flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[11px] text-muted-foreground hover:bg-notilus-surface-2">
-              <Cpu size={10} />
+            <div className="inline-flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[11px] text-muted-foreground hover:bg-notilus-surface-2/60 transition-colors">
+              <Cpu size={11} strokeWidth={1.25} />
               <MicroBar value={stats.cpu} color={cpuColor} />
-              <span>{stats.cpu}%</span>
-              <MemoryStick size={10} />
+              <span className="font-mono tabular-nums">{stats.cpu}%</span>
+              <MemoryStick size={11} strokeWidth={1.25} />
               <MicroBar value={stats.ram} color={ramColor} />
-              <span>{stats.ram}%</span>
+              <span className="font-mono tabular-nums">{stats.ram}%</span>
             </div>
           </HoverCardTrigger>
           <HoverCardContent side="top" className="w-56 p-3 text-[10px] glass">
@@ -146,7 +146,7 @@ export function StatusBar({
 
         <HoverCard openDelay={180}>
           <HoverCardTrigger asChild>
-            <div><StatusButton><Layers size={10} /><span>{tabCount} tabs</span></StatusButton></div>
+            <div><StatusButton><Layers size={11} strokeWidth={1.25} /><span>{tabCount} tabs</span></StatusButton></div>
           </HoverCardTrigger>
           <HoverCardContent side="top" className="w-64 p-3 text-[10px] glass">
             <div className="space-y-1">
@@ -160,7 +160,7 @@ export function StatusBar({
         {gitBranch ? (
           <HoverCard openDelay={180}>
             <HoverCardTrigger asChild>
-              <div><StatusButton onClick={() => onOpenPanel('git')}><GitBranch size={10} /><span className="max-w-28 truncate">{gitBranch}</span></StatusButton></div>
+              <div><StatusButton onClick={() => onOpenPanel('git')}><GitBranch size={11} strokeWidth={1.25} /><span className="max-w-28 truncate">{gitBranch}</span></StatusButton></div>
             </HoverCardTrigger>
             <HoverCardContent side="top" className="w-56 p-3 text-[10px] glass">
               <div className="space-y-1">
@@ -174,21 +174,21 @@ export function StatusBar({
       </div>
 
       <div className="flex items-center gap-0.5">
-        <StatusButton onClick={() => onZoomChange(Math.max(50, zoom - 10))}><ZoomOut size={10} /></StatusButton>
+        <StatusButton onClick={() => onZoomChange(Math.max(50, zoom - 10))}><ZoomOut size={11} strokeWidth={1.25} /></StatusButton>
         <HoverCard openDelay={180}>
           <HoverCardTrigger asChild>
             <div>
               {/* Zoom slider */}
               <div className="flex items-center gap-1.5 px-1">
-                <div className="w-16 h-1 rounded-full bg-notilus-surface-3 relative cursor-pointer" onClick={e => {
+                <div className="w-16 h-[3px] rounded-full bg-notilus-surface-3 relative cursor-pointer" onClick={e => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                   onZoomChange(Math.round(50 + pct * 250));
                 }}>
-                  <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${((zoom - 50) / 250) * 100}%` }} />
-                  <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-primary shadow-sm transition-all" style={{ left: `calc(${((zoom - 50) / 250) * 100}% - 5px)` }} />
+                  <div className="h-full rounded-full bg-primary/70 transition-all" style={{ width: `${((zoom - 50) / 250) * 100}%` }} />
+                  <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.6)] transition-all" style={{ left: `calc(${((zoom - 50) / 250) * 100}% - 4px)` }} />
                 </div>
-                <span className="text-[10px] text-foreground font-mono w-8 text-center">{zoom}%</span>
+                <span className="text-[10px] text-foreground font-mono tabular-nums w-8 text-center">{zoom}%</span>
               </div>
             </div>
           </HoverCardTrigger>
@@ -200,15 +200,15 @@ export function StatusBar({
             </div>
           </HoverCardContent>
         </HoverCard>
-        <StatusButton onClick={() => onZoomChange(Math.min(300, zoom + 10))}><ZoomIn size={10} /></StatusButton>
+        <StatusButton onClick={() => onZoomChange(Math.min(300, zoom + 10))}><ZoomIn size={11} strokeWidth={1.25} /></StatusButton>
 
-        <div className="w-px h-3.5 bg-border mx-0.5" />
+        <div className="w-px h-3.5 bg-border/30 mx-0.5" />
 
-        <StatusButton onClick={onToggleNotilusDevTools}><Wrench size={10} /><span>DevTools</span></StatusButton>
+        <StatusButton onClick={onToggleNotilusDevTools}><Wrench size={11} strokeWidth={1.25} /><span>DevTools</span></StatusButton>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <StatusButton><Gauge size={10} /><span>Labs</span><ChevronDown size={10} /></StatusButton>
+            <StatusButton><Gauge size={11} strokeWidth={1.25} /><span>Labs</span><ChevronDown size={10} strokeWidth={1.25} /></StatusButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-44 glass">
             <DropdownMenuItem onClick={() => onOpenPanel('frontend-lab')}>Frontend Lab</DropdownMenuItem>
@@ -218,18 +218,18 @@ export function StatusBar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <StatusButton><PlugZap size={10} /><span>Tools</span><ChevronDown size={10} /></StatusButton>
+            <StatusButton><PlugZap size={11} strokeWidth={1.25} /><span>Tools</span><ChevronDown size={10} strokeWidth={1.25} /></StatusButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-44 glass">
             <DropdownMenuItem onClick={() => onOpenPanel('docs')}>Documentation</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onOpenPanel('api-docs')}>API docs</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onOpenPanel('updates')}>Updates</DropdownMenuItem>
             <DropdownMenuItem onClick={onToggleNotilusDevTools}>Notilus console</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onOpenPanel('settings')}><Settings size={12} /><span>Settings</span></DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onOpenPanel('settings')}><Settings size={12} strokeWidth={1.25} /><span>Settings</span></DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <StatusButton onClick={() => onOpenPanel('history')}><Globe2 size={10} /><span>History</span></StatusButton>
+        <StatusButton onClick={() => onOpenPanel('history')}><Globe2 size={11} strokeWidth={1.25} /><span>History</span></StatusButton>
       </div>
     </div>
   );
