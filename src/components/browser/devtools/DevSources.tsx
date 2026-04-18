@@ -78,14 +78,14 @@ export function DevSources({ sources, onRefresh }: DevSourcesProps) {
 
   return (
     <div className="flex h-full flex-col text-[11px] font-mono">
-      <div className="flex items-center justify-between border-b border-border/35 bg-card/50 px-2 py-1 shrink-0">
-        <span className="text-[10px] text-muted-foreground">{sources.length} files loaded</span>
+      <div className="flex items-center justify-between bg-notilus-surface-2/30 px-2 py-1 shrink-0">
+        <span className="text-[10px] text-muted-foreground tabular-nums">{sources.length} files loaded</span>
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+          className="inline-flex h-6 items-center gap-1 rounded-full px-2 text-[10px] text-muted-foreground transition-colors hover:bg-notilus-surface-2/60 hover:text-foreground"
         >
-          <RefreshCw size={11} />
+          <RefreshCw size={11} strokeWidth={1.5} />
           Refresh
         </button>
       </div>
@@ -93,7 +93,7 @@ export function DevSources({ sources, onRefresh }: DevSourcesProps) {
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {Object.entries(grouped).map(([path, files]) => (
           <div key={path}>
-            <div className="sticky top-0 bg-secondary/30 px-2 py-1 text-[9px] text-muted-foreground">{path}</div>
+            <div className="sticky top-0 bg-notilus-surface-2/40 px-2 py-1 text-[9px] text-muted-foreground/70 uppercase tracking-[0.15em]">{path}</div>
             {files.map(source => {
               const type = detectType(source);
               const Icon = TYPE_ICONS[type];
@@ -101,11 +101,11 @@ export function DevSources({ sources, onRefresh }: DevSourcesProps) {
               return (
                 <div
                   key={source.id}
-                  className="flex cursor-pointer items-center gap-2 px-3 py-1 transition-colors hover:bg-muted/20"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-1 transition-colors hover:bg-notilus-surface-2/40"
                 >
-                  <Icon size={12} className={cn(TYPE_COLORS[type])} />
+                  <Icon size={12} strokeWidth={1.5} className={cn(TYPE_COLORS[type])} />
                   <span className="flex-1 truncate text-foreground">{fileName}</span>
-                  <span className="text-[9px] text-muted-foreground">{formatSize(source.size)}</span>
+                  <span className="text-[9px] text-muted-foreground tabular-nums">{formatSize(source.size)}</span>
                 </div>
               );
             })}

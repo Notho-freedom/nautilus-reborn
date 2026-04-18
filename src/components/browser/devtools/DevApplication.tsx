@@ -19,17 +19,17 @@ export function DevApplication({ storage, onRefresh }: DevApplicationProps) {
 
   return (
     <div className="flex h-full flex-col text-[11px] font-mono">
-      <div className="flex items-center gap-1 border-b border-border/35 bg-card/50 px-2 py-1 shrink-0">
+      <div className="flex items-center gap-1 bg-notilus-surface-2/30 px-2 py-1 shrink-0">
         {tabs.map(tab => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'rounded px-2 py-0.5 text-[10px] transition-colors',
+              'rounded-full px-2 py-0.5 text-[10px] transition-colors',
               activeTab === tab
-                ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60'
             )}
           >
             {tab}
@@ -39,15 +39,15 @@ export function DevApplication({ storage, onRefresh }: DevApplicationProps) {
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+          className="inline-flex h-6 items-center gap-1 rounded-full px-2 text-[10px] text-muted-foreground transition-colors hover:bg-notilus-surface-2/60 hover:text-foreground"
         >
-          <RefreshCw size={11} />
+          <RefreshCw size={11} strokeWidth={1.5} />
           Refresh
         </button>
-        <span className="text-[10px] text-muted-foreground">{entries.length} entries</span>
+        <span className="text-[10px] text-muted-foreground tabular-nums">{entries.length} entries</span>
       </div>
 
-      <div className="grid shrink-0 grid-cols-[1fr_2fr] gap-2 border-b border-border/35 bg-secondary/30 px-3 py-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+      <div className="grid shrink-0 grid-cols-[1fr_2fr] gap-2 bg-notilus-surface-2/20 px-3 py-1 text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
         <span>Key</span>
         <span>Value</span>
       </div>
@@ -56,7 +56,7 @@ export function DevApplication({ storage, onRefresh }: DevApplicationProps) {
         {entries.map((entry, index) => (
           <div
             key={`${entry.key}-${index}`}
-            className="grid cursor-pointer grid-cols-[1fr_2fr] gap-2 border-b border-border/30 px-3 py-1.5 transition-colors hover:bg-muted/20"
+            className="grid cursor-pointer grid-cols-[1fr_2fr] gap-2 px-3 py-1.5 transition-colors hover:bg-notilus-surface-2/40"
           >
             <span className="truncate text-purple-400">{entry.key}</span>
             <span className="truncate text-foreground">{entry.value}</span>
