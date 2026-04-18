@@ -69,21 +69,21 @@ export function DevNetwork({ requests, onClear }: DevNetworkProps) {
 
   return (
     <div className="flex h-full flex-col text-[11px] font-mono">
-      <div className="flex items-center gap-1 border-b border-border/35 bg-card/50 px-2 py-1 shrink-0">
+      <div className="flex items-center gap-1 bg-notilus-surface-2/30 px-2 py-1 shrink-0">
         <button
           type="button"
           onClick={onClear}
-          className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground hover:bg-notilus-surface-2/60"
           title="Clear requests"
         >
-          <Trash2 size={12} />
+          <Trash2 size={12} strokeWidth={1.5} />
         </button>
         <button
           type="button"
           onClick={() => setFilterType(null)}
           className={cn(
-            'rounded px-1.5 py-0.5 text-[10px]',
-            !filterType ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+            'rounded-full px-2 py-0.5 text-[10px] transition-colors',
+            !filterType ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60'
           )}
         >
           All
@@ -94,20 +94,20 @@ export function DevNetwork({ requests, onClear }: DevNetworkProps) {
             type="button"
             onClick={() => setFilterType(current => (current === type ? null : type))}
             className={cn(
-              'rounded px-1.5 py-0.5 text-[10px] capitalize',
+              'rounded-full px-2 py-0.5 text-[10px] capitalize transition-colors',
               filterType === type
-                ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60'
             )}
           >
             {type}
           </button>
         ))}
         <div className="flex-1" />
-        <span className="text-[10px] text-muted-foreground">{filteredRequests.length} requests</span>
+        <span className="text-[10px] text-muted-foreground tabular-nums">{filteredRequests.length} requests</span>
       </div>
 
-      <div className="grid shrink-0 grid-cols-[54px_56px_1fr_70px_70px_70px] gap-1 border-b border-border/35 bg-secondary/30 px-2 py-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+      <div className="grid shrink-0 grid-cols-[54px_56px_1fr_70px_70px_70px] gap-1 bg-notilus-surface-2/20 px-2 py-1 text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
         <span>Status</span>
         <span>Method</span>
         <span>URL</span>
@@ -120,14 +120,14 @@ export function DevNetwork({ requests, onClear }: DevNetworkProps) {
         {filteredRequests.map(request => (
           <div
             key={`${request.id}-${request.status}-${request.statusCode}`}
-            className="grid cursor-pointer grid-cols-[54px_56px_1fr_70px_70px_70px] gap-1 border-b border-border/30 px-2 py-1 transition-colors hover:bg-muted/20"
+            className="grid cursor-pointer grid-cols-[54px_56px_1fr_70px_70px_70px] gap-1 px-2 py-1 transition-colors hover:bg-notilus-surface-2/40"
           >
-            <span className={statusColor(request.statusCode)}>{request.statusCode ?? '-'}</span>
+            <span className={cn(statusColor(request.statusCode), 'tabular-nums')}>{request.statusCode ?? '-'}</span>
             <span className={METHOD_COLORS[request.method] ?? 'text-foreground'}>{request.method}</span>
             <span className="truncate text-foreground">{request.url}</span>
             <span className="truncate text-muted-foreground">{request.mimeType ?? '-'}</span>
-            <span className="text-muted-foreground">{formatBytes(request.responseSize)}</span>
-            <span className={cn('text-muted-foreground', (request.duration ?? 0) >= 1000 ? 'text-yellow-400' : '')}>
+            <span className="text-muted-foreground tabular-nums">{formatBytes(request.responseSize)}</span>
+            <span className={cn('text-muted-foreground tabular-nums', (request.duration ?? 0) >= 1000 ? 'text-yellow-400' : '')}>
               {formatDuration(request.duration)}
             </span>
           </div>

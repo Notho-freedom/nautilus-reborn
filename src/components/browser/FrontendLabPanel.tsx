@@ -51,8 +51,8 @@ function ColorPicker() {
           <div className="flex items-center gap-1">
             <span className="text-muted-foreground">HEX</span>
             <span className="text-foreground font-mono">{color}</span>
-            <button onClick={() => copy(color)} className="ml-auto text-muted-foreground hover:text-foreground">
-              {copied ? <Check size={9} /> : <Copy size={9} />}
+            <button onClick={() => copy(color)} className="ml-auto text-muted-foreground hover:text-foreground transition-colors">
+              {copied ? <Check size={9} strokeWidth={1.5} /> : <Copy size={9} strokeWidth={1.5} />}
             </button>
           </div>
           <div className="flex items-center gap-1"><span className="text-muted-foreground">HSL</span><span className="text-foreground font-mono text-[9px]">{hsl}</span></div>
@@ -69,21 +69,21 @@ function UnitConverter() {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <input type="number" value={px} onChange={e => setPx(Number(e.target.value))} className="w-16 h-7 rounded-md bg-notilus-surface-1 border border-border px-2 text-xs font-mono text-foreground outline-none" />
+        <input type="number" value={px} onChange={e => setPx(Number(e.target.value))} className="w-16 h-7 rounded-md bg-notilus-surface-2/50 px-2 text-xs font-mono text-foreground outline-none focus:ring-1 focus:ring-primary/25" />
         <span className="text-muted-foreground">px</span>
       </div>
       <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-        <div className="rounded-md bg-notilus-surface-1 border border-border p-1.5 text-center">
+        <div className="rounded-md bg-notilus-surface-2/40 p-1.5 text-center">
           <div className="text-muted-foreground">rem</div>
-          <div className="text-foreground font-mono">{(px / baseFontSize).toFixed(3)}</div>
+          <div className="text-foreground font-mono tabular-nums">{(px / baseFontSize).toFixed(3)}</div>
         </div>
-        <div className="rounded-md bg-notilus-surface-1 border border-border p-1.5 text-center">
+        <div className="rounded-md bg-notilus-surface-2/40 p-1.5 text-center">
           <div className="text-muted-foreground">em</div>
-          <div className="text-foreground font-mono">{(px / baseFontSize).toFixed(3)}</div>
+          <div className="text-foreground font-mono tabular-nums">{(px / baseFontSize).toFixed(3)}</div>
         </div>
-        <div className="rounded-md bg-notilus-surface-1 border border-border p-1.5 text-center">
+        <div className="rounded-md bg-notilus-surface-2/40 p-1.5 text-center">
           <div className="text-muted-foreground">pt</div>
-          <div className="text-foreground font-mono">{(px * 0.75).toFixed(1)}</div>
+          <div className="text-foreground font-mono tabular-nums">{(px * 0.75).toFixed(1)}</div>
         </div>
       </div>
     </div>
@@ -102,7 +102,7 @@ function BoxShadowGenerator() {
 
   return (
     <div className="space-y-2">
-      <div className="w-full h-16 rounded-lg bg-notilus-surface-1 border border-border flex items-center justify-center">
+      <div className="w-full h-16 rounded-lg bg-notilus-surface-2/40 flex items-center justify-center">
         <div className="w-12 h-8 rounded bg-card" style={{ boxShadow: shadow }} />
       </div>
       <div className="grid grid-cols-2 gap-1.5 text-[10px]">
@@ -115,14 +115,14 @@ function BoxShadowGenerator() {
           <div key={s.label} className="flex items-center gap-1">
             <span className="text-muted-foreground w-8">{s.label}</span>
             <input type="range" min={-50} max={50} value={s.value} onChange={e => s.set(Number(e.target.value))} className="flex-1 h-1 accent-primary" />
-            <span className="text-foreground w-6 text-right font-mono">{s.value}</span>
+            <span className="text-foreground w-6 text-right font-mono tabular-nums">{s.value}</span>
           </div>
         ))}
       </div>
       <div className="flex items-center gap-1">
-        <code className="flex-1 text-[9px] font-mono text-foreground bg-notilus-surface-1 rounded px-2 py-1 truncate">{shadow}</code>
-        <button onClick={() => copy(`box-shadow: ${shadow};`)} className="text-muted-foreground hover:text-foreground">
-          {copied ? <Check size={9} /> : <Copy size={9} />}
+        <code className="flex-1 text-[9px] font-mono text-foreground bg-notilus-surface-2/50 rounded px-2 py-1 truncate">{shadow}</code>
+        <button onClick={() => copy(`box-shadow: ${shadow};`)} className="text-muted-foreground hover:text-foreground transition-colors">
+          {copied ? <Check size={9} strokeWidth={1.5} /> : <Copy size={9} strokeWidth={1.5} />}
         </button>
       </div>
     </div>
@@ -139,16 +139,16 @@ function GradientGenerator() {
 
   return (
     <div className="space-y-2">
-      <div className="w-full h-10 rounded-lg border border-border" style={{ background: gradient }} />
+      <div className="w-full h-10 rounded-lg" style={{ background: gradient }} />
       <div className="flex items-center gap-2">
         <input type="color" value={from} onChange={e => setFrom(e.target.value)} className="w-6 h-6 rounded cursor-pointer border-0 p-0" />
         <input type="range" min={0} max={360} value={angle} onChange={e => setAngle(Number(e.target.value))} className="flex-1 h-1 accent-primary" />
         <input type="color" value={to} onChange={e => setTo(e.target.value)} className="w-6 h-6 rounded cursor-pointer border-0 p-0" />
       </div>
       <div className="flex items-center gap-1">
-        <code className="flex-1 text-[9px] font-mono text-foreground bg-notilus-surface-1 rounded px-2 py-1 truncate">{gradient}</code>
-        <button onClick={() => copy(`background: ${gradient};`)} className="text-muted-foreground hover:text-foreground">
-          {copied ? <Check size={9} /> : <Copy size={9} />}
+        <code className="flex-1 text-[9px] font-mono text-foreground bg-notilus-surface-2/50 rounded px-2 py-1 truncate">{gradient}</code>
+        <button onClick={() => copy(`background: ${gradient};`)} className="text-muted-foreground hover:text-foreground transition-colors">
+          {copied ? <Check size={9} strokeWidth={1.5} /> : <Copy size={9} strokeWidth={1.5} />}
         </button>
       </div>
     </div>
@@ -175,7 +175,7 @@ function ContrastChecker() {
 
   return (
     <div className="space-y-2">
-      <div className="w-full h-12 rounded-lg border border-border flex items-center justify-center text-sm font-display" style={{ backgroundColor: bg, color: fg }}>
+      <div className="w-full h-12 rounded-lg flex items-center justify-center text-sm font-display" style={{ backgroundColor: bg, color: fg }}>
         Sample Text
       </div>
       <div className="flex items-center gap-3">
@@ -188,7 +188,7 @@ function ContrastChecker() {
           <span className="text-[9px] text-muted-foreground">BG</span>
         </div>
         <div className="flex-1 text-right text-[10px]">
-          <span className="font-mono text-foreground">{ratio.toFixed(2)}:1</span>
+          <span className="font-mono text-foreground tabular-nums">{ratio.toFixed(2)}:1</span>
           <span className={`ml-1 ${passAAA ? 'text-success' : passAA ? 'text-warning' : 'text-error'}`}>
             {passAAA ? 'AAA ✓' : passAA ? 'AA ✓' : 'Fail ✗'}
           </span>
@@ -212,23 +212,27 @@ export function FrontendLabPanel({ onClose }: FrontendLabPanelProps) {
 
   return (
     <SidebarPanelShell title="Frontend Lab" icon={FlaskConical} onClose={onClose ?? (() => {})}>
-      <div className="p-2">
+      <div className="p-3">
         <div className="flex flex-wrap gap-1 mb-3">
           {TOOLS.map(tool => (
             <button
               key={tool.id}
               onClick={() => setActiveTool(tool.id)}
-              className={`px-2 py-1 rounded-md text-[10px] font-body transition-colors ${
+              className={`px-2.5 py-1 rounded-full text-[10px] font-body transition-colors ${
                 activeTool === tool.id
                   ? 'bg-primary/15 text-primary'
-                  : 'bg-notilus-surface-1 text-muted-foreground hover:text-foreground'
+                  : 'bg-notilus-surface-2/40 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/70'
               }`}
             >
               {tool.label}
             </button>
           ))}
         </div>
-        {ActiveComponent && <ActiveComponent />}
+        {ActiveComponent && (
+          <div className="rounded-lg bg-notilus-surface-2/30 p-3">
+            <ActiveComponent />
+          </div>
+        )}
       </div>
     </SidebarPanelShell>
   );

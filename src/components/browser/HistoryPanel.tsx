@@ -147,21 +147,21 @@ export function HistoryPanel({
           className="px-0"
         >
           {grouped.map(group => (
-            <AccordionItem key={group.key} value={group.key} className="border-border/50">
-              <AccordionTrigger className="px-3 py-2 text-[10px] font-display uppercase tracking-widest text-muted-foreground hover:no-underline">
+            <AccordionItem key={group.key} value={group.key} className="border-0">
+              <AccordionTrigger className="px-3 py-2 text-[10px] font-display uppercase tracking-[0.18em] text-muted-foreground/70 hover:no-underline hover:text-foreground transition-colors">
                 <div className="flex items-center gap-2 w-full">
                   <span className="flex-1 text-left">{group.label}</span>
-                  <span className="text-[9px] font-body text-muted-foreground">{group.items.length}</span>
+                  <span className="text-[9px] font-body text-muted-foreground tabular-nums">{group.items.length}</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
                         onClick={event => event.stopPropagation()}
-                        className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-fast"
+                        className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60 transition-colors"
                       >
-                        <MoreVertical size={12} />
+                        <MoreVertical size={12} strokeWidth={1.5} />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="glass border-border min-w-[190px]">
+                    <DropdownMenuContent align="end" className="glass border-border/40 min-w-[190px]">
                       <DropdownMenuItem
                         onClick={() =>
                           onOpenUrlsInCurrentWindow?.(
@@ -200,7 +200,7 @@ export function HistoryPanel({
                   return (
                     <div
                       key={h.id}
-                      className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors duration-fast cursor-pointer"
+                      className="group flex items-center gap-2 px-3 py-2 hover:bg-notilus-surface-2/50 transition-colors cursor-pointer"
                       onClick={() => onNavigate?.(h.url)}
                     >
                       {faviconUrl ? (
@@ -213,22 +213,22 @@ export function HistoryPanel({
                           }}
                         />
                       ) : (
-                        <div className="w-4 h-4 rounded-sm bg-muted/60" />
+                        <div className="w-4 h-4 rounded-sm bg-notilus-surface-2/60" />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-body text-foreground truncate">{h.title}</div>
                         <div className="text-[10px] font-body text-muted-foreground truncate">{h.url}</div>
                       </div>
-                      <span className="text-[10px] font-body text-muted-foreground shrink-0">{getTimeLabel(h.visitedAt)}</span>
+                      <span className="text-[10px] font-body text-muted-foreground shrink-0 tabular-nums">{getTimeLabel(h.visitedAt)}</span>
                       <button
                         onClick={event => {
                           event.stopPropagation();
                           removeHistoryItem(h.id);
                         }}
-                        className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-fast"
+                        className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
                         title="Remove entry"
                       >
-                        <X size={10} />
+                        <X size={10} strokeWidth={1.5} />
                       </button>
                     </div>
                   );

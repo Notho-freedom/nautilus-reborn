@@ -107,25 +107,25 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-3 border-b border-secondary/45 space-y-2 bg-gradient-to-b from-notilus-surface-2/35 to-transparent">
+      <div className="p-3 space-y-2">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onBack}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-1 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60 transition-colors"
           >
-            <ArrowLeft size={12} />
+            <ArrowLeft size={12} strokeWidth={1.5} />
           </button>
-          <FileCode size={12} className="text-muted-foreground shrink-0" />
+          <FileCode size={12} strokeWidth={1.5} className="text-muted-foreground shrink-0" />
           <span className="flex-1 text-xs font-body text-foreground font-semibold truncate">{fileName}</span>
         </div>
 
         <div className="flex items-center gap-1.5 text-[9px] font-body text-muted-foreground">
-          <span>{formatFileSize(file.size)}</span>
+          <span className="tabular-nums">{formatFileSize(file.size)}</span>
           {!isBinary && content && (
             <>
               <span>•</span>
-              <span>{lineCount} lines</span>
+              <span className="tabular-nums">{lineCount} lines</span>
             </>
           )}
           <span>•</span>
@@ -137,17 +137,17 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
           <button
             type="button"
             onClick={handleOpenInVscodeTab}
-            className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-2/70 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-2/60 text-[10px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
           >
-            <Code2 size={9} /> VS Code
+            <Code2 size={9} strokeWidth={1.5} /> VS Code
           </button>
           {!isBinary && content && (
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-2/40 text-[10px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/70 transition-colors"
             >
-              {copied ? <Check size={9} className="text-success" /> : <ClipboardCopy size={9} />}
+              {copied ? <Check size={9} strokeWidth={1.5} className="text-success" /> : <ClipboardCopy size={9} strokeWidth={1.5} />}
               {copied ? 'Copied' : 'Copy'}
             </button>
           )}
@@ -155,26 +155,26 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
             <button
               type="button"
               onClick={handleDownload}
-              className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-2/40 text-[10px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/70 transition-colors"
             >
-              <Download size={9} /> Download
+              <Download size={9} strokeWidth={1.5} /> Download
             </button>
           )}
           {file.downloadUrl && (
             <button
               type="button"
               onClick={handleOpenRawInTab}
-              className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-2/40 text-[10px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/70 transition-colors"
             >
-              <ExternalLink size={9} /> Raw tab
+              <ExternalLink size={9} strokeWidth={1.5} /> Raw tab
             </button>
           )}
           <button
             type="button"
             onClick={handleOpenOnGitHub}
-            className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-2/40 text-[10px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/70 transition-colors"
           >
-            <ExternalLink size={9} /> GitHub
+            <ExternalLink size={9} strokeWidth={1.5} /> GitHub
           </button>
         </div>
       </div>
@@ -183,30 +183,30 @@ export function GitHubFileViewer({ repo, file, token, onBack, onNavigate, onCrea
       <div className="flex-1 overflow-auto">
         {isLoading && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 size={16} className="animate-spin text-primary" />
+            <Loader2 size={16} strokeWidth={1.5} className="animate-spin text-primary" />
           </div>
         )}
 
         {error && (
-          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-secondary/45 rounded-md p-2">
+          <div className="m-3 text-[10px] font-body text-error bg-error/10 rounded-md p-2">
             {error}
           </div>
         )}
 
         {isBinary && !isLoading && (
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-muted-foreground">
-            <FileCode size={32} className="opacity-30" />
+            <FileCode size={32} strokeWidth={1.25} className="opacity-30" />
             <span className="text-xs font-body">Binary file — preview not available</span>
             {file.downloadUrl && (
               <button
                 onClick={handleDownload}
                 className="flex items-center gap-1.5 px-3 h-7 rounded-lg bg-primary/15 text-[10px] font-body text-primary hover:bg-primary/25 transition-colors"
               >
-                <Download size={10} /> Download file
+                <Download size={10} strokeWidth={1.5} /> Download file
               </button>
             )}
             {['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension) && file.downloadUrl && (
-              <img src={file.downloadUrl} alt={fileName} className="max-w-full max-h-48 rounded-md border border-secondary/45 mt-2" />
+              <img src={file.downloadUrl} alt={fileName} className="max-w-full max-h-48 rounded-md mt-2" />
             )}
           </div>
         )}
