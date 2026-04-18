@@ -25,6 +25,7 @@ function stateToStatus(state: 'completed' | 'cancelled' | 'interrupted'): Downlo
 export class DownloadManager {
   private readonly downloads = new Map<string, ManagedDownload>();
   private readonly order: string[] = [];
+  private readonly listenedSessions = new WeakSet<Session>();
   private sequence = 1;
 
   constructor(
@@ -34,9 +35,18 @@ export class DownloadManager {
   ) {}
 
   setup() {
-    this.browserSession.on('will-download', (_event, item) => {
+    this.registerSession(this.browserSession);
+  }
+
+  registerSession(targetSession: Session | null | undefined): void {
+    if (!targetSession) return;
+    if (this.listenedSessions.has(targetSession)) return;
+
+    this.listenedSessions.add(targetSession);
+    targetSession.on('will-download', (_event, item) => {
       this.handleWillDownload(item);
     });
+    this.log('listen', this.describeSession(targetSession));
   }
 
   getSnapshot(): DownloadsSnapshot {
@@ -224,5 +234,23 @@ export class DownloadManager {
   private log(event: string, message: string): void {
     if (!this.debug) return;
     console.info(`[download-manager] ${event} ${message}`);
+  }
+
+  private describeSession(targetSession: Session): string {
+    const candidate = targetSession as Session & {
+      partition?: string;
+      getStoragePath?: () => string | null;
+    };
+
+    if (typeof candidate.partition === 'string' && candidate.partition.trim()) {
+      return candidate.partition;
+    }
+
+    if (typeof candidate.getStoragePath === 'function') {
+      const storagePath = candidate.getStoragePath();
+      if (storagePath) return storagePath;
+    }
+
+    return 'session';
   }
 }

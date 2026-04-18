@@ -40,6 +40,8 @@ function configureUserAgent() {
   app.userAgentFallback = ua;
 
   app.on('web-contents-created', (_event, contents) => {
+    downloadManager?.registerSession(contents.session);
+
     const type = contents.getType();
     if (type === 'webview' || type === 'webContentsView') {
       contents.setUserAgent(app.userAgentFallback);
@@ -150,7 +152,9 @@ function configureWebviewSecurity(window: BrowserWindow, externalPreloadPath: st
     } else {
       webPreferences.partition = SHARED_WEBVIEW_PARTITION;
     }
-    ensureUserAgentCompatForSession(session.fromPartition(webPreferences.partition));
+    const targetSession = session.fromPartition(webPreferences.partition);
+    ensureUserAgentCompatForSession(targetSession);
+    downloadManager?.registerSession(targetSession);
   });
 }
 
@@ -189,6 +193,7 @@ function ensureGlobalManagers() {
     DEBUG_IPC
   );
   downloadManager.setup();
+  downloadManager.registerSession(session.fromPartition(SHARED_WEBVIEW_PARTITION));
   registerDownloadIpc({ downloadManager, debug: DEBUG_IPC });
 
   gitManager = new GitManager(DEBUG_IPC);
