@@ -149,10 +149,10 @@ export function DocumentationPanel({ onClose }: DocumentationPanelProps = {}) {
               {shortcutMatches.map(item => (
                 <div
                   key={item.keys}
-                  className="flex items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-muted/30"
+                  className="flex items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-notilus-surface-2/50"
                 >
                   <span className="text-[11px] text-muted-foreground">{item.action}</span>
-                  <kbd className="rounded-md border border-border bg-notilus-surface-2 px-1.5 py-0.5 font-mono text-[9px] text-foreground">
+                  <kbd className="rounded-md bg-notilus-surface-2/70 px-1.5 py-0.5 font-mono text-[9px] text-foreground">
                     {item.keys}
                   </kbd>
                 </div>
@@ -188,7 +188,7 @@ export function DocumentationPanel({ onClose }: DocumentationPanelProps = {}) {
               </p>
               <p>
                 <span className="text-foreground">External web engine:</span> Electron
-                <code className="mx-1 rounded bg-notilus-surface-2 px-1 py-0.5 text-[10px] text-foreground">
+                <code className="mx-1 rounded bg-notilus-surface-2/70 px-1 py-0.5 text-[10px] text-foreground">
                   &lt;webview&gt;
                 </code>
                 guests per external tab.
@@ -223,9 +223,9 @@ function DocCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2 rounded-xl border border-border/50 bg-notilus-surface-1/50 p-3">
-      <div className="inline-flex items-center gap-1.5 text-[10px] font-display uppercase tracking-widest text-primary">
-        <Icon size={11} />
+    <div className="space-y-2 rounded-xl bg-notilus-surface-2/35 p-3">
+      <div className="inline-flex items-center gap-1.5 text-[10px] font-display uppercase tracking-[0.18em] text-primary/85">
+        <Icon size={11} strokeWidth={1.5} />
         {title}
       </div>
       {children}
