@@ -87,10 +87,10 @@ export function WorkspacesPanel({
         {sortedWorkspaces.map(workspace => (
           <div
             key={workspace.id}
-            className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors duration-fast"
+            className="group flex items-center gap-2 px-3 py-2 hover:bg-notilus-surface-2/50 transition-colors"
           >
-            <div className="w-8 h-8 rounded-md bg-notilus-surface-2 flex items-center justify-center text-primary">
-              <FolderOpen size={14} />
+            <div className="w-8 h-8 rounded-md bg-notilus-surface-2/60 flex items-center justify-center text-primary/85">
+              <FolderOpen size={14} strokeWidth={1.5} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-body text-foreground truncate">{workspace.name}</div>
@@ -100,11 +100,11 @@ export function WorkspacesPanel({
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-fast opacity-0 group-hover:opacity-100">
-                  <MoreVertical size={12} />
+                <button className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60 transition-colors opacity-0 group-hover:opacity-100">
+                  <MoreVertical size={12} strokeWidth={1.5} />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="glass border-border min-w-[170px]">
+              <DropdownMenuContent align="end" className="glass border-border/40 min-w-[170px]">
                 <DropdownMenuItem
                   onClick={() => onOpenUrlsInCurrentWindow(workspace.tabs)}
                   className="text-xs font-body cursor-pointer"
@@ -147,7 +147,7 @@ export function WorkspacesPanel({
       </SidebarPanelShell>
 
       <Dialog open={Boolean(renameTarget)} onOpenChange={open => (!open ? setRenameTarget(null) : null)}>
-        <DialogContent className="sm:max-w-sm glass border-border">
+        <DialogContent className="sm:max-w-sm glass border-border/40">
           <DialogHeader>
             <DialogTitle className="text-sm font-display tracking-wider uppercase">
               Rename workspace
@@ -158,12 +158,12 @@ export function WorkspacesPanel({
               value={renameValue}
               onChange={event => setRenameValue(event.target.value)}
               placeholder="Workspace name"
-              className="w-full h-9 rounded-md bg-notilus-surface-1 border border-border px-3 text-sm font-body text-foreground outline-none focus:border-primary/50"
+              className="w-full h-9 rounded-md bg-notilus-surface-2/70 px-3 text-sm font-body text-foreground outline-none focus:ring-1 focus:ring-primary/25"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setRenameTarget(null)}
-                className="h-8 px-3 rounded-md text-xs font-body text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                className="h-8 px-3 rounded-md text-xs font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60 transition-colors"
               >
                 Cancel
               </button>

@@ -279,18 +279,18 @@ export function DevToolsPanel({
 
   return (
     <div
-      className="notilus-devtools-scope flex shrink-0 flex-col border-t border-border/35 bg-card/95 backdrop-blur-sm"
+      className="notilus-devtools-scope flex shrink-0 flex-col border-t border-border/30 surface-chrome"
       style={{ height }}
     >
       <div
         onMouseDown={handleMouseDown}
         className={cn(
-          'h-1 cursor-row-resize transition-colors duration-fast hover:bg-primary/30',
-          isDragging ? 'bg-primary/50' : ''
+          'h-[2px] cursor-row-resize transition-colors duration-200 hover:bg-primary/40',
+          isDragging ? 'bg-primary/60' : ''
         )}
       />
 
-      <div className="flex h-9 items-center gap-1 border-b border-border/35 bg-card/50 px-2 shrink-0">
+      <div className="flex h-9 items-center gap-1 bg-notilus-surface-2/30 px-2 shrink-0">
         <div className="flex items-center gap-1">
           {TABS.map(tab => (
             <button
@@ -299,21 +299,24 @@ export function DevToolsPanel({
               title={`${tab.label} (${tab.shortcut})`}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'h-7 rounded-md px-2.5 text-[10px] uppercase tracking-wider transition-all duration-fast',
+                'relative h-7 rounded-md px-2.5 text-[10px] uppercase tracking-[0.15em] transition-all duration-200',
                 activeTab === tab.id
                   ? 'bg-primary/15 text-primary'
-                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                  : 'text-muted-foreground hover:bg-notilus-surface-2/60 hover:text-foreground'
               )}
             >
               {tab.label}
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-primary" />
+              )}
             </button>
           ))}
         </div>
 
-        <div className="ml-2 flex items-center gap-1 text-[9px]">
-          <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-red-400">Err {errorCount}</span>
-          <span className="rounded bg-yellow-500/15 px-1.5 py-0.5 text-yellow-400">Warn {warningCount}</span>
-          <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-blue-400">Req {networkRequests.length}</span>
+        <div className="ml-3 flex items-center gap-2 text-[9px] tabular-nums">
+          <span className="text-red-400/80">Err {errorCount}</span>
+          <span className="text-yellow-400/80">Warn {warningCount}</span>
+          <span className="text-blue-400/80">Req {networkRequests.length}</span>
         </div>
 
         <div className="flex-1" />
@@ -332,7 +335,7 @@ export function DevToolsPanel({
             )}
             title="Inspect mode (Ctrl+Shift+C)"
           >
-            {inspectMode ? <Eye size={11} /> : <EyeOff size={11} />}
+            {inspectMode ? <Eye size={11} strokeWidth={1.25} /> : <EyeOff size={11} strokeWidth={1.25} />}
             Inspect
           </button>
 
@@ -349,7 +352,7 @@ export function DevToolsPanel({
             )}
             title="Responsive desktop"
           >
-            <Laptop size={11} />
+            <Laptop size={11} strokeWidth={1.25} />
           </button>
           <button
             type="button"
@@ -364,7 +367,7 @@ export function DevToolsPanel({
             )}
             title="Responsive tablet"
           >
-            <Tablet size={11} />
+            <Tablet size={11} strokeWidth={1.25} />
           </button>
           <button
             type="button"
@@ -379,7 +382,7 @@ export function DevToolsPanel({
             )}
             title="Responsive mobile"
           >
-            <Smartphone size={11} />
+            <Smartphone size={11} strokeWidth={1.25} />
           </button>
           <button
             type="button"
@@ -400,7 +403,7 @@ export function DevToolsPanel({
             className="inline-flex h-7 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
             title="Clear all"
           >
-            <Eraser size={11} />
+            <Eraser size={11} strokeWidth={1.25} />
             Clear
           </button>
 
@@ -411,7 +414,7 @@ export function DevToolsPanel({
             className="inline-flex h-7 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
             title="DevTools settings"
           >
-            <Settings size={11} />
+            <Settings size={11} strokeWidth={1.25} />
             Settings
           </button>
 
@@ -422,7 +425,7 @@ export function DevToolsPanel({
               className="inline-flex h-7 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
               title="Attach panel"
             >
-              <ArrowDownToLine size={11} />
+              <ArrowDownToLine size={11} strokeWidth={1.25} />
               Attach
             </button>
           ) : (
@@ -432,7 +435,7 @@ export function DevToolsPanel({
               className="inline-flex h-7 items-center gap-1 rounded px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
               title="Detach to mini panel"
             >
-              <ArrowDownToLine size={11} />
+              <ArrowDownToLine size={11} strokeWidth={1.25} />
               Detach
             </button>
           )}
@@ -443,7 +446,7 @@ export function DevToolsPanel({
             className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
             title="Close DevTools"
           >
-            <X size={12} />
+            <X size={12} strokeWidth={1.25} />
           </button>
         </div>
       </div>

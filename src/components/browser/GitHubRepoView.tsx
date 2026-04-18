@@ -126,38 +126,38 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
   return (
     <div className="flex flex-col h-full">
       {/* Repo header */}
-      <div className="p-3 border-b border-secondary/45 space-y-2 bg-gradient-to-b from-notilus-surface-2/35 to-transparent">
+      <div className="p-3 space-y-2">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onBack}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-1 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60 transition-colors"
           >
-            <ArrowLeft size={12} />
+            <ArrowLeft size={12} strokeWidth={1.5} />
           </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              {repo.isPrivate ? <Lock size={10} className="text-warning shrink-0" /> : <Globe size={10} className="text-muted-foreground shrink-0" />}
+              {repo.isPrivate ? <Lock size={10} strokeWidth={1.5} className="text-warning shrink-0" /> : <Globe size={10} strokeWidth={1.5} className="text-muted-foreground shrink-0" />}
               <span className="text-xs font-body text-foreground font-semibold truncate">{repo.fullName}</span>
             </div>
           </div>
           <button
             type="button"
             onClick={handleOpenRepoInVscode}
-            className="h-6 px-2 flex items-center justify-center gap-1 rounded-md bg-notilus-surface-2/70 text-[10px] text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+            className="h-6 px-2 flex items-center justify-center gap-1 rounded-md bg-notilus-surface-2/60 text-[10px] text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
             title="Open repository in VS Code tab"
           >
-            <Code2 size={10} />
+            <Code2 size={10} strokeWidth={1.5} />
             VS Code
           </button>
           <button
             type="button"
             onClick={() => handleOpenOnGitHub(repo.htmlUrl)}
             aria-label="Open repository on GitHub"
-            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-1 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/60 transition-colors"
             title="Open repository on GitHub"
           >
-            <ExternalLink size={10} />
+            <ExternalLink size={10} strokeWidth={1.5} />
           </button>
         </div>
 
@@ -170,13 +170,13 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: repo.languageColor }} />
             {repo.language}
           </span>
-          <span className="flex items-center gap-0.5"><Star size={8} /> {repo.stars}</span>
-          <span className="flex items-center gap-0.5"><GitFork size={8} /> {repo.forks}</span>
+          <span className="flex items-center gap-0.5"><Star size={8} strokeWidth={1.5} /> <span className="tabular-nums">{repo.stars}</span></span>
+          <span className="flex items-center gap-0.5"><GitFork size={8} strokeWidth={1.5} /> <span className="tabular-nums">{repo.forks}</span></span>
         </div>
       </div>
 
       {/* Breadcrumb */}
-      <div className="px-3 py-1.5 border-b border-secondary/35 flex items-center gap-0.5 overflow-x-auto text-[10px] font-body">
+      <div className="px-3 py-1.5 flex items-center gap-0.5 overflow-x-auto text-[10px] font-body bg-notilus-surface-2/25">
         <button
           type="button"
           onClick={() => navigateToBreadcrumb(0)}
@@ -186,7 +186,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
         </button>
         {currentPath.map((segment, i) => (
           <span key={i} className="flex items-center gap-0.5 shrink-0">
-            <ChevronRight size={8} className="text-muted-foreground" />
+            <ChevronRight size={8} strokeWidth={1.5} className="text-muted-foreground" />
             <button
               type="button"
               onClick={() => navigateToBreadcrumb(i + 1)}
@@ -202,19 +202,19 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
       <div className="flex-1 overflow-y-auto">
         {isLoading && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 size={16} className="animate-spin text-primary" />
+            <Loader2 size={16} strokeWidth={1.5} className="animate-spin text-primary" />
           </div>
         )}
 
         {error && (
-          <div className="m-3 text-[10px] font-body text-error bg-error/10 border border-secondary/45 rounded-md p-2">
+          <div className="m-3 text-[10px] font-body text-error bg-error/10 rounded-md p-2">
             {error}
           </div>
         )}
 
         {!isLoading && !error && contents.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
-            <Folder size={24} className="opacity-30" />
+            <Folder size={24} strokeWidth={1.25} className="opacity-30" />
             <span className="text-xs font-body">Empty directory</span>
           </div>
         )}
@@ -222,7 +222,7 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
         {!isLoading && !error && contents.map(item => (
           <div
             key={item.sha}
-            className="group w-full flex items-center gap-1 border-b border-secondary/20 hover:bg-notilus-surface-1/80 transition-colors"
+            className="group w-full flex items-center gap-1 hover:bg-notilus-surface-2/50 transition-colors"
           >
             <button
               type="button"
@@ -230,19 +230,19 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
               className="flex-1 flex items-center gap-2 px-3 py-1.5 text-left"
             >
               {item.type === 'dir' ? (
-                <Folder size={12} className="text-info shrink-0" />
+                <Folder size={12} strokeWidth={1.5} className="text-info shrink-0" />
               ) : isCodeFile(item.name) ? (
-                <FileCode size={12} className="text-muted-foreground shrink-0" />
+                <FileCode size={12} strokeWidth={1.5} className="text-muted-foreground shrink-0" />
               ) : (
-                <File size={12} className="text-muted-foreground shrink-0" />
+                <File size={12} strokeWidth={1.5} className="text-muted-foreground shrink-0" />
               )}
               <span className="flex-1 text-xs font-body text-foreground truncate">{item.name}</span>
               {item.type === 'file' ? (
-                <span className="text-[9px] font-body text-muted-foreground shrink-0">
+                <span className="text-[9px] font-body text-muted-foreground shrink-0 tabular-nums">
                   {formatFileSize(item.size)}
                 </span>
               ) : (
-                <ChevronRight size={10} className="text-muted-foreground shrink-0" />
+                <ChevronRight size={10} strokeWidth={1.5} className="text-muted-foreground shrink-0" />
               )}
             </button>
 
@@ -250,28 +250,28 @@ export function GitHubRepoView({ repo, token, onBack, onOpenFile, onNavigate, on
               <button
                 type="button"
                 onClick={() => handleOpenItemInVscode(item)}
-                className="h-6 px-1.5 rounded-md bg-notilus-surface-2/70 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                className="h-6 px-1.5 rounded-md bg-notilus-surface-2/60 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
                 title="Open in VS Code tab"
               >
-                <Code2 size={10} />
+                <Code2 size={10} strokeWidth={1.5} />
               </button>
               {item.type === 'file' && item.downloadUrl ? (
                 <button
                   type="button"
                   onClick={() => handleDownloadFile(item)}
-                  className="h-6 px-1.5 rounded-md bg-notilus-surface-2/70 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                  className="h-6 px-1.5 rounded-md bg-notilus-surface-2/60 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
                   title="Download file"
                 >
-                  <Download size={10} />
+                  <Download size={10} strokeWidth={1.5} />
                 </button>
               ) : null}
               <button
                 type="button"
                 onClick={() => handleOpenOnGitHub(item.htmlUrl)}
-                className="h-6 px-1.5 rounded-md bg-notilus-surface-2/70 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                className="h-6 px-1.5 rounded-md bg-notilus-surface-2/60 text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
                 title="Open on GitHub"
               >
-                <ExternalLink size={10} />
+                <ExternalLink size={10} strokeWidth={1.5} />
               </button>
             </div>
           </div>

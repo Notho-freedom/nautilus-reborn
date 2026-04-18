@@ -782,7 +782,7 @@ export class TabManager {
     }
 
     try {
-      view.webContents.destroy();
+      (view.webContents as any).close();
     } catch {
       // ignore
     }

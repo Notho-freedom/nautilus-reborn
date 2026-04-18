@@ -229,6 +229,9 @@ describe('useBrowserState desktop mode', () => {
       closeTerminalSession: vi.fn().mockResolvedValue(undefined),
       onTerminalData: vi.fn(() => () => {}),
       onTerminalExit: vi.fn(() => () => {}),
+      moveTab: vi.fn().mockResolvedValue(initialSnapshot),
+      setTabRenderMode: vi.fn().mockResolvedValue(initialSnapshot),
+      setViewportBounds: vi.fn().mockResolvedValue(undefined),
     };
     window.notilusDesktop = bridge;
   });

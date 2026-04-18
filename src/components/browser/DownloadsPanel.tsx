@@ -117,10 +117,10 @@ export function DownloadsPanel({ onClose }: DownloadsPanelProps = {}) {
         return (
           <div
             key={item.id}
-            className="px-3 py-2.5 border-b border-border/50 hover:bg-muted/30 transition-colors duration-fast"
+            className="px-3 py-2.5 hover:bg-muted/30 transition-colors duration-fast"
           >
             <div className="flex items-start gap-2">
-              <Icon size={14} className="text-muted-foreground mt-0.5 shrink-0" />
+              <Icon size={14} strokeWidth={1.5} className="text-muted-foreground mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-body text-foreground truncate">{item.name}</div>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -134,12 +134,12 @@ export function DownloadsPanel({ onClose }: DownloadsPanelProps = {}) {
                   )}
                   {item.status === 'completed' && (
                     <span className="flex items-center gap-0.5 text-[10px] font-body text-success">
-                      <CheckCircle2 size={9} /> Done
+                      <CheckCircle2 size={9} strokeWidth={1.5} /> Done
                     </span>
                   )}
                   {item.status === 'failed' && (
                     <span className="flex items-center gap-0.5 text-[10px] font-body text-error">
-                      <AlertCircle size={9} /> Failed
+                      <AlertCircle size={9} strokeWidth={1.5} /> Failed
                     </span>
                   )}
                   {item.status === 'cancelled' && (
@@ -160,22 +160,22 @@ export function DownloadsPanel({ onClose }: DownloadsPanelProps = {}) {
               </div>
               <div className="flex items-center gap-0.5 shrink-0">
                 {item.status === 'downloading' && (
-                  <button onClick={() => void pauseDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast" title="Pause"><Pause size={11} /></button>
+                  <button onClick={() => void pauseDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast" title="Pause"><Pause size={11} strokeWidth={1.5} /></button>
                 )}
                 {item.status === 'paused' && (
-                  <button onClick={() => void resumeDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast" title="Resume"><Play size={11} /></button>
+                  <button onClick={() => void resumeDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast" title="Resume"><Play size={11} strokeWidth={1.5} /></button>
                 )}
                 {isActive && (
-                  <button onClick={() => void cancelDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive transition-colors duration-fast" title="Cancel"><X size={11} /></button>
+                  <button onClick={() => void cancelDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive transition-colors duration-fast" title="Cancel"><X size={11} strokeWidth={1.5} /></button>
                 )}
                 {item.status === 'completed' && (
                   <>
-                    <button onClick={() => void openDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast" title="Open file"><Play size={11} /></button>
-                    <button onClick={() => void showDownloadInFolder(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast" title="Show in folder"><FolderOpen size={11} /></button>
+                    <button onClick={() => void openDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast" title="Open file"><Play size={11} strokeWidth={1.5} /></button>
+                    <button onClick={() => void showDownloadInFolder(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-fast" title="Show in folder"><FolderOpen size={11} strokeWidth={1.5} /></button>
                   </>
                 )}
                 {(item.status === 'completed' || item.status === 'failed' || item.status === 'cancelled') && (
-                  <button onClick={() => void removeDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive transition-colors duration-fast" title="Remove"><Trash2 size={11} /></button>
+                  <button onClick={() => void removeDownload(item.id)} className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive transition-colors duration-fast" title="Remove"><Trash2 size={11} strokeWidth={1.5} /></button>
                 )}
               </div>
             </div>

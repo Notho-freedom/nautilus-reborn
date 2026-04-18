@@ -85,10 +85,10 @@ export function MosaicPanel({ onClose }: MosaicPanelProps = {}) {
       footer="Parite V1: workspaces + presets + split tree"
     >
       <div className="space-y-3 p-3">
-        <div className="rounded-lg border border-border/35 bg-card/40 p-2">
+        <div className="rounded-lg bg-notilus-surface-2/40 p-2.5">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[10px] font-display tracking-widest text-muted-foreground">
-              ETAT MOSAIC
+            <span className="text-[10px] font-display tracking-[0.18em] text-muted-foreground/70 uppercase">
+              Etat Mosaic
             </span>
             <span
               className={cn(
@@ -111,36 +111,36 @@ export function MosaicPanel({ onClose }: MosaicPanelProps = {}) {
               mosaic.activate();
             }}
             className={cn(
-              'flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors',
+              'flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors',
               mosaic.isMosaicActive
-                ? 'border-border/35 bg-muted/30 text-foreground hover:bg-muted/50'
-                : 'border-primary/35 bg-primary/10 text-primary hover:bg-primary/20'
+                ? 'bg-notilus-surface-2/60 text-foreground hover:bg-notilus-surface-2'
+                : 'bg-primary/10 text-primary hover:bg-primary/20'
             )}
           >
-            {mosaic.isMosaicActive ? <PowerOff size={12} /> : <Power size={12} />}
+            {mosaic.isMosaicActive ? <PowerOff size={12} strokeWidth={1.5} /> : <Power size={12} strokeWidth={1.5} />}
             {mosaic.isMosaicActive ? 'Desactiver' : 'Activer'}
           </button>
         </div>
 
-        <div className="rounded-lg border border-border/35 bg-card/40 p-2">
+        <div className="rounded-lg bg-notilus-surface-2/40 p-2.5">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[10px] font-display tracking-widest text-muted-foreground">
-              WORKSPACES
+            <span className="text-[10px] font-display tracking-[0.18em] text-muted-foreground/70 uppercase">
+              Workspaces
             </span>
             <button
               type="button"
               onClick={handleCreateWorkspace}
-              className="inline-flex items-center gap-1 rounded border border-border/40 px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-notilus-surface-2/60 hover:text-foreground"
               title="Nouveau workspace"
             >
-              <Plus size={10} />
+              <Plus size={10} strokeWidth={1.5} />
               Nouveau
             </button>
           </div>
           <select
             value={mosaic.activeWorkspace?.id ?? ''}
             onChange={event => mosaic.setActiveWorkspace(event.target.value)}
-            className="h-8 w-full rounded border border-border/35 bg-background/40 px-2 text-[11px] text-foreground outline-none"
+            className="h-8 w-full rounded bg-notilus-surface-2/50 px-2 text-[11px] text-foreground outline-none focus:ring-1 focus:ring-primary/25"
           >
             {mosaic.state.workspaces.map(workspace => (
               <option key={workspace.id} value={workspace.id}>
@@ -149,7 +149,7 @@ export function MosaicPanel({ onClose }: MosaicPanelProps = {}) {
             ))}
           </select>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            Tiles actives: {activeTilesCount}
+            Tiles actives: <span className="tabular-nums text-foreground">{activeTilesCount}</span>
           </p>
         </div>
 
@@ -162,10 +162,10 @@ export function MosaicPanel({ onClose }: MosaicPanelProps = {}) {
               mosaic.activate();
             }}
             className={cn(
-              'w-full rounded-xl border p-3 text-left transition-all',
+              'w-full rounded-xl p-3 text-left transition-all',
               selectedPresetId === option.id
-                ? 'border-primary/50 bg-primary/10'
-                : 'border-border hover:border-muted-foreground/30 hover:bg-muted/30'
+                ? 'bg-primary/10 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.4)]'
+                : 'bg-notilus-surface-2/30 hover:bg-notilus-surface-2/55'
             )}
           >
             <div className="mb-1.5 flex items-center gap-2">

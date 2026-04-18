@@ -167,10 +167,10 @@ function ScoreGauge({ label, score }: ScoreGaugeProps) {
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={cn('text-lg font-display font-bold', color)}>{score}</span>
+          <span className={cn('text-lg font-display font-bold tabular-nums', color)}>{score}</span>
         </div>
       </div>
-      <span className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">
+      <span className="text-[10px] font-display uppercase tracking-[0.18em] text-muted-foreground/70">
         {label}
       </span>
     </div>
@@ -226,10 +226,10 @@ export function LighthousePanel({ onClose }: LighthousePanelProps = {}) {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                'rounded-md px-2 py-1 text-[10px] font-display uppercase tracking-wider transition-all',
+                'rounded-full px-2.5 py-1 text-[10px] font-display uppercase tracking-wider transition-all',
                 activeTab === tab
                   ? 'bg-primary/15 text-primary'
-                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                  : 'text-muted-foreground hover:bg-notilus-surface-2/60 hover:text-foreground'
               )}
             >
               {tab}
@@ -245,11 +245,11 @@ export function LighthousePanel({ onClose }: LighthousePanelProps = {}) {
               <ScoreGauge label="Best Practices" score={audit.bestPractices} />
               <ScoreGauge label="SEO" score={audit.seo} />
             </div>
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-notilus-surface-1 p-2 text-[10px]">
-              <div className="text-muted-foreground">TTFB: <span className="text-foreground">{audit.metrics.ttfbMs} ms</span></div>
-              <div className="text-muted-foreground">DCL: <span className="text-foreground">{audit.metrics.domContentLoadedMs} ms</span></div>
-              <div className="text-muted-foreground">Load: <span className="text-foreground">{audit.metrics.loadMs} ms</span></div>
-              <div className="text-muted-foreground">Resources: <span className="text-foreground">{audit.metrics.resources}</span></div>
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-notilus-surface-2/40 p-2 text-[10px]">
+              <div className="text-muted-foreground">TTFB: <span className="text-foreground tabular-nums">{audit.metrics.ttfbMs} ms</span></div>
+              <div className="text-muted-foreground">DCL: <span className="text-foreground tabular-nums">{audit.metrics.domContentLoadedMs} ms</span></div>
+              <div className="text-muted-foreground">Load: <span className="text-foreground tabular-nums">{audit.metrics.loadMs} ms</span></div>
+              <div className="text-muted-foreground">Resources: <span className="text-foreground tabular-nums">{audit.metrics.resources}</span></div>
             </div>
             <button
               onClick={() => void runAudit()}
@@ -258,7 +258,7 @@ export function LighthousePanel({ onClose }: LighthousePanelProps = {}) {
             >
               {busy ? (
                 <span className="inline-flex items-center gap-1">
-                  <Loader2 size={12} className="animate-spin" />
+                  <Loader2 size={12} strokeWidth={1.5} className="animate-spin" />
                   Running audit...
                 </span>
               ) : (
@@ -276,7 +276,7 @@ export function LighthousePanel({ onClose }: LighthousePanelProps = {}) {
               </p>
             ) : (
               recommendations.map(item => (
-                <div key={item.text} className="flex items-start gap-2 text-xs">
+                <div key={item.text} className="flex items-start gap-2 text-xs rounded-md p-2 bg-notilus-surface-2/30">
                   <span
                     className={cn(
                       'shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-display uppercase tracking-wider',
@@ -299,17 +299,17 @@ export function LighthousePanel({ onClose }: LighthousePanelProps = {}) {
         {activeTab === 'Issues' && (
           <div className="space-y-1.5 text-xs">
             {audit.performance < 70 && (
-              <div className="rounded-md border border-error/30 bg-error/10 p-2 text-error">
+              <div className="rounded-md bg-error/10 p-2 text-error">
                 Performance budget exceeded (score below 70).
               </div>
             )}
             {audit.seo < 70 && (
-              <div className="rounded-md border border-warning/30 bg-warning/10 p-2 text-warning">
+              <div className="rounded-md bg-warning/10 p-2 text-warning">
                 SEO baseline missing metadata or secure context.
               </div>
             )}
             {audit.accessibility < 70 && (
-              <div className="rounded-md border border-warning/30 bg-warning/10 p-2 text-warning">
+              <div className="rounded-md bg-warning/10 p-2 text-warning">
                 Accessibility score is low. Review semantics and media labels.
               </div>
             )}
@@ -326,9 +326,9 @@ export function LighthousePanel({ onClose }: LighthousePanelProps = {}) {
         )}
 
         {activeTab === 'AI Advisor' && (
-          <div className="space-y-2 rounded-lg border border-border bg-notilus-surface-1 p-3 text-xs">
+          <div className="space-y-2 rounded-lg bg-notilus-surface-2/40 p-3 text-xs">
             <div className="inline-flex items-center gap-1 font-display text-primary">
-              <Sparkles size={12} />
+              <Sparkles size={12} strokeWidth={1.5} />
               AI hints
             </div>
             <p className="text-muted-foreground">

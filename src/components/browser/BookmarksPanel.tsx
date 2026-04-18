@@ -111,25 +111,25 @@ export function BookmarksPanel({ onNavigate, onClose }: BookmarksPanelProps) {
         contentClassName={filtered.length === 0 ? 'flex' : undefined}
       >
         {showCreate && (
-          <form onSubmit={handleCreate} className="space-y-1.5 p-3 border-b border-border">
+          <form onSubmit={handleCreate} className="space-y-1.5 p-3">
             <input
               value={createUrl}
               onChange={event => setCreateUrl(event.target.value)}
               placeholder="URL"
-              className="w-full h-7 rounded-md bg-notilus-surface-1 border border-border px-2 text-[11px] font-body text-foreground placeholder:text-muted-foreground outline-none"
+              className="w-full h-7 rounded-md bg-notilus-surface-2 px-2 text-[11px] font-body text-foreground placeholder:text-muted-foreground outline-none border-0"
             />
             <div className="grid grid-cols-2 gap-1.5">
               <input
                 value={createTitle}
                 onChange={event => setCreateTitle(event.target.value)}
                 placeholder="Title"
-                className="h-7 rounded-md bg-notilus-surface-1 border border-border px-2 text-[11px] font-body text-foreground placeholder:text-muted-foreground outline-none"
+                className="h-7 rounded-md bg-notilus-surface-2 px-2 text-[11px] font-body text-foreground placeholder:text-muted-foreground outline-none border-0"
               />
               <input
                 value={createFolder}
                 onChange={event => setCreateFolder(event.target.value)}
                 placeholder="Folder"
-                className="h-7 rounded-md bg-notilus-surface-1 border border-border px-2 text-[11px] font-body text-foreground placeholder:text-muted-foreground outline-none"
+                className="h-7 rounded-md bg-notilus-surface-2 px-2 text-[11px] font-body text-foreground placeholder:text-muted-foreground outline-none border-0"
               />
             </div>
             <div className="grid grid-cols-[1fr_auto] gap-1.5">
@@ -137,7 +137,7 @@ export function BookmarksPanel({ onNavigate, onClose }: BookmarksPanelProps) {
                 value={createTags}
                 onChange={event => setCreateTags(event.target.value)}
                 placeholder="Tags (comma separated)"
-                className="h-7 rounded-md bg-notilus-surface-1 border border-border px-2 text-[11px] font-body text-foreground placeholder:text-muted-foreground outline-none"
+                className="h-7 rounded-md bg-notilus-surface-2 px-2 text-[11px] font-body text-foreground placeholder:text-muted-foreground outline-none border-0"
               />
               <button
                 type="submit"

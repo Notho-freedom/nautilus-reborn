@@ -79,20 +79,20 @@ export function ApiDocsPanel({ onClose }: ApiDocsPanelProps = {}) {
       footer={`${filtered.length} endpoints • desktop contracts`}
     >
       <div className="space-y-3 p-3">
-        <div className="rounded-lg border border-border bg-notilus-surface-1 p-2 text-[11px] text-muted-foreground">
+        <div className="rounded-lg bg-notilus-surface-2/40 p-2 text-[11px] text-muted-foreground">
           Notilus IPC/desktop API reference for browser, system, studio and terminal modules.
         </div>
 
         {grouped.map(section => (
           <div key={section.group} className="space-y-1">
-            <div className="text-[10px] font-display uppercase tracking-widest text-primary">
+            <div className="text-[10px] font-display uppercase tracking-[0.18em] text-primary/85">
               {section.group}
             </div>
             <div className="space-y-1">
               {section.items.map(endpoint => (
                 <div
                   key={`${endpoint.method}:${endpoint.path}`}
-                  className="rounded-lg border border-border/60 bg-card/40 p-2 transition-colors hover:bg-notilus-surface-1"
+                  className="rounded-lg bg-notilus-surface-2/30 p-2 transition-colors hover:bg-notilus-surface-2/60"
                 >
                   <div className="mb-1 flex items-center gap-2">
                     <span
@@ -106,7 +106,7 @@ export function ApiDocsPanel({ onClose }: ApiDocsPanelProps = {}) {
                     <span className="truncate font-mono text-[11px] text-foreground">{endpoint.path}</span>
                   </div>
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Code2 size={10} />
+                    <Code2 size={10} strokeWidth={1.5} />
                     <span>{endpoint.desc}</span>
                   </div>
                 </div>

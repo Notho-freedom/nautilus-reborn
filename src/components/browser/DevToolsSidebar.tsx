@@ -57,11 +57,7 @@ const WEB_SERVICES: WebServiceItem[] = [
 ];
 
 export function DevToolsSidebar({
-  isOpen,
-  activePanel,
-  onToggle,
-  onOpenWebPanel,
-  activeWebServiceUrl,
+  isOpen, activePanel, onToggle, onOpenWebPanel, activeWebServiceUrl,
 }: DevToolsSidebarProps) {
   const [enabledWebServices, setEnabledWebServices] = useState<WebServiceId[]>(
     () => getSettings().enabledWebServices
@@ -80,10 +76,12 @@ export function DevToolsSidebar({
 
   return (
     <div className="flex h-full shrink-0">
-      <div className="flex flex-col items-center w-11 bg-sidebar border-r border-sidebar-border py-2 gap-0.5 overflow-y-auto no-scrollbar">
+      <div className="flex flex-col items-center w-12 surface-chrome border-r border-border/30 py-2 gap-0.5 overflow-y-auto no-scrollbar">
         {SIDEBAR_ITEMS.map((item, i) => {
           if ('type' in item && item.type === 'separator') {
-            return <div key={`sep-${i}`} className="w-6 h-px bg-sidebar-border my-1" />;
+            return (
+              <div key={`sep-${i}`} className="h-px w-5 bg-border/30 my-2 mx-auto" />
+            );
           }
           const it = item as { id: string; icon: React.ElementType; label: string };
           const isActive = activePanel === it.id && isOpen;
@@ -93,13 +91,16 @@ export function DevToolsSidebar({
                 <button
                   onClick={() => onToggle(it.id)}
                   className={cn(
-                    "w-8 h-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0",
+                    "relative w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-200 shrink-0",
                     isActive
-                      ? "bg-primary/20 text-white"
-                      : "text-primary hover:text-primary hover:bg-primary/10"
+                      ? "bg-primary/12 text-primary shadow-[inset_2px_0_8px_-4px_hsl(var(--primary)/0.5)]"
+                      : "text-sidebar-foreground hover:text-foreground hover:bg-notilus-surface-2/60"
                   )}
                 >
-                  <it.icon size={15} />
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-r-full bg-primary" />
+                  )}
+                  <it.icon size={16} strokeWidth={1.25} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" className="glass text-xs font-body">
@@ -109,14 +110,12 @@ export function DevToolsSidebar({
           );
         })}
 
-        {/* Spacer pushes web services + collapse to bottom */}
         <div className="flex-1" />
 
-        {/* Web services at the bottom */}
         {visibleWebServices.length > 0 && (
           <>
-            <div className="w-6 h-px bg-sidebar-border my-1" />
-            <div className="text-[7px] font-display text-muted-foreground uppercase tracking-widest mb-0.5">Web</div>
+            <div className="h-px w-5 bg-border/30 my-2 mx-auto" />
+            <div className="text-[8px] font-display text-muted-foreground/40 uppercase tracking-[0.2em] mb-0.5">Web</div>
           </>
         )}
 
@@ -126,24 +125,19 @@ export function DevToolsSidebar({
               <button
                 onClick={() => onOpenWebPanel?.(svc)}
                 className={cn(
-                  'w-8 h-8 flex items-center justify-center rounded-md transition-all duration-fast shrink-0',
+                  'relative w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-200 shrink-0',
                   activePanel === 'web-service' && activeWebServiceUrl === svc.url
-                    ? 'bg-primary/20 text-white'
-                    : 'text-primary hover:text-primary hover:bg-primary/10'
+                    ? 'bg-primary/12 text-primary shadow-[inset_2px_0_8px_-4px_hsl(var(--primary)/0.5)]'
+                    : 'text-sidebar-foreground hover:text-foreground hover:bg-notilus-surface-2/60'
                 )}
               >
-                <WebServiceIcon
-                  serviceId={svc.id}
-                  serviceUrl={svc.url}
-                  serviceLabel={svc.label}
-                  size={14}
-                  fallbackIcon={svc.fallbackIcon}
-                />
+                {activePanel === 'web-service' && activeWebServiceUrl === svc.url && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-r-full bg-primary" />
+                )}
+                <WebServiceIcon serviceId={svc.id} serviceUrl={svc.url} serviceLabel={svc.label} size={15} fallbackIcon={svc.fallbackIcon} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="glass text-xs font-body">
-              {svc.label}
-            </TooltipContent>
+            <TooltipContent side="right" className="glass text-xs font-body">{svc.label}</TooltipContent>
           </Tooltip>
         ))}
 
@@ -151,9 +145,9 @@ export function DevToolsSidebar({
           <TooltipTrigger asChild>
             <button
               onClick={() => onToggle()}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-primary hover:text-primary hover:bg-primary/10 transition-colors duration-fast shrink-0"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-sidebar-foreground hover:text-foreground hover:bg-notilus-surface-2/60 transition-all duration-200 shrink-0"
             >
-              {isOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+              {isOpen ? <ChevronLeft size={15} strokeWidth={1.25} /> : <ChevronRight size={15} strokeWidth={1.25} />}
             </button>
           </TooltipTrigger>
           <TooltipContent side="right" className="glass text-xs font-body">

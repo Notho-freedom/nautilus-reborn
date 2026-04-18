@@ -196,16 +196,16 @@ export function GitHubReposPanel({
                 value={localConnection.username}
                 onChange={e => setLocalConnection(c => ({ ...c, username: e.target.value }))}
                 placeholder="GitHub username"
-                className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-secondary/45 px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+                className="w-full h-9 rounded-lg bg-notilus-surface-2/50 px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/25"
               />
               <input
                 value={localConnection.token}
                 onChange={e => setLocalConnection(c => ({ ...c, token: e.target.value }))}
                 placeholder="Personal access token"
                 type="password"
-                className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-secondary/45 px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+                className="w-full h-9 rounded-lg bg-notilus-surface-2/50 px-3 text-xs font-body text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/25"
               />
-              <button type="submit" className="w-full h-9 rounded-lg bg-notilus-surface-1 border border-secondary/45 text-xs font-display text-foreground tracking-wider hover:bg-notilus-surface-2 transition-colors">
+              <button type="submit" className="w-full h-9 rounded-lg bg-notilus-surface-2/50 text-xs font-display text-foreground tracking-wider hover:bg-notilus-surface-2/80 transition-colors">
                 Connect with PAT
               </button>
             </form>
@@ -230,28 +230,28 @@ export function GitHubReposPanel({
         { label: 'Refresh repos', onClick: () => void handleLoadRepos() },
       ]}
     >
-      <div className="p-3 space-y-3 bg-gradient-to-b from-notilus-surface-2/35 to-transparent">
+      <div className="p-3 space-y-3">
         <div className="flex items-center justify-end gap-2">
-          <button onClick={() => setShowPrivate(c => !c)} className={`flex items-center gap-1 px-2 h-6 rounded-md text-[10px] font-body transition-colors ${showPrivate ? 'bg-primary/15 text-primary' : 'bg-notilus-surface-1 text-muted-foreground'}`}>
-            <Lock size={9} /> Private
+          <button onClick={() => setShowPrivate(c => !c)} className={`flex items-center gap-1 px-2 h-6 rounded-full text-[10px] font-body transition-colors ${showPrivate ? 'bg-primary/15 text-primary' : 'bg-notilus-surface-2/40 text-muted-foreground hover:bg-notilus-surface-2/70'}`}>
+            <Lock size={9} strokeWidth={1.5} /> Private
           </button>
-          <button onClick={() => setSortBy(c => (c === 'updated' ? 'stars' : c === 'stars' ? 'name' : 'updated'))} className="flex items-center gap-1 px-2 h-6 rounded-md bg-notilus-surface-1 text-[10px] font-body text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowUpDown size={9} /> {sortBy}
+          <button onClick={() => setSortBy(c => (c === 'updated' ? 'stars' : c === 'stars' ? 'name' : 'updated'))} className="flex items-center gap-1 px-2 h-6 rounded-full bg-notilus-surface-2/40 text-[10px] font-body text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2/70 transition-colors">
+            <ArrowUpDown size={9} strokeWidth={1.5} /> {sortBy}
           </button>
         </div>
 
         {isGitHubOAuth && (
-          <div className="text-[10px] font-body text-info bg-info/10 border border-secondary/45 rounded-md p-2">
+          <div className="text-[10px] font-body text-info bg-info/10 rounded-md p-2">
             Auth source: Supabase GitHub OAuth
           </div>
         )}
-        {error && <div className="text-[10px] font-body text-error bg-error/10 border border-secondary/45 rounded-md p-2">{error}</div>}
+        {error && <div className="text-[10px] font-body text-error bg-error/10 rounded-md p-2">{error}</div>}
 
-        <div className="text-[10px] font-body text-muted-foreground bg-notilus-surface-1/80 border border-secondary/35 rounded-md px-2 py-1.5">
+        <div className="text-[10px] font-body text-muted-foreground bg-notilus-surface-2/30 rounded-md px-2 py-1.5">
           Click a repository to open its file tree. GitHub website opening stays available via the external action.
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {filtered.map(repo => (
             <div
               key={repo.id}
@@ -265,10 +265,10 @@ export function GitHubReposPanel({
                   handleSelectRepo(repo);
                 }
               }}
-              className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-1 border border-secondary/35 space-y-2 hover:bg-notilus-surface-2 transition-colors"
+              className="w-full text-left p-2.5 rounded-lg bg-notilus-surface-2/30 space-y-2 hover:bg-notilus-surface-2/60 transition-colors"
             >
               <div className="flex items-center gap-1.5">
-                {repo.isPrivate ? <Lock size={10} className="text-warning" /> : <Globe size={10} className="text-muted-foreground" />}
+                {repo.isPrivate ? <Lock size={10} strokeWidth={1.5} className="text-warning" /> : <Globe size={10} strokeWidth={1.5} className="text-muted-foreground" />}
                 <span className="text-xs font-body text-info font-semibold">{repo.fullName}</span>
                 <button
                   type="button"
@@ -278,22 +278,22 @@ export function GitHubReposPanel({
                     else window.open(repo.htmlUrl, '_blank');
                   }}
                   aria-label={`Open ${repo.fullName} on GitHub`}
-                  className="ml-auto h-6 w-6 rounded-md bg-notilus-surface-2/70 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
+                  className="ml-auto h-6 w-6 rounded-md bg-notilus-surface-2/60 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-notilus-surface-2 transition-colors"
                   title="Open on GitHub"
                 >
-                  <ExternalLink size={10} />
+                  <ExternalLink size={10} strokeWidth={1.5} />
                 </button>
               </div>
               <p className="text-[10px] font-body text-muted-foreground line-clamp-2">{repo.description || 'No description'}</p>
               <div className="flex items-center gap-3 text-[9px] font-body text-muted-foreground">
                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: repo.languageColor }} />{repo.language}</span>
-                <span className="flex items-center gap-0.5"><Star size={8} /> {repo.stars}</span>
-                <span className="flex items-center gap-0.5"><GitFork size={8} /> {repo.forks}</span>
+                <span className="flex items-center gap-0.5"><Star size={8} strokeWidth={1.5} /> <span className="tabular-nums">{repo.stars}</span></span>
+                <span className="flex items-center gap-0.5"><GitFork size={8} strokeWidth={1.5} /> <span className="tabular-nums">{repo.forks}</span></span>
                 <span>{formatRelativeDate(repo.updatedAt)}</span>
               </div>
               <div className="flex items-center justify-end">
                 <span className="inline-flex items-center gap-1 text-[10px] font-body text-muted-foreground">
-                  <FolderOpen size={10} />
+                  <FolderOpen size={10} strokeWidth={1.5} />
                   Open repo view
                 </span>
               </div>
@@ -303,13 +303,13 @@ export function GitHubReposPanel({
 
         {isLoading && (
           <div className="flex items-center justify-center py-4">
-            <Loader2 size={16} className="animate-spin text-primary" />
+            <Loader2 size={16} strokeWidth={1.5} className="animate-spin text-primary" />
           </div>
         )}
 
         {!isLoading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
-            <Github size={32} className="opacity-30" />
+            <Github size={32} strokeWidth={1.25} className="opacity-30" />
             <span className="text-xs font-body">{repos.length === 0 ? 'No repositories loaded' : 'No repositories found'}</span>
           </div>
         )}

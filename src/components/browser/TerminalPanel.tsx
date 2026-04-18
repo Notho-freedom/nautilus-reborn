@@ -161,18 +161,18 @@ export function TerminalPanel({ onClose }: TerminalPanelProps = {}) {
     >
       {isXTermReady ? (
         <div className="flex h-full flex-col p-2">
-          <div className="mb-2 flex h-8 items-center justify-between rounded-md border border-border bg-notilus-surface-1 px-2 text-[10px] text-muted-foreground">
+          <div className="mb-2 flex h-8 items-center justify-between rounded-md bg-notilus-surface-2/40 px-2 text-[10px] text-muted-foreground">
             <span>Shell session</span>
-            <span>{statusText}</span>
+            <span className="text-foreground/80">{statusText}</span>
           </div>
           <div
             ref={terminalRootRef}
-            className="h-full min-h-0 w-full overflow-hidden rounded-md border border-border bg-black/70 p-1"
+            className="h-full min-h-0 w-full overflow-hidden rounded-md bg-black/70 p-1"
           />
         </div>
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-          <Monitor size={30} className="text-muted-foreground/40" />
+          <Monitor size={30} strokeWidth={1.25} className="text-muted-foreground/40" />
           <p className="text-xs text-muted-foreground">
             Terminal runtime is available in desktop mode with terminal type set to Xterm.
           </p>

@@ -67,9 +67,9 @@ export function UpdatesPanel({ onClose }: UpdatesPanelProps = {}) {
       ]}
     >
       <div className="p-3 space-y-3">
-        <div className="rounded-lg border border-border bg-notilus-surface-1 p-2">
-          <div className="text-[10px] font-body text-muted-foreground">Current: <span className="text-foreground">{snapshot.currentVersion}</span></div>
-          <div className="text-[10px] font-body text-muted-foreground">Latest: <span className="text-foreground">{snapshot.latestVersion ?? 'Unknown'}</span></div>
+        <div className="rounded-lg bg-notilus-surface-2/40 p-2.5">
+          <div className="text-[10px] font-body text-muted-foreground">Current: <span className="text-foreground tabular-nums">{snapshot.currentVersion}</span></div>
+          <div className="text-[10px] font-body text-muted-foreground">Latest: <span className="text-foreground tabular-nums">{snapshot.latestVersion ?? 'Unknown'}</span></div>
           {snapshot.updateAvailable ? (
             <div className="text-[10px] font-body text-info mt-1">A newer version is available.</div>
           ) : (
@@ -79,14 +79,14 @@ export function UpdatesPanel({ onClose }: UpdatesPanelProps = {}) {
         </div>
 
         {snapshot.error && (
-          <div className="flex items-center gap-1.5 text-[10px] font-body text-warning bg-warning/10 border border-warning/30 rounded-md p-2">
-            <AlertCircle size={11} />{snapshot.error}
+          <div className="flex items-center gap-1.5 text-[10px] font-body text-warning bg-warning/10 rounded-md p-2">
+            <AlertCircle size={11} strokeWidth={1.5} />{snapshot.error}
           </div>
         )}
 
         {!checking && filtered.length === 0 && (
           <div className="flex flex-col items-center py-6 text-center">
-            <Check size={24} className="text-success mb-2" />
+            <Check size={24} strokeWidth={1.25} className="text-success mb-2" />
             <p className="text-xs font-body text-muted-foreground">No matching updates.</p>
           </div>
         )}
@@ -95,10 +95,10 @@ export function UpdatesPanel({ onClose }: UpdatesPanelProps = {}) {
           {filtered.map(update => {
             const Icon = CATEGORY_ICONS[update.category];
             return (
-              <div key={update.id} className="p-2.5 rounded-lg bg-notilus-surface-1 border border-border space-y-1">
-                <div className="flex items-center gap-2"><Icon size={12} className={CATEGORY_COLORS[update.category]} /><span className="text-xs font-body text-foreground flex-1">{update.title}</span></div>
+              <div key={update.id} className="p-2.5 rounded-lg bg-notilus-surface-2/40 space-y-1 hover:bg-notilus-surface-2/60 transition-colors">
+                <div className="flex items-center gap-2"><Icon size={12} strokeWidth={1.5} className={CATEGORY_COLORS[update.category]} /><span className="text-xs font-body text-foreground flex-1">{update.title}</span></div>
                 <p className="text-[10px] font-body text-muted-foreground">{update.description}</p>
-                <div className="flex items-center gap-1 text-[9px] font-body text-muted-foreground"><Clock size={9} /> {formatDate(update.date)}</div>
+                <div className="flex items-center gap-1 text-[9px] font-body text-muted-foreground"><Clock size={9} strokeWidth={1.5} /> {formatDate(update.date)}</div>
               </div>
             );
           })}

@@ -43,7 +43,7 @@ function configureUserAgent() {
     downloadManager?.registerSession(contents.session);
 
     const type = contents.getType();
-    if (type === 'webview' || type === 'webContentsView') {
+    if (type === 'webview' || (type as string) === 'webContentsView') {
       contents.setUserAgent(app.userAgentFallback);
     }
   });
