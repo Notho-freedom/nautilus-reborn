@@ -1,98 +1,110 @@
-# Nautilus Reborn - Version 2 (Web)
+# Nautilus Reborn — Version 2 (Web + Desktop)
+
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-backend-3ECF8E?logo=supabase&logoColor=white)
+![Vitest](https://img.shields.io/badge/Vitest-tests-6E9F18?logo=vitest&logoColor=white)
 
 ![Nautilus Reborn Screenshot](screenshots/homepage.png)
 
-Version 2 of Notilus, a modern web-based operating system interface and browser replacement. Currently in active development.
+Version 2 of Notilus, a modern web-based operating system interface and browser replacement. The project combines a React/Vite web application with an Electron desktop mode and is currently in active development.
 
 ## Workspace Organization
 
-The `C:\Users\bobim\NOTILUS` workspace contains 3 separate repositories:
+The original `NOTILUS` workspace contains three related repositories:
 
-- `Notilus-Browser` -> V1 Flutter (stable, functional reference)
-- `nautilus-reborn` -> V2 Web (this repository, main development area)
-- `notilus-loading` -> application presentation page
+- `Notilus-Browser` → V1 Flutter reference implementation
+- `nautilus-reborn` → V2 Web/Desktop main development area
+- `notilus-loading` → application presentation page
 
-## Local Development (V2)
+## Current desktop capabilities
 
-Prerequisites:
+The V2 desktop mode uses Electron and `WebContentsView` for native Chromium rendering of external pages while internal `notilus://*` pages remain in the React UI.
+
+The current README is intentionally based on the capabilities documented by the repository itself, including:
+
+- Typed Electron preload bridge through `window.notilusDesktop`
+- Native download capture through Electron's session events
+- Downloads panel
+- Git panel connected to the local repository
+- Configurable sidebar web services
+- Panel/tab transfer for web services
+- Studio panel with resize presets and capture
+- Live CSS/JS tooling
+- Recorder export for Playwright/Cypress workflows
+
+## Local development
+
+### Requirements
 
 - Node.js 20+
 - npm 10+
 
-Commands:
+### Web mode
 
-```sh
-cd C:\Users\bobim\NOTILUS\nautilus-reborn
+```bash
 npm install
 npm run dev:web
 ```
 
-Quick validation:
+### Web production build
 
-```sh
+```bash
 npm run build:web
+```
+
+### Tests
+
+```bash
 npm run test
 ```
 
-## Desktop Electron Mode (V2)
+### Desktop development
 
-The desktop application uses Electron with `WebContentsView`.
-
-Commands:
-
-```sh
-# Launch React + Electron in dev mode
+```bash
 npm run dev:desktop
+```
 
-# Build desktop (main + preload + renderer)
+### Desktop build
+
+```bash
 npm run build:desktop
 ```
 
-In desktop mode:
+## V1 → V2 migration model
 
-- External pages: rendered via native Chromium (`WebContentsView`)
-- Internal pages (`notilus://*`): rendered in React UI
-- The preload bridge exposes `window.notilusDesktop` (typed IPC)
-- Downloads: captured natively via Electron session (`will-download`) and visible in the Downloads panel
-- Git panel: connected to the real local repo (status/commits/commit)
-- Sidebar web services: configurable in Settings, opening in panel + tab transfer
-- Studio panel: resize presets, capture, live CSS/JS, recorder export (Playwright/Cypress)
+V1 serves as the business/reference implementation. V2 adapts those concepts to the React + TypeScript + Tailwind + shadcn-oriented stack.
 
-## Recommended Git Workflow
+| V1 | V2 |
+|---|---|
+| `lib/screens` | `src/pages` / browser components |
+| `lib/widgets` | `src/components/ui` / browser components |
+| `lib/services` | `src/hooks` + `src/lib` + API services |
+| `backend/` FastAPI | Remote API or dedicated local service |
 
-Always commit from `nautilus-reborn`:
-
-```sh
-cd C:\Users\bobim\NOTILUS\nautilus-reborn
-git checkout -b feat/<feature-name>
-git add .
-git commit -m "feat: <description>"
-git push -u origin feat/<feature-name>
-```
-
-The parent folder `NOTILUS` is not a Git repository, which is normal.
-
-## V1 to V2 Integration
-
-To migrate a Flutter feature (V1) to web (V2), use this mapping:
-
-- V1 `lib/screens` -> V2 `src/pages` / `src/components/browser`
-- V1 `lib/widgets` -> V2 `src/components/ui` / `src/components/browser`
-- V1 `lib/services` -> V2 `src/hooks` + `src/lib` + future API services
-- V1 `backend/` FastAPI -> Remote API or dedicated local service on V2 side
-
-V1 serves as the business reference; UI/technical implementations must be adapted to the V2 stack (React + Vite + TypeScript + Tailwind + shadcn).
-
-## V2 Tech Stack
+## Tech stack
 
 - Vite
 - React 18
 - TypeScript
-- Tailwind CSS
-- shadcn/ui
+- Tailwind CSS 3
+- shadcn/ui / Radix UI
 - Vitest
-- Electron
-- WebContentsView
+- Electron 37
+- `WebContentsView`
+- Supabase
+- `sql.js`, `systeminformation`, `xterm` and related desktop/browser tooling
 
-## Screenshots
+## Project status
+
+Nautilus Reborn V2 is under active development. The codebase already contains substantial web and desktop infrastructure, but the project should still be treated as a development build rather than a finished operating-system replacement.
+
+## License
+
+No explicit license file was identified in the current repository. Treat the project as **all rights reserved** unless a license is added.
+
+## Screenshot
+
 ![Homepage](screenshots/homepage.png)
